@@ -9,10 +9,15 @@ import type { Level } from './level.js';
 export type { Coordinate, PieceColor, Piece, Board } from './board.js';
 export type { Direction } from './move-step.js';
 export type { Hand, Launch } from './launch.js';
-export type { MoveStepEvent, EventLog } from './events.js';
+export type { MoveStepEvent, AnnihilationEvent, ChainEvent, EventLog } from './events.js';
 export type { Objective, LevelResult } from './objective.js';
 export type { Level } from './level.js';
-export { testLevelGreen01, testLevelOrange01 } from './level.js';
+export {
+  testLevelGreen01,
+  testLevelOrange01,
+  testLevelSameColor01,
+  testLevelSameColorCascade01,
+} from './level.js';
 
 export type LaunchOutcome = {
   board: Board;

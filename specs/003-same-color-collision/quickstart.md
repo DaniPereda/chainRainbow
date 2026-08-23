@@ -40,10 +40,11 @@ console.log(cascade.result); // 'won'
 
 ## Criterio de "hecho" para esta historia
 
-- [ ] `same-color.test.ts` pasa, cubriendo impacto inicial y eslabón de cascada.
-- [ ] Las cinco suites existentes siguen pasando **sin haber sido modificadas** (verificable por
-      fecha de modificación de fichero o `git diff`, según corresponda en el momento).
-- [ ] `testLevelGreen01` sigue produciendo `'won'` con `GREEN_WINNING_LAUNCH` — solo cambió el
+- [x] `same-color.test.ts` pasa, cubriendo impacto inicial y eslabón de cascada — 6/6 suites,
+      19/19 tests.
+- [x] Las cinco suites existentes siguen pasando **sin haber sido modificadas** (misma fecha de
+      modificación en las cinco, previa a esta sesión).
+- [x] `testLevelGreen01` sigue produciendo `'won'` con `GREEN_WINNING_LAUNCH` — solo cambió el
       color de la ficha ya colocada y del objetivo, no el resultado.
-- [ ] `src/engine/` sigue sin importar nada externo (sin Phaser, sin DOM, cero dependencias de
+- [x] `src/engine/` sigue sin importar nada externo (sin Phaser, sin DOM, cero dependencias de
       runtime en `package.json`).

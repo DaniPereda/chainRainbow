@@ -30,7 +30,7 @@ Mismo proyecto único ya existente. No se añade tooling nuevo.
 
 ## Phase 1: Setup
 
-- [ ] T001 Ejecutar `npm test` y `npm run typecheck` en la raíz del repo y confirmar que las
+- [X] T001 Ejecutar `npm test` y `npm run typecheck` en la raíz del repo y confirmar que las
       cinco suites existentes pasan (línea base: 5 suites, 15 tests, antes de tocar nada).
 
 **Checkpoint**: Estado base verde confirmado.
@@ -45,7 +45,7 @@ chequeo de mismo color o construir los fixtures que lo ejercitan.
 **⚠️ CRITICAL**: No implementar el chequeo de mismo color (Fase 3) hasta cerrar esta fase. Los
 tests de la Fase 3 sí pueden escribirse antes (fallarán hasta entonces).
 
-- [ ] T002 En `src/engine/events.ts`, añadir `AnnihilationEvent = { type: 'ANNIHILATION'; at:
+- [X] T002 En `src/engine/events.ts`, añadir `AnnihilationEvent = { type: 'ANNIHILATION'; at:
       Coordinate; strikerColor: PieceColor; defender: Piece }` y el tipo unión `ChainEvent =
       MoveStepEvent | AnnihilationEvent`. Cambiar `EventLog` de `MoveStepEvent[]` a
       `ChainEvent[]`. `ImpactHandler`/`resolveChain` no cambian de forma, solo el tipo de
@@ -69,14 +69,14 @@ que las cinco suites existentes cambien de resultado.
 
 ### Tests for User Story 1 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T003 [P] [US1] Tests de aniquilación en impacto inicial y en un eslabón de cascada (FR-001 a
+- [X] T003 [P] [US1] Tests de aniquilación en impacto inicial y en un eslabón de cascada (FR-001 a
       FR-005; Acceptance Scenarios 1, 2, 4) contra `resolveLaunch`, `testLevelSameColor01` y
       `testLevelSameColorCascade01` en `tests/unit/engine/same-color.test.ts`, según la tabla de
       verificación de `contracts/engine-api.md`. Fallará por falta de los fixtures hasta T004.
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] En `src/engine/level.ts`: (a) modificar `testLevelGreen01` — la ficha ya
+- [X] T004 [US1] En `src/engine/level.ts`: (a) modificar `testLevelGreen01` — la ficha ya
       colocada pasa de verde a naranja y `objective.targetColor` pasa de `'green'` a `'orange'`
       (la `targetCell` NO cambia, research.md → Decisión 3); (b) añadir los fixtures
       `testLevelSameColor01` (una ficha verde en `(6,4)`, mano con una ficha verde, objetivo
@@ -84,18 +84,18 @@ que las cinco suites existentes cambien de resultado.
       fichas naranjas en `(7,4)` y `(7,5)`; objetivo `{ targetColor: 'green', targetCell: { row:
       7, col: 4 } }`) — ver data-model.md. Una única tarea porque las tres ediciones caen en el
       mismo fichero. Depende de T001 (no de T002 — no toca eventos).
-- [ ] T005 [P] [US1] En `src/engine/pieces/push.ts`, insertar la comprobación de mismo color en
+- [X] T005 [P] [US1] En `src/engine/pieces/push.ts`, insertar la comprobación de mismo color en
       un único punto reutilizado tanto por la resolución del impacto inicial como por cada
       eslabón recursivo de `pushOccupant` (research.md, Decisión 1): si el color de la ficha que
       golpea coincide con el de la que ocupa la casilla de destino, generar un
       `AnnihilationEvent`, eliminar ambas fichas del tablero, y terminar ahí (sin más eventos ni
       empuje). Si los colores difieren, seguir con el empuje ya existente sin cambios. Depende de
       T002. Fichero distinto de T004/T006 — puede ir en paralelo a ambas.
-- [ ] T006 [P] [US1] En `src/engine/index.ts`, re-exportar `AnnihilationEvent`, `ChainEvent`,
+- [X] T006 [P] [US1] En `src/engine/index.ts`, re-exportar `AnnihilationEvent`, `ChainEvent`,
       `testLevelSameColor01` y `testLevelSameColorCascade01`. Depende de T002 (tipos) y T004
       (fixtures). Fichero distinto de T004/T005 — puede ir en paralelo a T005 (ambas leen de lo
       que T002/T004 ya dejaron listo, sin escribirse mutuamente).
-- [ ] T007 [US1] Ejecutar `npm test` y `npm run typecheck`; ajustar hasta que `same-color.test.ts`
+- [X] T007 [US1] Ejecutar `npm test` y `npm run typecheck`; ajustar hasta que `same-color.test.ts`
       pase en verde y las cinco suites existentes sigan pasando sin modificaciones. Depende de
       T003, T004, T005, T006.
 
@@ -106,7 +106,7 @@ sobre el empuje, y sin regresión en colores distintos — feature completa.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T008 Recorrer el checklist de `quickstart.md`: confirmar que las cinco suites existentes no
+- [X] T008 Recorrer el checklist de `quickstart.md`: confirmar que las cinco suites existentes no
       tienen cambios, que `testLevelGreen01` sigue produciendo `'won'` con `GREEN_WINNING_LAUNCH`,
       y que `src/engine/` sigue sin importar nada externo y `package.json` sigue sin dependencias
       de runtime. Depende de T007.
