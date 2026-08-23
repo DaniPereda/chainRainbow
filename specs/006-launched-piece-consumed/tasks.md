@@ -101,11 +101,13 @@ Fase 2 son consistentes entre sí bajo la regla corregida.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T010 Ejecutar `npm test && npm run typecheck` una vez más sobre el estado final; confirmar
-      recuento total de suites/tests. Depende de T005, T006, T008, T009.
+- [X] T010 Ejecutar `npm test && npm run typecheck` una vez más sobre el estado final; confirmar
+      recuento total de suites/tests. Depende de T005, T006, T008, T009. *(10 suites, 51 tests,
+      verde; typecheck y `npm run build` limpios.)*
 - [ ] T011 Validación manual en navegador (`npm run dev`): jugar los niveles 3 y 7 rediseñados
       de principio a fin (2 lanzamientos cada uno) y confirmar que ninguna ficha lanzada queda
-      visible tras su propio impacto. Depende de T010.
+      visible tras su propio impacto. Depende de T010. *(NO verificado por el agente — sin
+      navegador disponible en esta sesión, mismo motivo que en la feature 005.)*
 
 ---
 
