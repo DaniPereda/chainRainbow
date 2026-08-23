@@ -1,17 +1,15 @@
 <!--
 Sync Impact Report
-- Version change: (template) → 1.0.0
-- Modified principles: n/a (initial ratification)
-- Added sections:
-  - Core Principles: I. Pure, UI-Independent Simulation Core (NON-NEGOTIABLE)
-  - Core Principles: II. Test-First Engine Logic
-  - Core Principles: III. Determinism & Reproducibility
-  - Core Principles: IV. Levels as Declarative Data
-  - Core Principles: V. Composable Primitives Over Special-Casing
-  - Technology Stack Requirements
-  - Development Workflow
-  - Governance
-- Removed sections: none (initial document)
+- Version change: 1.0.0 → 1.1.0
+- Modified principles: none (Core Principles I-V unchanged)
+- Modified sections:
+  - Development Workflow: replaced the single "prototype order" bullet (verde → naranja →
+    marrón → rojo, then renderer) with an explicit phase breakdown. Fase 1 (verde, naranja,
+    regla de mismo color, wrap-around) is now marked closed; a Fase 2 renderer prototype is
+    inserted BEFORE marrón/rojo, reversing the original "all pieces before any renderer work"
+    order; marrón/rojo/future pieces move to Fase 3.
+- Added sections: none
+- Removed sections: none
 - Templates requiring follow-up: none — plan/spec/tasks templates read this file at runtime,
   no changes needed here.
 - Deferred TODOs: none
@@ -86,15 +84,28 @@ its own.
 
 ## Development Workflow
 
-- Prototype order: implement and thoroughly test the simulation core for the current set of
-  pieces (verde, naranja, marrón, rojo) before investing in renderer polish or animation.
-  Manually authored test levels MUST exist and pass before any level generator is built.
-- Every new piece or interaction rule change goes through: spec → engine implementation with
-  unit tests → renderer wiring, in that order. Renderer work MUST NOT be used to compensate for
-  or mask incorrect engine behavior.
-- Features that introduce new engine primitives or change chain-resolution semantics MUST
-  document the change and its rationale in that feature's plan.md, referencing which principle
-  (if any) motivates the deviation from existing composable primitives.
+- **Fase 1 (cerrada)**: motor headless para verde, naranja, la regla de mismo color
+  (aniquilación mutua), y wrap-around de fichas en el tablero — implementado, probado, y
+  fusionado en `develop`/`main`. Marrón y rojo NO forman parte de esta fase.
+- **Fase 2 (actual)**: antes de añadir más piezas o reglas al motor, se construye un prototipo
+  de renderer simple que visualice y ejercite las interacciones ya implementadas en Fase 1:
+  pantalla de inicio, selector de niveles (1 a 10, cada uno hardcodeado como dato declarativo,
+  Principio IV), ventana de éxito/fallo, y reinicio. Esta fase invierte deliberadamente el orden
+  original de "todas las piezas antes que cualquier renderer" para validar visualmente el diseño
+  acordado antes de seguir invirtiendo en complejidad del motor. El renderer sigue sujeto al
+  Principio I: consume estado/eventos del motor, nunca decide reglas de juego.
+- **Fase 3 (futura, no iniciada)**: marrón, rojo, y cualquier pieza/regla adicional del motor,
+  una vez validado el prototipo de Fase 2. A partir de aquí se retoma el orden original por
+  pieza: spec → implementación del motor con tests → integración en el renderer ya existente.
+- Dentro de cualquier fase que toque el motor, cada pieza o cambio de regla de interacción sigue
+  el orden: spec → implementación del motor con tests unitarios → integración en el renderer, en
+  ese orden. El trabajo de renderer NUNCA debe usarse para compensar o enmascarar un
+  comportamiento incorrecto del motor.
+- Los niveles de prueba manuales (Fase 1 y el selector hardcodeado de Fase 2) DEBEN existir y
+  pasar/funcionar antes de construir cualquier generador de niveles.
+- Las features que introducen nuevas primitivas de motor o cambian la semántica de resolución de
+  cadenas DEBEN documentar el cambio y su razón en el plan.md de esa feature, referenciando qué
+  principio (si alguno) motiva la desviación de las primitivas composables existentes.
 
 ## Governance
 
@@ -113,4 +124,4 @@ Complexity or deviation from these principles (e.g. a piece behavior that cannot
 as composed primitives, or engine logic that must depend on rendering state) MUST be justified
 in the relevant plan.md rather than silently introduced.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-22 | **Last Amended**: 2026-08-22
+**Version**: 1.1.0 | **Ratified**: 2026-08-22 | **Last Amended**: 2026-08-23
