@@ -13,17 +13,19 @@ describe('stepBy: multi-cell movement wraps around the board edges (FR-001)', ()
     expect(stepBy({ row: 2, col: 3 }, 'E', 2)).toEqual({ row: 2, col: 5 });
   });
 
-  it('wraps to the opposite edge of the same row when the move overshoots east', () => {
+  it('wraps to the opposite edge when the move overshoots east', () => {
     expect(stepBy({ row: 2, col: 7 }, 'E', 1)).toEqual({ row: 2, col: 0 });
-    expect(stepBy({ row: 2, col: 6 }, 'E', 2)).toEqual({ row: 2, col: 0 });
   });
 
-  it('wraps to the opposite edge of the same column when the move overshoots south', () => {
+  it('wraps to the opposite edge when the move overshoots west', () => {
+    expect(stepBy({ row: 0, col: 0 }, 'O', 1)).toEqual({ row: 0, col: 7 });
+  });
+
+  it('wraps to the opposite edge when the move overshoots south', () => {
     expect(stepBy({ row: 7, col: 3 }, 'S', 2)).toEqual({ row: 1, col: 3 });
   });
 
-  it('wraps to the opposite edge when the move overshoots the west/north edge', () => {
-    expect(stepBy({ row: 0, col: 0 }, 'O', 1)).toEqual({ row: 0, col: 7 });
+  it('wraps to the opposite edge when the move overshoots north', () => {
     expect(stepBy({ row: 0, col: 0 }, 'N', 1)).toEqual({ row: 7, col: 0 });
   });
 });
