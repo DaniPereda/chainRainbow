@@ -123,10 +123,11 @@ el segundo cruce, sin bloquearse falsamente contra su propia casilla de partida 
 
 ### Implementation for User Story 3
 
-- [ ] T008 [US3] Fixture 4 de data-model.md en `brown.test.ts`: fila despejada, confirma que el
+- [X] T008 [US3] Fixture 4 de data-model.md en `brown.test.ts`: fila despejada, confirma que el
       desplazamiento se detiene exactamente en el segundo cruce de borde. Depende de T005 — de
       nuevo, verificación pura de la misma implementación, esta vez del caso límite que motivó
-      el hallazgo `isSelf` de research.md.
+      el hallazgo `isSelf` de research.md. *(Pasó a la primera — confirma el hallazgo también de
+      punta a punta, no solo en el primitivo aislado de T002.)*
 
 **Checkpoint**: Las 3 historias funcionan juntas — marrón está completo y no puede colgar el
 motor.
