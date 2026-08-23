@@ -28,16 +28,16 @@ describe('same-color: annihilates on the very first impact (FR-001, FR-002)', ()
 });
 
 describe('same-color: annihilates mid-cascade, without disturbing an unrelated normal push (FR-001 to FR-004)', () => {
-  // Acceptance Scenario 2 (spec.md 003): a piece set in motion by a DIFFERENT-color
-  // strike (normal push, unaffected -- Scenario 3) can itself become the striker at
-  // the next link of the chain; if THAT collision is same-color, it annihilates too,
-  // and the chain stops there.
+  // Acceptance Scenario 2 (spec.md 003), reworked per spec.md 006: a piece set in
+  // motion by a DIFFERENT-color strike (normal push, unaffected -- Scenario 3) can
+  // itself become the striker at the next link of the chain; if THAT collision is
+  // same-color, it annihilates too, and the chain stops there. The launcher (green)
+  // is never placed on the board either way (spec.md 006) -- nothing survives.
   it('lets the first (different-color) collision push normally, then annihilates the second (same-color) one', () => {
     const outcome = resolveLaunch(testLevelSameColorCascade01, { direction: 'E', lane: 7 });
 
-    // Launcher (green) settled where the first piece (orange) used to be -- its own
-    // collision was a normal push, unaffected by what happens further down the chain.
-    expect(outcome.board.cells[7][4]).toEqual({ color: 'green' });
+    // The launcher never persists on the board, whatever its impact resolves to.
+    expect(outcome.board.cells[7][4]).toBeNull();
 
     // The two orange pieces annihilated each other; neither survives anywhere.
     expect(outcome.board.cells[7][5]).toBeNull();
@@ -46,9 +46,10 @@ describe('same-color: annihilates mid-cascade, without disturbing an unrelated n
     expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(true);
   });
 
-  it('marks the level as won once the objective cell is reached despite the cascade annihilating downstream', () => {
+  it('marks the level as lost, since nothing survives to meet any objective', () => {
     const outcome = resolveLaunch(testLevelSameColorCascade01, { direction: 'E', lane: 7 });
 
-    expect(outcome.result).toBe('won');
+    expect(outcome.hand.pieces).toHaveLength(0);
+    expect(outcome.result).toBe('lost');
   });
 });

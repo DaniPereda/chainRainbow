@@ -28,17 +28,19 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
       objective: { at: { row: 1, col: 5 }, color: 'green' },
     }),
   },
-  // 3: same-color annihilation clears the second orange; the green launcher settles
-  // where the first orange used to be.
+  // 3: same-color annihilation as a first impact clears an obstacle, then a second
+  // launch pushes the real target piece into place. A launched piece never settles
+  // on the board itself (spec.md 006), so a same-color demonstration needs two
+  // launches: one to annihilate, one to actually reach the objective.
   {
     id: 3,
     level: createLevel({
       pieces: [
-        { at: { row: 2, col: 4 }, color: 'orange' },
-        { at: { row: 2, col: 5 }, color: 'orange' },
+        { at: { row: 2, col: 2 }, color: 'green' }, // obstacle, same color as hand[0]
+        { at: { row: 2, col: 5 }, color: 'green' }, // real target, pushed by hand[1]
       ],
-      hand: ['green'],
-      objective: { at: { row: 2, col: 4 }, color: 'green' },
+      hand: ['green', 'orange'],
+      objective: { at: { row: 2, col: 7 }, color: 'green' },
     }),
   },
   // 4: wrap-around -- pushed past the east edge, reappears on the west edge (empty).
@@ -68,16 +70,17 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
       objective: { at: { row: 0, col: 2 }, color: 'orange' },
     }),
   },
-  // 7: same-color annihilation again, this time orange launching into two greens.
+  // 7: same idea as level 3 (same-color annihilation clears an obstacle, then a
+  // second launch reaches the objective), with the colors swapped for variety.
   {
     id: 7,
     level: createLevel({
       pieces: [
-        { at: { row: 5, col: 4 }, color: 'green' },
-        { at: { row: 5, col: 6 }, color: 'green' },
+        { at: { row: 5, col: 3 }, color: 'orange' }, // obstacle, same color as hand[0]
+        { at: { row: 5, col: 6 }, color: 'orange' }, // real target, pushed by hand[1]
       ],
-      hand: ['orange'],
-      objective: { at: { row: 5, col: 4 }, color: 'orange' },
+      hand: ['orange', 'green'],
+      objective: { at: { row: 5, col: 7 }, color: 'orange' },
     }),
   },
   // 8: a two-hop mixed-color cascade with no annihilation and no wrap -- the launcher
