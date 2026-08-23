@@ -66,24 +66,24 @@ inmediato cuando la primera casilla ya está ocupada.
 
 ### Tests for User Story 1 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T004 [P] [US1] Fixtures 1 y 2 de data-model.md en `tests/unit/engine/brown.test.ts`
+- [X] T004 [P] [US1] Fixtures 1 y 2 de data-model.md en `tests/unit/engine/brown.test.ts`
       (nuevo fichero): empuje largo hasta un bloqueo con cascada propia (fixture 1), y bloqueo
       en la primera casilla sin saltarla (fixture 2). Fallará por falta de la estrategia de
       empuje de marrón hasta T005.
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] En `src/engine/pieces/push.ts`, generalizar `PUSH_DISTANCE: Record<PieceColor,
+- [X] T005 [US1] En `src/engine/pieces/push.ts`, generalizar `PUSH_DISTANCE: Record<PieceColor,
       number>` a `PUSH_STRATEGY: Record<PieceColor, DisplacementStrategy>` (research.md):
       verde/naranja siguen siendo `stepBy` con su distancia fija; marrón usa
       `stepUntilBlocked(board, position, direction, 2)`. `resolveStrike` cambia una única línea
       para llamar a `PUSH_STRATEGY[strikerColor](board, position, direction)`. Depende de T001,
       T003. Hace pasar T004.
-- [ ] T006 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T004 pasa, y que las
+- [X] T006 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T004 pasa, y que las
       suites existentes (`orange`, `same-color`, `wrap-around`, `chain`, `launch`, `objective`,
       `determinism`, `session`, `prototype-levels`) siguen en verde sin cambios de
       comportamiento — prueba de que generalizar `PUSH_STRATEGY` no alteró verde ni naranja.
-      Depende de T005.
+      Depende de T005. *(11 suites, 56 tests, verde; typecheck limpio.)*
 
 **Checkpoint**: El movimiento largo de marrón funciona y está probado — MVP de esta feature
 completo.
