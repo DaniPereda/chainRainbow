@@ -7,6 +7,7 @@ export const BOARD_PIXELS = CELL_SIZE * 8;
 export const PIECE_COLOR: Record<PieceColor, number> = {
   green: 0x2ecc71,
   orange: 0xe67e22,
+  brown: 0x8d6e63,
 };
 
 const GRID_LINE_COLOR = 0x444444;

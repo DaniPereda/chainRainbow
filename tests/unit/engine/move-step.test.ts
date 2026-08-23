@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { stepBy } from '../../../src/engine/move-step.js';
+import { createBoard, setPieceAt } from '../../../src/engine/board.js';
+import { stepBy, stepUntilBlocked } from '../../../src/engine/move-step.js';
 
 // Wrap-around (FR-001, spec.md 004) is a property of movement itself, not of any
 // particular collision outcome -- resolveStrike just asks "where does a piece end
@@ -27,5 +28,36 @@ describe('stepBy: multi-cell movement wraps around the board edges (FR-001)', ()
 
   it('wraps to the opposite edge when the move overshoots north', () => {
     expect(stepBy({ row: 0, col: 0 }, 'N', 1)).toEqual({ row: 7, col: 0 });
+  });
+});
+
+// stepUntilBlocked (spec.md 008, marrón): steps one cell at a time, checking occupancy at
+// EVERY step -- unlike stepBy, which never looks at the board -- stopping at the first
+// occupied cell, or once it has crossed the board edge `maxEdgeCrossings` times, whichever
+// comes first. What resolveStrike does once it lands on an occupied cell is already proven
+// for any destination by the existing push/annihilation suites; this only needs to prove the
+// destination itself is computed correctly.
+describe('stepUntilBlocked: walks until blocked or capped by edge crossings (spec.md 008)', () => {
+  it('stops at the very first step if it is already occupied -- no blind skip like orange', () => {
+    const board = setPieceAt(createBoard(), { row: 2, col: 4 }, { color: 'orange' });
+
+    expect(stepUntilBlocked(board, { row: 2, col: 3 }, 'E', 2)).toEqual({ row: 2, col: 4 });
+  });
+
+  it('walks past several empty cells before stopping at the first occupied one', () => {
+    const board = setPieceAt(createBoard(), { row: 2, col: 6 }, { color: 'orange' });
+
+    expect(stepUntilBlocked(board, { row: 2, col: 3 }, 'E', 2)).toEqual({ row: 2, col: 6 });
+  });
+
+  it('does not block against its own starting cell, and stops on the second edge crossing', () => {
+    // The board still shows a piece at `position` itself -- the same stale snapshot
+    // resolveStrike always passes down (the mover hasn't been erased from the board yet).
+    // Without excluding `position` from the blocking check, this would incorrectly stop at
+    // step 8 (see research.md 008: every unblocked walk revisits its own start at step 8,
+    // since the board is an 8-wide cycle -- this is the normal case, not a rare one).
+    const board = setPieceAt(createBoard(), { row: 4, col: 3 }, { color: 'orange' });
+
+    expect(stepUntilBlocked(board, { row: 4, col: 3 }, 'E', 2)).toEqual({ row: 4, col: 0 });
   });
 });

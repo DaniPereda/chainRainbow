@@ -36,18 +36,18 @@ existir como primitivo, antes de que ninguna historia pueda escribir ni pasar su
 
 **⚠️ CRITICAL**: Ninguna historia empieza hasta cerrar esta fase.
 
-- [ ] T001 [P] En `src/engine/board.ts`, añadir `'brown'` a `PieceColor`. En
+- [X] T001 [P] En `src/engine/board.ts`, añadir `'brown'` a `PieceColor`. En
       `src/renderer/board-view.ts`, añadir `brown: 0x8d6e63` a `PIECE_COLOR` — lo mínimo para
       que `Record<PieceColor, number>` siga siendo exhaustivo y el build no se rompa (plan.md →
       Constraints). NO añade marrón a ningún nivel del prototipo de Fase 2.
-- [ ] T002 [P] Tests de `stepUntilBlocked` en `tests/unit/engine/move-step.test.ts`: bloqueo
+- [X] T002 [P] Tests de `stepUntilBlocked` en `tests/unit/engine/move-step.test.ts`: bloqueo
       inmediato (primer paso ya ocupado), bloqueo tras varios pasos, y el caso `isSelf` — con la
       fila/columna despejada y `maxEdgeCrossings` alcanzable, confirmar que NO se bloquea contra
       su propia casilla de partida y llega hasta el segundo cruce de borde (research.md,
       hallazgo del ciclo de periodo 8). Fallará por falta de la función hasta T003.
-- [ ] T003 En `src/engine/move-step.ts`, implementar `stepUntilBlocked(board, position,
+- [X] T003 En `src/engine/move-step.ts`, implementar `stepUntilBlocked(board, position,
       direction, maxEdgeCrossings)` según data-model.md/research.md. Depende de T002. Hace
-      pasar T002.
+      pasar T002. *(8/8 tests en verde, incluido el caso `isSelf`.)*
 
 **Checkpoint**: `stepUntilBlocked` existe y está probado en aislado — las historias pueden
 empezar.

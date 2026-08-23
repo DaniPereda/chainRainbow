@@ -1,6 +1,6 @@
 export type Coordinate = { row: number; col: number };
 
-export type PieceColor = 'green' | 'orange';
+export type PieceColor = 'green' | 'orange' | 'brown';
 
 export type Piece = { color: PieceColor };
 

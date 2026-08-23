@@ -36,6 +36,47 @@ export function stepBy(coord: Coordinate, direction: Direction, distance: number
   return wrapCoordinate(current);
 }
 
+/**
+ * Walks `position` one cell at a time in `direction`, checking occupancy at every
+ * single step (unlike `stepBy`, which never looks at the board) -- stopping as soon
+ * as a step lands on an occupied cell, or once it has crossed the board edge
+ * `maxEdgeCrossings` times, whichever comes first (marrón, spec.md 008).
+ *
+ * `position` itself is excluded from the occupancy check: the board passed in is
+ * always the same unmutated snapshot resolveStrike works from throughout a chain,
+ * so it still shows the mover's own piece sitting at `position` -- that's a stale
+ * self-reference, not a real obstacle. This isn't a rare case: on an 8-wide board,
+ * any unblocked walk revisits its own starting cell at step 8, strictly before the
+ * second edge crossing can ever happen (research.md 008), so excluding `position`
+ * is what makes the crossing cap reachable at all on a clear lane.
+ */
+export function stepUntilBlocked(
+  board: Board,
+  position: Coordinate,
+  direction: Direction,
+  maxEdgeCrossings: number,
+): Coordinate {
+  let current = position;
+  let edgeCrossings = 0;
+
+  for (;;) {
+    const raw = step(current, direction);
+    if (!isInBounds(raw)) {
+      edgeCrossings++;
+    }
+    current = wrapCoordinate(raw);
+
+    const isSelf = current.row === position.row && current.col === position.col;
+    if (getPieceAt(board, current) !== null && !isSelf) {
+      return current;
+    }
+
+    if (edgeCrossings >= maxEdgeCrossings) {
+      return current;
+    }
+  }
+}
+
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   N: 'S',
   S: 'N',
