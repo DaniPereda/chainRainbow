@@ -90,27 +90,31 @@ funcione todavía.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Crear `src/renderer/board-view.ts`: función pura que traduce un `Board` +
+- [X] T007 [P] [US1] Crear `src/renderer/board-view.ts`: función pura que traduce un `Board` +
       `Objective` (del motor) a primitivas dibujables de Phaser — rectángulos para la
       cuadrícula 8×8, círculos de color por `PieceColor` para cada `Piece`, marca distintiva
       para la casilla objetivo (data-model.md).
-- [ ] T008 [P] [US1] Crear `src/renderer/scenes/StartScene.ts`: pantalla de inicio con una
+- [X] T008 [P] [US1] Crear `src/renderer/scenes/StartScene.ts`: pantalla de inicio con una
       acción que transiciona a `LevelSelectScene`.
-- [ ] T009 [US1] Crear `src/renderer/scenes/LevelSelectScene.ts`: cuadrícula/lista con los 10
+- [X] T009 [US1] Crear `src/renderer/scenes/LevelSelectScene.ts`: cuadrícula/lista con los 10
       niveles de `PROTOTYPE_LEVELS` (numerados 1-10); al elegir uno, transiciona a `BoardScene`
       pasándole ese nivel.
-- [ ] T010 [US1] Crear `src/renderer/scenes/BoardScene.ts` (alcance de esta historia: solo
+- [X] T010 [US1] Crear `src/renderer/scenes/BoardScene.ts` (alcance de esta historia: solo
       renderizado): al recibir un nivel, dibuja su tablero 8×8 con `board-view.ts` (T007),
       reflejando fielmente fichas y objetivo (FR-004), y añade una acción siempre visible para
       volver a `LevelSelectScene` (T009) en cualquier momento, no solo tras un resultado
       (FR-014, US1 Acceptance Scenario 3). El lanzamiento de fichas se añade en US2 (T016) sobre
       este mismo fichero.
-- [ ] T011 [US1] Crear `src/renderer/main.ts`: bootstrap de `Phaser.Game` registrando
+- [X] T011 [US1] Crear `src/renderer/main.ts`: bootstrap de `Phaser.Game` registrando
       `StartScene`, `LevelSelectScene`, `BoardScene` (T008-T010), arrancando en `StartScene`.
 - [ ] T012 [US1] Validación manual: `npm run dev`, recorrer los 10 niveles desde el selector,
       confirmar que cada tablero coincide con su definición, y confirmar que la acción de volver
       al selector (T010) funciona desde el tablero sin haber lanzado nada todavía (FR-014)
-      (quickstart.md, paso US1).
+      (quickstart.md, paso US1). *(NO verificado por el agente — no hay navegador disponible en
+      esta sesión. Sí verificado en su lugar: `npm run typecheck`, `npm run build`, y que Vite
+      sirve/transforma sin error los 4 módulos nuevos (`main.ts` + las 3 escenas) — confirma que
+      el grafo de módulos y el bootstrap son correctos, pero NO prueba el comportamiento visual/
+      interactivo real. Pendiente de que un humano lo recorra en el navegador.)*
 
 **Checkpoint**: User Story 1 funcional e independientemente verificable — selector + render
 fiel de los 10 niveles.
