@@ -20,13 +20,14 @@ function pushOccupant(
   board: Board,
   at: Coordinate,
   direction: Direction,
+  strikerDistance: number,
 ): { board: Board; events: MoveStepEvent[] } {
   const piece = getPieceAt(board, at);
   if (piece === null) {
     return { board, events: [] };
   }
 
-  const to = stepBy(at, direction, PUSH_DISTANCE[piece.color]);
+  const to = stepBy(at, direction, strikerDistance);
 
   if (!isInBounds(to)) {
     // The piece falls off the board. Not reachable from current fixtures; keeps
@@ -48,9 +49,9 @@ function pushOccupant(
     };
   }
 
-  // `to` is occupied: vacate it first (using its own occupant's push distance),
-  // then complete this move.
-  const vacated = pushOccupant(board, to, direction);
+  // `to` is occupied: `piece` is now the striker for that next collision, so its
+  // own color's distance applies there — vacate `to` first, then complete this move.
+  const vacated = pushOccupant(board, to, direction, PUSH_DISTANCE[piece.color]);
   const boardAfter = setPieceAt(setPieceAt(vacated.board, at, null), to, piece);
   return {
     board: boardAfter,
@@ -65,7 +66,7 @@ export function applyImpact(
   board: Board,
   site: ImpactSite,
 ): { board: Board; events: MoveStepEvent[]; nextSites: ImpactSite[] } {
-  const pushed = pushOccupant(board, site.to, site.direction);
+  const pushed = pushOccupant(board, site.to, site.direction, PUSH_DISTANCE[site.piece.color]);
   const boardFinal = setPieceAt(pushed.board, site.to, site.piece);
   const arrivalEvent: MoveStepEvent = {
     type: 'MOVE_STEP',

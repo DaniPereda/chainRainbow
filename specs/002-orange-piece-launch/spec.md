@@ -77,11 +77,10 @@ correcto exactamente igual que antes de esta historia.
   posterior del roadmap). Por eso el nivel de prueba de naranja no coloca ninguna ficha naranja en
   el tablero — todas las fichas ya colocadas son verdes; la única ficha naranja es la que se lanza.
 - ¿Qué ocurre si el aterrizaje de naranja cae sobre una casilla ocupada y desencadena una cascada?
-  El mecanismo ya existe (es la misma cola de eventos genérica que resuelve las cadenas de verde) y
-  MUST seguir funcionando, pero esta historia no incluye un nivel de prueba dedicado a ejercitarlo
-  explícitamente para naranja — se difiere a una historia posterior, con el mismo criterio ya usado
-  en la feature 001 para diferir la verificación de "objetivo nunca evaluado a mitad de cadena"
-  hasta la ficha marrón.
+  MUST seguir funcionando, siguiendo la regla universal de interacción: en cada eslabón de la
+  cascada, la distancia de empuje la determina el color de la ficha que golpea en ese instante, no
+  el de la ficha que la recibe (ver spec.md 002 → nota de corrección 2026-08-23). Verificado con un
+  test dedicado (`orange.test.ts`) con colores mixtos en la misma cascada.
 - ¿Qué ocurre si el impacto de naranja ocurre en la primera casilla del tablero (igual que el edge
   case ya cubierto para verde)? Se desencadena la interacción igualmente; no se considera missclick
   por colisionar temprano, y el salto de dos casillas se resuelve igual, contando desde esa primera
@@ -102,9 +101,10 @@ correcto exactamente igual que antes de esta historia.
   libre, terminando ahí la cadena de eventos para esa interacción.
 - **FR-004**: El sistema MUST desencadenar una nueva interacción en cascada cuando la casilla de
   aterrizaje (dos casillas más allá del punto de impacto) esté ocupada, siguiendo la misma regla
-  universal de interacción ya usada para la ficha verde. Esta historia no incluye un escenario de
-  prueba dedicado a la cascada de naranja (ver Edge Cases); se apoya en el mecanismo de cola de
-  eventos ya probado para verde y se verifica explícitamente en una historia posterior.
+  universal de interacción ya usada para la ficha verde: en cada eslabón, la distancia de empuje la
+  determina el color de la ficha que golpea en ese momento (ver Edge Cases). Verificado con un
+  escenario de cascada de colores mixtos, añadido tras detectar que la primera implementación
+  usaba por error el color de la ficha golpeada.
 - **FR-005**: El sistema MUST permitir que la ficha naranja lanzada se asiente en la posición que
   ocupaba la ficha impactada, una vez que esta ha sido reubicada.
 - **FR-006**: El comportamiento existente de la ficha verde (viaje, missclick, empuje de una
@@ -161,7 +161,9 @@ correcto exactamente igual que antes de esta historia.
   colocadas (impacto e intermedia) son verdes. Evita solaparse con la regla de mismo color, no
   implementada todavía (ver Edge Cases), y mantiene el alcance de esta historia acotado al salto
   de dos casillas en sí, sin depender de ninguna otra regla futura.
-- Esta historia valida el salto de dos casillas y la integridad de la casilla intermedia, no la
-  cascada (FR-004): el nivel de prueba se diseña con la casilla de aterrizaje vacía a propósito.
-  La cascada es una capacidad que el motor ya soporta (misma cola de eventos que verde), pero su
-  verificación explícita para naranja queda para una historia posterior.
+- El nivel de prueba principal (`testLevelOrange01`) valida el salto de dos casillas y la
+  integridad de la casilla intermedia con la casilla de aterrizaje vacía a propósito, sin cascada.
+  La cascada (FR-004) se verifica por separado con un nivel ad-hoc de colores mixtos, añadido el
+  2026-08-23 tras corregir un defecto real: la primera implementación determinaba la distancia de
+  empuje por el color de la ficha golpeada en vez de la que golpea, lo que quedaba enmascarado en
+  el nivel principal porque ambas fichas del tablero son verdes.

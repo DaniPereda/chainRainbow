@@ -27,13 +27,14 @@ implementación) — es una tabla de configuración interna que reemplaza lo que
 código dedicado (`applyGreenImpact`). Añadir un futuro color cuyo comportamiento sea "empuje de N
 casillas" (si lo hubiera) se reduciría a añadir una fila aquí, sin código nuevo.
 
-## Regla de cascada (ver research.md, Decisión 2)
+## Regla de cascada (ver research.md, Decisión 2 — corregida el 2026-08-23)
 
-En cualquier punto de una cadena de empuje, la distancia aplicada al siguiente empuje la determina
-`PUSH_DISTANCE[color]` de la ficha que en ese momento está siendo desplazada (la que "llega" a la
-siguiente casilla ocupada) — no la de la ficha lanzada originalmente. Esto es válido para
-cualquier mezcla de colores presentes en `PUSH_DISTANCE`, incluidos niveles con verde y naranja en
-la misma cadena.
+En cualquier punto de una cadena de empuje, la distancia aplicada la determina `PUSH_DISTANCE[color]`
+de la ficha que **golpea** en ese instante (la que está en movimiento), no la de la ficha que lo
+recibe. En el primer impacto es la ficha lanzada; en un eslabón posterior de una cascada, es la
+ficha que se acaba de mover (no la lanzada originalmente, ni la que recibe el golpe por su propio
+color). Válido para cualquier mezcla de colores presentes en `PUSH_DISTANCE`, incluidos niveles
+con verde y naranja en la misma cadena — verificado en `orange.test.ts`.
 
 ## Level: nuevo fixture
 

@@ -23,7 +23,4 @@ nuevo.
 | 3. Derrota | `outcome.result === 'lost'` cuando, tras una colisión (no missclick), `outcome.hand.pieces` queda vacío y el objetivo no se cumple — mismo criterio que en la feature 001. |
 | 4. Missclick → sin determinar | `outcome.missclick === true`, `outcome.result === 'undetermined'` — mismo comportamiento ya contractado en la feature 001 (FR-012 de spec.md 001), ahora ejercitado con la ficha naranja. |
 | 5. No regresión de verde | La suite de tests de la feature 001, sin modificar, sigue en verde tras esta implementación. |
-
-**Nota**: la cascada (FR-004) no tiene fila de verificación en esta tabla — esta historia no la
-ejercita explícitamente (ver spec.md → Assumptions y Edge Cases). Queda para una historia
-posterior con un nivel de prueba dedicado.
+| 6. Cascada (FR-004, verificado 2026-08-23) | Con un nivel ad-hoc de tres fichas en línea de colores mixtos: la segunda ficha se desplaza según la distancia de la ficha que la golpeó (no la suya propia, ni la del lanzamiento original). |
