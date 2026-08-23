@@ -18,42 +18,42 @@ function stepBy(coord: Coordinate, direction: Direction, distance: number): Coor
 
 /**
  * Resolves a single strike: a piece of `strikerColor` hitting whatever occupies
- * `defenderAt`. Same color -> both vanish (`annihilated: true`, defenderAt cleared,
+ * `position`. Same color -> both vanish (`annihilated: true`, position cleared,
  * nothing for the caller to place there). Different color -> the defender is pushed
  * by the striker's own distance, recursing if that lands on a third piece
- * (defenderAt is always left empty either way, so a non-annihilated collision always
+ * (position is always left empty either way, so a non-annihilated collision always
  * leaves room for the caller's own piece to settle there).
  */
 function resolveStrike(
   board: Board,
   strikerColor: PieceColor,
-  defenderAt: Coordinate,
+  position: Coordinate,
   direction: Direction,
 ): { board: Board; events: ChainEvent[]; annihilated: boolean } {
-  const defender = getPieceAt(board, defenderAt);
+  const defender = getPieceAt(board, position);
   if (defender === null) {
     return { board, events: [], annihilated: false };
   }
 
   if (defender.color === strikerColor) {
-    const boardAfter = setPieceAt(board, defenderAt, null);
+    const boardAfter = setPieceAt(board, position, null);
     const event: AnnihilationEvent = {
       type: 'ANNIHILATION',
-      at: defenderAt,
+      at: position,
       color: strikerColor, // === defender.color by definition of this branch
     };
     return { board: boardAfter, events: [event], annihilated: true };
   }
 
-  const to = stepBy(defenderAt, direction, PUSH_DISTANCE[strikerColor]);
+  const to = stepBy(position, direction, PUSH_DISTANCE[strikerColor]);
 
   if (!isInBounds(to)) {
     // The defender falls off the board. Not reachable from current fixtures; keeps
     // resolution total either way.
-    const boardAfter = setPieceAt(board, defenderAt, null);
+    const boardAfter = setPieceAt(board, position, null);
     return {
       board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece: defender, from: defenderAt, to, collisionResolved: false }],
+      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, collisionResolved: false }],
       annihilated: false,
     };
   }
@@ -61,27 +61,27 @@ function resolveStrike(
   const occupant = getPieceAt(board, to);
 
   if (occupant === null) {
-    const boardAfter = setPieceAt(setPieceAt(board, defenderAt, null), to, defender);
+    const boardAfter = setPieceAt(setPieceAt(board, position, null), to, defender);
     return {
       board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece: defender, from: defenderAt, to, collisionResolved: false }],
+      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, collisionResolved: false }],
       annihilated: false,
     };
   }
 
   // `to` is occupied: `defender` is now the striker for that next collision. Whatever
-  // happens there (push or annihilation), `defenderAt` is vacated either way -- but
+  // happens there (push or annihilation), `position` is vacated either way -- but
   // `defender` only ends up settled at `to` if IT wasn't itself annihilated there.
   const next = resolveStrike(board, defender.color, to, direction);
-  const clearedDefenderAt = setPieceAt(next.board, defenderAt, null);
+  const clearedPosition = setPieceAt(next.board, position, null);
   const boardAfter = next.annihilated
-    ? clearedDefenderAt
-    : setPieceAt(clearedDefenderAt, to, defender);
+    ? clearedPosition
+    : setPieceAt(clearedPosition, to, defender);
 
   return {
     board: boardAfter,
     events: [
-      { type: 'MOVE_STEP', piece: defender, from: defenderAt, to, collisionResolved: true },
+      { type: 'MOVE_STEP', piece: defender, from: position, to, collisionResolved: true },
       ...next.events,
     ],
     annihilated: false,
