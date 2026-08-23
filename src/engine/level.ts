@@ -12,3 +12,15 @@ board,
   hand: { pieces: [{ color: 'green' }] },
   objective: { targetColor: 'green', targetCell: { row: 4, col: 5 } },
 };
+
+const orangeBoard = setPieceAt(
+  setPieceAt(createBoard(), { row: 3, col: 4 }, { color: 'green' }),
+  { row: 3, col: 5 },
+  { color: 'green' },
+);
+
+export const testLevelOrange01: Level = {
+  board: orangeBoard,
+  hand: { pieces: [{ color: 'orange' }] },
+  objective: { targetColor: 'green', targetCell: { row: 3, col: 6 } },
+};

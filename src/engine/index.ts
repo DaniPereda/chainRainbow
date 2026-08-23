@@ -2,7 +2,7 @@ import type { Board } from './board.js';
 import { opposite, step } from './move-step.js';
 import { takeFirstPiece, travelLaunch, type Hand, type Launch } from './launch.js';
 import { resolveChain, type EventLog, type ImpactSite } from './events.js';
-import { applyGreenImpact } from './pieces/green.js';
+import { applyImpact } from './pieces/push.js';
 import { evaluateObjective, type LevelResult } from './objective.js';
 import type { Level } from './level.js';
 
@@ -12,7 +12,7 @@ export type { Hand, Launch } from './launch.js';
 export type { MoveStepEvent, EventLog } from './events.js';
 export type { Objective, LevelResult } from './objective.js';
 export type { Level } from './level.js';
-export { testLevelGreen01 } from './level.js';
+export { testLevelGreen01, testLevelOrange01 } from './level.js';
 
 export type LaunchOutcome = {
   board: Board;
@@ -43,7 +43,7 @@ export function resolveLaunch(level: Level, launch: Launch): LaunchOutcome {
     to: travel.hitAt,
   };
 
-  const { board: finalBoard, events } = resolveChain(level.board, initialSite, applyGreenImpact);
+  const { board: finalBoard, events } = resolveChain(level.board, initialSite, applyImpact);
   const { hand: finalHand } = takeFirstPiece(level.hand);
 
   return {
