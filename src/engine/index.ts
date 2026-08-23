@@ -13,7 +13,7 @@ export type { MoveStepEvent, AnnihilationEvent, ChainEvent, EventLog } from './e
 export type { Objective, LevelResult } from './objective.js';
 export type { Level, PiecePlacement } from './level.js';
 export {
-  createTestLevel,
+  createLevel,
   testLevelGreen01,
   testLevelOrange01,
   testLevelSameColor01,

@@ -33,12 +33,12 @@ Proyecto único ya existente. Se añaden `src/levels/`, `src/renderer/`, `index.
 **Purpose**: Preparar el build web (inexistente hasta ahora — el proyecto solo tenía el motor
 headless).
 
-- [ ] T001 Añadir `phaser` y `vite` a `package.json` (dependencies/devDependencies según
+- [X] T001 Añadir `phaser` y `vite` a `package.json` (dependencies/devDependencies según
       corresponda) y los scripts npm `dev` (`vite`) y `build` (`vite build`). Ejecutar
       `npm install`.
-- [ ] T002 [P] Crear `vite.config.ts` en la raíz del repo (config mínima: root del proyecto,
+- [X] T002 [P] Crear `vite.config.ts` en la raíz del repo (config mínima: root del proyecto,
       sin plugins adicionales todavía).
-- [ ] T003 [P] Crear `index.html` en la raíz del repo como entry point de Vite, cargando
+- [X] T003 [P] Crear `index.html` en la raíz del repo como entry point de Vite, cargando
       `src/renderer/main.ts` como módulo.
 
 **Checkpoint**: `npm run dev` levanta un servidor Vite (aunque `main.ts` todavía no exista hasta
@@ -53,20 +53,25 @@ niveles y los 10 niveles del prototipo ya definidos.
 
 **⚠️ CRITICAL**: Ninguna historia empieza hasta cerrar esta fase.
 
-- [ ] T004 En `src/engine/level.ts`, renombrar `createTestLevel` → `createLevel` (mismo cuerpo,
+- [X] T004 En `src/engine/level.ts`, renombrar `createTestLevel` → `createLevel` (mismo cuerpo,
       mismo tipo `Level`), actualizar sus 5 usos internos (`testLevelGreen01`,
       `testLevelOrange01`, `testLevelSameColor01`, `testLevelSameColorCascade01`,
       `testLevelWrapToEmpty01`), y actualizar el export en `src/engine/index.ts`
       (`createLevel` en vez de `createTestLevel`). Ejecutar `npm test && npm run typecheck` y
       confirmar que las suites existentes del motor siguen en verde sin cambios de
-      comportamiento — es un renombrado puro (data-model.md).
-- [ ] T005 [P] Tests estructurales de los 10 niveles del prototipo (10 entradas, ids 1-10
+      comportamiento — es un renombrado puro (data-model.md). *(Hallazgo durante la
+      implementación: `tests/unit/engine/support/levels.ts` también importaba
+      `createTestLevel` directamente — no listado en el análisis original; actualizado también.)*
+- [X] T005 [P] Tests estructurales de los 10 niveles del prototipo (10 entradas, ids 1-10
       únicos, tablero 8×8, al menos una ficha en mano, objetivo dentro del tablero, solo colores
       `'green'`/`'orange'`) en `tests/unit/levels/prototype-levels.test.ts`. Fallará por falta de
       `prototype-levels.ts` hasta T006.
-- [ ] T006 Crear `src/levels/prototype-levels.ts` exportando `PrototypeLevel` (`{id, level}`) y
+- [X] T006 Crear `src/levels/prototype-levels.ts` exportando `PrototypeLevel` (`{id, level}`) y
       `PROTOTYPE_LEVELS` con los 10 niveles, cada uno construido con `createLevel` y usando
       únicamente piezas/reglas de Fase 1 (data-model.md). Depende de T004. Hace pasar T005.
+      *(Winnability de los 10 verificada con un script temporal que ejecuta `resolveLaunch` con
+      el lanzamiento previsto para cada uno -- todos alcanzan `'won'`; script descartado tras
+      confirmarlo, no forma parte de la suite permanente.)*
 
 **Checkpoint**: `createLevel` + los 10 niveles existen y están probados — las historias pueden
 empezar.

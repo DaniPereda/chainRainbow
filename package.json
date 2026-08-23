@@ -5,10 +5,16 @@
   "version": "0.0.0",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "vite",
+    "build": "vite build"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
+    "vite": "^8.2.2",
     "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
   }
 }

@@ -10,13 +10,13 @@ export type PiecePlacement = { at: Coordinate; color: PieceColor };
 
 /**
  * Declarative level builder: pieces already on the board, the hand's colors, and
- * the objective — all expressed with the same `{ at, color }` shape — so a fixture
+ * the objective — all expressed with the same `{ at, color }` shape — so a level
  * reads as one visual block instead of a chain of `setPieceAt` calls plus a
  * separately-written objective. `objective` is a single placement today because
  * `Level`/`Objective` only support one target cell; multiple objectives are a
  * possible future extension, not handled here.
  */
-export function createTestLevel(config: {
+export function createLevel(config: {
   pieces: PiecePlacement[];
   hand: PieceColor[];
   objective: PiecePlacement;
@@ -33,13 +33,13 @@ export function createTestLevel(config: {
   };
 }
 
-export const testLevelGreen01: Level = createTestLevel({
+export const testLevelGreen01: Level = createLevel({
   pieces: [{ at: { row: 4, col: 4 }, color: 'orange' }],
   hand: ['green'],
   objective: { at: { row: 4, col: 5 }, color: 'orange' },
 });
 
-export const testLevelOrange01: Level = createTestLevel({
+export const testLevelOrange01: Level = createLevel({
   pieces: [
     { at: { row: 3, col: 4 }, color: 'green' },
     { at: { row: 3, col: 5 }, color: 'green' },
@@ -48,13 +48,13 @@ export const testLevelOrange01: Level = createTestLevel({
   objective: { at: { row: 3, col: 6 }, color: 'green' },
 });
 
-export const testLevelSameColor01: Level = createTestLevel({
+export const testLevelSameColor01: Level = createLevel({
   pieces: [{ at: { row: 6, col: 4 }, color: 'green' }],
   hand: ['green'],
   objective: { at: { row: 6, col: 5 }, color: 'green' },
 });
 
-export const testLevelSameColorCascade01: Level = createTestLevel({
+export const testLevelSameColorCascade01: Level = createLevel({
   pieces: [
     { at: { row: 7, col: 4 }, color: 'orange' },
     { at: { row: 7, col: 5 }, color: 'orange' },
@@ -63,7 +63,7 @@ export const testLevelSameColorCascade01: Level = createTestLevel({
   objective: { at: { row: 7, col: 4 }, color: 'green' },
 });
 
-export const testLevelWrapToEmpty01: Level = createTestLevel({
+export const testLevelWrapToEmpty01: Level = createLevel({
   pieces: [{ at: { row: 2, col: 7 }, color: 'orange' }],
   hand: ['green'],
   objective: { at: { row: 2, col: 0 }, color: 'orange' },
