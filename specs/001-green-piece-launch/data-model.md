@@ -69,7 +69,10 @@ type MoveStepEvent = {
   piece: Piece;
   from: Coordinate;
   to: Coordinate;
-  collisionResolved: boolean; // true si `to` estaba ocupada y se desencadenó una nueva interacción
+  hasCollision: boolean; // true si `to` estaba ocupada y se desencadenó una nueva interacción
+  // (renombrado desde `collisionResolved` el 2026-08-23, tras comentario de PR en feature 003 —
+  // "resolved" sugería que la colisión ya estaba resuelta/cerrada, justo lo contrario de lo que
+  // el campo indica cuando vale true)
 };
 
 type EventLog = MoveStepEvent[]; // orden de aplicación (ver research.md, Decisión 2)

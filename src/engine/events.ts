@@ -6,7 +6,7 @@ export type MoveStepEvent = {
   piece: Piece;
   from: Coordinate;
   to: Coordinate;
-  collisionResolved: boolean;
+  hasCollision: boolean;
 };
 
 export type AnnihilationEvent = {

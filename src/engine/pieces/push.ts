@@ -53,7 +53,7 @@ function resolveStrike(
     const boardAfter = setPieceAt(board, position, null);
     return {
       board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, collisionResolved: false }],
+      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, hasCollision: false }],
       annihilated: false,
     };
   }
@@ -64,7 +64,7 @@ function resolveStrike(
     const boardAfter = setPieceAt(setPieceAt(board, position, null), to, defender);
     return {
       board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, collisionResolved: false }],
+      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, hasCollision: false }],
       annihilated: false,
     };
   }
@@ -81,7 +81,7 @@ function resolveStrike(
   return {
     board: boardAfter,
     events: [
-      { type: 'MOVE_STEP', piece: defender, from: position, to, collisionResolved: true },
+      { type: 'MOVE_STEP', piece: defender, from: position, to, hasCollision: true },
       ...next.events,
     ],
     annihilated: false,
@@ -106,7 +106,7 @@ export function applyImpact(
     piece: site.piece,
     from: site.from,
     to: site.to,
-    collisionResolved: true,
+    hasCollision: true,
   };
   return { board: boardFinal, events: [arrivalEvent, ...result.events], nextSites: [] };
 }
