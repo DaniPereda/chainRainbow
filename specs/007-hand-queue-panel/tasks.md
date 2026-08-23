@@ -38,13 +38,13 @@ muestra ambas, en el mismo orden que la mano declarada del nivel.
 
 ### Implementation for User Story 1
 
-- [ ] T001 [P] [US1] En `src/renderer/board-view.ts`, exportar la constante `PIECE_COLOR` (ya
+- [X] T001 [P] [US1] En `src/renderer/board-view.ts`, exportar la constante `PIECE_COLOR` (ya
       existente, hoy privada del módulo) para que `hand-panel.ts` pueda reutilizar la misma
       paleta (data-model.md).
-- [ ] T002 [US1] Crear `src/renderer/hand-panel.ts` con `drawHand(graphics, hand)`: dibuja un
+- [X] T002 [US1] Crear `src/renderer/hand-panel.ts` con `drawHand(graphics, hand)`: dibuja un
       círculo de color por cada `Piece` de `hand.pieces`, en orden, centrados horizontalmente
       (data-model.md). Depende de T001.
-- [ ] T003 [US1] Extender `src/renderer/scenes/BoardScene.ts`: en `create()`, añadir
+- [X] T003 [US1] Extender `src/renderer/scenes/BoardScene.ts`: en `create()`, añadir
       `this.handGraphics` posicionado debajo de las casillas de lanzamiento del borde sur
       (research.md); en `redraw()`, añadir la llamada a `drawHand(this.handGraphics,
       this.session.current.hand)` junto a la ya existente a `drawBoard`. Depende de T002. Este
@@ -52,7 +52,10 @@ muestra ambas, en el mismo orden que la mano declarada del nivel.
       la implementación que necesita US2 (FR-004, FR-005, FR-006 de spec.md) — no hace falta
       ningún código adicional en la Fase 2.
 - [ ] T004 [US1] Validación manual: `npm run dev`, cargar el nivel 3 o el 10, confirmar que el
-      panel muestra las 2 fichas de la mano en el orden correcto (quickstart.md, paso 1).
+      panel muestra las 2 fichas de la mano en el orden correcto (quickstart.md, paso 1). *(NO
+      verificado por el agente — sin navegador disponible en esta sesión, mismo motivo que en
+      las features 005/006. Verificado en su lugar: `npm run typecheck` y `npm run build`
+      limpios.)*
 
 **Checkpoint**: El panel se ve correctamente al entrar a cualquier nivel con más de una ficha en
 mano.
@@ -74,7 +77,8 @@ alterar el orden de las que quedan.
       missclick y confirmar que el panel no cambia; lanzar hasta vaciar la mano y confirmar que
       el panel queda vacío exactamente en ese momento; reiniciar el nivel y confirmar que el
       panel vuelve a mostrar la mano inicial completa (quickstart.md, pasos 2-5). Depende de
-      T003 — no requiere ningún cambio de código adicional (research.md).
+      T003 — no requiere ningún cambio de código adicional (research.md). *(NO verificado por el
+      agente — mismo motivo que T004.)*
 
 **Checkpoint**: El panel se mantiene sincronizado con la mano del motor en todos los casos de
 spec.md.
@@ -83,9 +87,10 @@ spec.md.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T006 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar que las 10
+- [X] T006 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar que las 10
       suites del motor siguen en verde sin cambios (esta feature no toca `src/engine/`) y que el
-      build de producción sigue limpio. Depende de T003.
+      build de producción sigue limpio. Depende de T003. *(10 suites, 51 tests, verde;
+      typecheck y build limpios.)*
 
 ---
 

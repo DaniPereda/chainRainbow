@@ -4,7 +4,7 @@ import type { Board, Objective, PieceColor } from '../engine/index.js';
 export const CELL_SIZE = 48;
 export const BOARD_PIXELS = CELL_SIZE * 8;
 
-const PIECE_COLOR: Record<PieceColor, number> = {
+export const PIECE_COLOR: Record<PieceColor, number> = {
   green: 0x2ecc71,
   orange: 0xe67e22,
 };

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PROTOTYPE_LEVELS } from '../../levels/prototype-levels.js';
 import { drawBoard, BOARD_PIXELS, CELL_SIZE } from '../board-view.js';
+import { drawHand } from '../hand-panel.js';
 import {
   applySessionLaunch,
   restartSession,
@@ -66,6 +67,7 @@ export class BoardScene extends Phaser.Scene {
   private levelId = 1;
   private session!: LevelSession;
   private boardGraphics!: Phaser.GameObjects.Graphics;
+  private handGraphics!: Phaser.GameObjects.Graphics;
   private boardOriginX = 0;
   private boardOriginY = 60;
   private resultOverlay?: Phaser.GameObjects.Container;
@@ -90,6 +92,11 @@ export class BoardScene extends Phaser.Scene {
 
     this.boardOriginX = (this.scale.width - BOARD_PIXELS) / 2;
     this.boardGraphics = this.add.graphics({ x: this.boardOriginX, y: this.boardOriginY });
+
+    // Panel de mano: debajo de las casillas de lanzamiento del borde sur (research.md 007).
+    const handPanelY = this.boardOriginY + BOARD_PIXELS + 60;
+    this.handGraphics = this.add.graphics({ x: this.scale.width / 2, y: handPanelY });
+
     this.redraw();
 
     edgeMarkers(this.boardOriginX, this.boardOriginY).forEach(({ x, y, direction, lane }) => {
@@ -136,6 +143,7 @@ export class BoardScene extends Phaser.Scene {
 
   private redraw(): void {
     drawBoard(this.boardGraphics, this.session.current.board, this.session.current.objective);
+    drawHand(this.handGraphics, this.session.current.hand);
   }
 
   private showResultOverlay(status: 'won' | 'lost'): void {
