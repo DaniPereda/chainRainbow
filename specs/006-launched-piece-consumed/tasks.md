@@ -76,21 +76,23 @@ del prototipo siguen siendo superables.
 
 ### Implementation for User Story 2
 
-- [ ] T006 [P] [US2] Confirmar (sin modificarlos) que `chain.test.ts`, `launch.test.ts`,
+- [X] T006 [P] [US2] Confirmar (sin modificarlos) que `chain.test.ts`, `launch.test.ts`,
       `objective.test.ts`, `determinism.test.ts`, `move-step.test.ts`, y
       `tests/unit/engine/session.test.ts` siguen pasando tras T004 — ninguno depende de dónde
-      se asienta la ficha lanzada (research.md).
-- [ ] T007 [US2] En `src/levels/prototype-levels.ts`, rediseñar los niveles 3 y 7 según
+      se asienta la ficha lanzada (research.md). *(Ya confirmado por la ejecución completa de
+      T005: 10/10 suites en verde, estos 6 ficheros sin tocar.)*
+- [X] T007 [US2] En `src/levels/prototype-levels.ts`, rediseñar los niveles 3 y 7 según
       data-model.md (obstáculo del mismo color como primer impacto de un primer lanzamiento,
       seguido de un segundo lanzamiento que empuja la ficha real hasta el objetivo). Depende de
       T004.
-- [ ] T008 [US2] Confirmar que `tests/unit/levels/prototype-levels.test.ts` sigue pasando sin
+- [X] T008 [US2] Confirmar que `tests/unit/levels/prototype-levels.test.ts` sigue pasando sin
       modificarse — sus comprobaciones son estructurales (forma de los datos), no dependen del
-      contenido concreto de cada nivel. Depende de T007.
-- [ ] T009 [US2] Reverificar programáticamente (script temporal con `resolveLaunch`/
+      contenido concreto de cada nivel. Depende de T007. *(21 tests, verde, sin tocar el
+      fichero.)*
+- [X] T009 [US2] Reverificar programáticamente (script temporal con `resolveLaunch`/
       `applySessionLaunch`, descartado tras confirmarlo, igual que en la feature 005) que los
       10 niveles siguen siendo `'won'` alcanzables — los niveles 3 y 7 ahora necesitan 2
-      lanzamientos en vez de 1. Depende de T007.
+      lanzamientos en vez de 1. Depende de T007. *(10/10 niveles confirmados 'won'.)*
 
 **Checkpoint**: Corrección verificada de punta a punta — el motor, sus tests, y el prototipo de
 Fase 2 son consistentes entre sí bajo la regla corregida.
