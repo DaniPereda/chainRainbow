@@ -1,0 +1,19 @@
+# Claude Code local state (may contain credentials/session data)
+.claude/settings.local.json
+.claude/*.local.json
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Node.js / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.*
