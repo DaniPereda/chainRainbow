@@ -7,7 +7,7 @@ describe('wrap-around: a piece pushed past the edge reappears on the opposite si
   it('reappears on the opposite edge and settles when that cell is empty', () => {
     const outcome = resolveLaunch(testLevelWrapToEmpty01, { direction: 'E', lane: 2 });
 
-    expect(outcome.board.cells[2][7]).toEqual({ color: 'green' }); // launcher settles here
+    expect(outcome.board.cells[2][7]).toBeNull(); // launcher consumed, never settles (spec.md 006)
     expect(outcome.board.cells[2][0]).toEqual({ color: 'orange' }); // reappeared here
     expect(outcome.result).toBe('won');
   });

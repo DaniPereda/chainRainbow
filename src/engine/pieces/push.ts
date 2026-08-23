@@ -1,7 +1,7 @@
 import type { Board, Coordinate, PieceColor } from '../board.js';
 import { getPieceAt, setPieceAt } from '../board.js';
 import { stepBy, type Direction } from '../move-step.js';
-import type { AnnihilationEvent, ChainEvent, ImpactSite, MoveStepEvent } from '../events.js';
+import type { AnnihilationEvent, ChainEvent, ImpactSite } from '../events.js';
 
 export const PUSH_DISTANCE: Record<PieceColor, number> = {
   green: 1,
@@ -10,11 +10,12 @@ export const PUSH_DISTANCE: Record<PieceColor, number> = {
 
 /**
  * Resolves a single strike: a piece of `strikerColor` hitting whatever occupies
- * `position`. Same color -> both vanish (`annihilated: true`, position cleared,
- * nothing for the caller to place there). Different color -> the defender is pushed
- * by the striker's own distance, recursing if that lands on a third piece
- * (position is always left empty either way, so a non-annihilated collision always
- * leaves room for the caller's own piece to settle there).
+ * `position`. Same color -> both vanish (`annihilated: true`). Different color ->
+ * the defender is pushed by the striker's own distance, recursing if that lands on
+ * a third piece. `position` (where the striker itself came from) is always left
+ * empty either way -- the striker was either the originally launched piece, which
+ * never persists on the board (applyImpact), or an earlier defender in the same
+ * cascade, whose own resting place is `to` of ITS OWN strike, resolved one level up.
  */
 function resolveStrike(
   board: Board,
@@ -73,21 +74,11 @@ export function applyImpact(
   board: Board,
   site: ImpactSite,
 ): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
+  // The launched piece is the agent that triggers this impact, not a piece that
+  // comes to reside on the board -- it never persists, whatever resolveStrike
+  // decides (annihilation, a plain push, or a push that cascades into an
+  // annihilation further down the chain). resolveStrike already leaves site.to
+  // cleared in every case, so there is nothing left to do here (spec.md 006).
   const result = resolveStrike(board, site.piece.color, site.to, site.direction);
-
-  if (result.annihilated) {
-    // The launched piece shares the resident's color: both vanish, and the launched
-    // piece never settles anywhere (FR-002, spec.md 003).
-    return { board: result.board, events: result.events, nextSites: [] };
-  }
-
-  const boardFinal = setPieceAt(result.board, site.to, site.piece);
-  const arrivalEvent: MoveStepEvent = {
-    type: 'MOVE_STEP',
-    piece: site.piece,
-    from: site.from,
-    to: site.to,
-    hasCollision: true,
-  };
-  return { board: boardFinal, events: [arrivalEvent, ...result.events], nextSites: [] };
+  return { board: result.board, events: result.events, nextSites: [] };
 }

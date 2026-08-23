@@ -36,28 +36,29 @@ vacío; la casilla del impacto original debe quedar vacía tras resolverse.
 
 ### Tests for User Story 1 ⚠️ actualizar primero, deben fallar contra el código actual
 
-- [ ] T001 [P] [US1] En `tests/unit/engine/orange.test.ts`, actualizar las 2 aserciones sobre
+- [X] T001 [P] [US1] En `tests/unit/engine/orange.test.ts`, actualizar las 2 aserciones sobre
       dónde se asienta el lanzador (`cells[3][4]` en el test de salto simple, `cells[5][4]` en
       el de cascada mixta) para esperar `null` en vez de la ficha lanzada; actualizar los
       comentarios que documentaban el comportamiento antiguo.
-- [ ] T002 [P] [US1] En `src/engine/level.ts`, rediseñar `testLevelSameColorCascade01` según
+- [X] T002 [P] [US1] En `src/engine/level.ts`, rediseñar `testLevelSameColorCascade01` según
       data-model.md (mismo tablero/mano, objetivo inalcanzable a propósito). En
       `tests/unit/engine/same-color.test.ts`, actualizar el test de cascada para esperar
       `cells[7][4]` y `cells[7][5]` ambos `null`, eventos con `MOVE_STEP` y `ANNIHILATION`, y
       resultado `'lost'`.
-- [ ] T003 [P] [US1] En `tests/unit/engine/wrap-around.test.ts`, revertir la aserción de
+- [X] T003 [P] [US1] En `tests/unit/engine/wrap-around.test.ts`, revertir la aserción de
       `cells[2][7]` a `toBeNull()` (por el motivo correcto esta vez: la ficha lanzada nunca se
       asienta, no por el error de la sesión anterior).
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] En `src/engine/pieces/push.ts`, modificar `applyImpact` para que ya no coloque
+- [X] T004 [US1] En `src/engine/pieces/push.ts`, modificar `applyImpact` para que ya no coloque
       `site.piece` en `site.to` ni emita su evento de llegada — devuelve directamente
       `{ board: result.board, events: result.events, nextSites: [] }`. `resolveStrike` no
       cambia (data-model.md, research.md). Depende de T001-T003 (deben estar en rojo antes de
       este cambio).
-- [ ] T005 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T001-T003 pasan ahora
+- [X] T005 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T001-T003 pasan ahora
       (verde) y que el resto de suites del motor no se ha visto afectado. Depende de T004.
+      *(10 suites, 51 tests, verde; typecheck limpio.)*
 
 **Checkpoint**: La corrección está hecha y probada de forma aislada — cualquier lanzamiento que
 no sea un missclick deja la ficha lanzada fuera del tablero.

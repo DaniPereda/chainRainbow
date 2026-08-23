@@ -60,7 +60,7 @@ export const testLevelSameColorCascade01: Level = createLevel({
     { at: { row: 7, col: 5 }, color: 'orange' },
   ],
   hand: ['green'],
-  objective: { at: { row: 7, col: 4 }, color: 'green' },
+  objective: { at: { row: 0, col: 0 }, color: 'green' }, // unreachable: nothing survives (spec.md 006)
 });
 
 export const testLevelWrapToEmpty01: Level = createLevel({
