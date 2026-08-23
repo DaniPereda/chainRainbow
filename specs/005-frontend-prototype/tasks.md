@@ -203,17 +203,21 @@ principio a fin.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T022 Ejecutar `npm test && npm run typecheck`: confirmar que las suites existentes del
+- [X] T022 Ejecutar `npm test && npm run typecheck`: confirmar que las suites existentes del
       motor (incluidas `session.test.ts` y `prototype-levels.test.ts`) pasan en verde y que el
       renombrado `createLevel` no cambió ningún comportamiento. Depende de T005, T006, T013,
-      T014.
-- [ ] T023 Verificar que `src/engine/` (incluido `session.ts`) sigue sin importar nada de
+      T014. *(10 ficheros de test, 51 tests, todos en verde; typecheck limpio.)*
+- [X] T023 Verificar que `src/engine/` (incluido `session.ts`) sigue sin importar nada de
       `src/renderer/` ni de `phaser` — mismo `grep` de imports externos usado en features
-      anteriores (contracts/engine-renderer-boundary.md). Depende de T014.
+      anteriores (contracts/engine-renderer-boundary.md). Depende de T014. *(Confirmado: todos
+      los imports dentro de `src/engine/` son relativos a otros ficheros del propio motor.)*
 - [ ] T024 Recorrer el checklist completo de "Criterio de hecho" de quickstart.md: los 10
       niveles jugados manualmente hasta `'won'` al menos una vez cada uno (SC-003), y las 3
       historias de usuario recorridas de principio a fin en el navegador. Depende de T012, T017,
-      T021, T022, T023.
+      T021, T022, T023. *(NO verificado por el agente — requiere navegador real, no disponible
+      en esta sesión. La winnability de los 10 niveles SÍ se verificó programáticamente
+      (resolveLaunch) durante T006; lo que falta es el recorrido visual/interactivo real en
+      `npm run dev`.)*
 
 ---
 
