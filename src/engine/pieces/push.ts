@@ -1,20 +1,12 @@
 import type { Board, Coordinate, PieceColor } from '../board.js';
-import { getPieceAt, isInBounds, setPieceAt } from '../board.js';
-import { step, type Direction } from '../move-step.js';
+import { getPieceAt, setPieceAt } from '../board.js';
+import { stepBy, type Direction } from '../move-step.js';
 import type { AnnihilationEvent, ChainEvent, ImpactSite, MoveStepEvent } from '../events.js';
 
 export const PUSH_DISTANCE: Record<PieceColor, number> = {
   green: 1,
   orange: 2,
 };
-
-function stepBy(coord: Coordinate, direction: Direction, distance: number): Coordinate {
-  let current = coord;
-  for (let i = 0; i < distance; i++) {
-    current = step(current, direction);
-  }
-  return current;
-}
 
 /**
  * Resolves a single strike: a piece of `strikerColor` hitting whatever occupies
@@ -46,17 +38,6 @@ function resolveStrike(
   }
 
   const to = stepBy(position, direction, PUSH_DISTANCE[strikerColor]);
-
-  if (!isInBounds(to)) {
-    // The defender falls off the board. Not reachable from current fixtures; keeps
-    // resolution total either way.
-    const boardAfter = setPieceAt(board, position, null);
-    return {
-      board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, hasCollision: false }],
-      annihilated: false,
-    };
-  }
 
   const occupant = getPieceAt(board, to);
 

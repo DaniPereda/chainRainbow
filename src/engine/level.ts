@@ -62,3 +62,9 @@ export const testLevelSameColorCascade01: Level = createTestLevel({
   hand: ['green'],
   objective: { at: { row: 7, col: 4 }, color: 'green' },
 });
+
+export const testLevelWrapToEmpty01: Level = createTestLevel({
+  pieces: [{ at: { row: 2, col: 7 }, color: 'orange' }],
+  hand: ['green'],
+  objective: { at: { row: 2, col: 0 }, color: 'orange' },
+});

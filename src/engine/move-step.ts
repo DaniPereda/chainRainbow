@@ -4,6 +4,7 @@ import {
   getPieceAt,
   isInBounds,
   setPieceAt,
+  wrapCoordinate,
 } from './board.js';
 
 export type Direction = 'N' | 'S' | 'E' | 'O';
@@ -18,6 +19,21 @@ const DIRECTION_DELTA: Record<Direction, { row: number; col: number }> = {
 export function step(coord: Coordinate, direction: Direction): Coordinate {
   const delta = DIRECTION_DELTA[direction];
   return { row: coord.row + delta.row, col: coord.col + delta.col };
+}
+
+/**
+ * Moves `coord` `distance` cells in `direction`, wrapping around the board's
+ * edges (FR-001, spec.md 004) -- a destination past the far edge reappears on
+ * the opposite edge of the same row/column. Wrap-around is a property of
+ * movement itself, so any caller displacing a piece already on the board
+ * (push, cascade, ...) gets it for free without needing to know it happened.
+ */
+export function stepBy(coord: Coordinate, direction: Direction, distance: number): Coordinate {
+  let current = coord;
+  for (let i = 0; i < distance; i++) {
+    current = step(current, direction);
+  }
+  return wrapCoordinate(current);
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {

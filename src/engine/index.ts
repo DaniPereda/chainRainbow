@@ -18,6 +18,7 @@ export {
   testLevelOrange01,
   testLevelSameColor01,
   testLevelSameColorCascade01,
+  testLevelWrapToEmpty01,
 } from './level.js';
 
 export type LaunchOutcome = {
