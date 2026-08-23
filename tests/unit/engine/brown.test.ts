@@ -44,3 +44,40 @@ describe('brown: walks much farther than green or orange, checking every cell (F
     expect(outcome.result).toBe('won');
   });
 });
+
+describe('brown: whatever it reaches is resolved by the existing universal rule (FR-003, spec.md 008)', () => {
+  // data-model.md fixture 3: the long walk ends on a same-color piece -- annihilation,
+  // exactly as at any other point in a chain. No special case for brown.
+  it('annihilates when the long walk reaches a piece of the same color as the mover', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 2, col: 1 }, color: 'green' },
+        { at: { row: 2, col: 4 }, color: 'green' },
+      ],
+      hand: ['brown'],
+      objective: { at: { row: 2, col: 4 }, color: 'green' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 2 });
+
+    expect(outcome.board.cells[2][1]).toBeNull();
+    expect(outcome.board.cells[2][4]).toBeNull();
+    expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(true);
+  });
+
+  // data-model.md fixture 5: two brown pieces meeting directly -- the long walk never
+  // even starts, since the very first check is the same-color annihilation.
+  it('annihilates immediately when two brown pieces meet directly, before any long walk starts', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 5, col: 1 }, color: 'brown' }],
+      hand: ['brown'],
+      objective: { at: { row: 5, col: 1 }, color: 'brown' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 5 });
+
+    expect(outcome.board.cells[5][1]).toBeNull();
+    expect(outcome.events).toHaveLength(1);
+    expect(outcome.events[0].type).toBe('ANNIHILATION');
+  });
+});

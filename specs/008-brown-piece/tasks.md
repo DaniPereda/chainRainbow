@@ -102,11 +102,11 @@ medio).
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] Fixtures 3 y 5 de data-model.md en `brown.test.ts`: aniquilación tras un
+- [X] T007 [US2] Fixtures 3 y 5 de data-model.md en `brown.test.ts`: aniquilación tras un
       empuje largo, y aniquilación directa entre dos marrón (el paseo largo ni llega a
       empezar). Depende de T005 — no requiere ningún cambio de código adicional, es
       verificación de la misma implementación de US1 desde otro ángulo (igual que la feature
-      007).
+      007). *(Pasó a la primera, sin tocar código de producción, tal como se esperaba.)*
 
 **Checkpoint**: Confirmado que marrón se compone sobre la regla universal ya existente sin
 ningún caso especial.
