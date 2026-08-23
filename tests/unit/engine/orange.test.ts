@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { resolveLaunch, testLevelOrange01, type Level } from '../../../src/engine/index.js';
-import { createBoard, setPieceAt } from '../../../src/engine/board.js';
+import { resolveLaunch, testLevelOrange01 } from '../../../src/engine/index.js';
+import { levelWithMixedColorCascade, withUnreachableObjective } from './support/levels.js';
+import { ORANGE_MISSCLICK_LAUNCH, ORANGE_WINNING_LAUNCH } from './support/launches.js';
 
 describe('orange: jumps 2 cells, intermediate cell untouched (FR-002, FR-003, FR-005)', () => {
+  // Scenario 1 (spec.md 002): the impacted piece jumps the intermediate cell
+  // untouched and lands exactly 2 cells beyond the point of impact.
   it('leaves the intermediate cell exactly as it was and lands the impacted piece 2 cells away', () => {
-    const outcome = resolveLaunch(testLevelOrange01, { direction: 'E', lane: 3 });
+    const outcome = resolveLaunch(testLevelOrange01, ORANGE_WINNING_LAUNCH);
 
     expect(outcome.missclick).toBe(false);
     expect(outcome.events.length).toBeGreaterThanOrEqual(1);
@@ -20,25 +23,12 @@ describe('orange: jumps 2 cells, intermediate cell untouched (FR-002, FR-003, FR
   });
 });
 
-describe('orange: cascade — each link uses the striking piece\'s own color (FR-004)', () => {
+describe('orange: cascade -- each link uses the striking piece\'s own color (FR-004)', () => {
+  // FR-004, fixed 2026-08-23: each link of a cascade uses the push distance of
+  // whichever piece is striking at that point, not the struck piece's own color
+  // or the original launcher's -- see research.md 002, Decisión 2.
   it('pushes the second piece by the distance of whichever piece struck it, not its own color or the launcher\'s', () => {
-    // Orange launcher (distance 2) hits a green piece at col 4 -> lands at col 6.
-    // Col 6 is occupied, so a second collision triggers there: the piece that just
-    // moved (green, distance 1) is now the striker for THAT collision, not the
-    // original orange launcher and not the second piece's own color. If either of
-    // those were used instead, the second piece would land on col 8, not col 7.
-    const board = setPieceAt(
-      setPieceAt(createBoard(), { row: 5, col: 4 }, { color: 'green' }),
-      { row: 5, col: 6 },
-      { color: 'orange' },
-    );
-    const level: Level = {
-      board,
-      hand: { pieces: [{ color: 'orange' }] },
-      objective: { targetColor: 'green', targetCell: { row: 0, col: 0 } },
-    };
-
-    const outcome = resolveLaunch(level, { direction: 'E', lane: 5 });
+    const outcome = resolveLaunch(levelWithMixedColorCascade(), { direction: 'E', lane: 5 });
 
     expect(outcome.board.cells[5][4]).toEqual({ color: 'orange' }); // launcher settled here
     expect(outcome.board.cells[5][6]).toEqual({ color: 'green' }); // first piece: pushed 2 (orange)
@@ -47,27 +37,30 @@ describe('orange: cascade — each link uses the striking piece\'s own color (FR
 });
 
 describe('orange: win, loss, and undetermined (FR-007)', () => {
+  // Scenario 2 (spec.md 002): won once a piece ends exactly on the objective
+  // cell at a stable state.
   it('marks the level as won when the jump lands the piece on the objective cell', () => {
-    const outcome = resolveLaunch(testLevelOrange01, { direction: 'E', lane: 3 });
+    const outcome = resolveLaunch(testLevelOrange01, ORANGE_WINNING_LAUNCH);
 
     expect(outcome.result).toBe('won');
   });
 
+  // Scenario 3 (spec.md 002): a collision that consumes the hand without meeting
+  // the objective is an explicit loss.
   it('marks the level as lost when a collision consumes the hand without meeting the objective', () => {
-    const levelWithUnreachableObjective = {
-      ...testLevelOrange01,
-      objective: { targetColor: 'green' as const, targetCell: { row: 3, col: 7 } },
-    };
+    const level = withUnreachableObjective(testLevelOrange01, { row: 3, col: 7 });
 
-    const outcome = resolveLaunch(levelWithUnreachableObjective, { direction: 'E', lane: 3 });
+    const outcome = resolveLaunch(level, ORANGE_WINNING_LAUNCH);
 
     expect(outcome.missclick).toBe(false);
     expect(outcome.hand.pieces).toHaveLength(0);
     expect(outcome.result).toBe('lost');
   });
 
+  // Scenario 4 (spec.md 002): a missclick returns the piece to hand, so the
+  // level has no verdict yet.
   it('leaves the level undetermined on a missclick, since the piece returns to hand', () => {
-    const outcome = resolveLaunch(testLevelOrange01, { direction: 'E', lane: 0 });
+    const outcome = resolveLaunch(testLevelOrange01, ORANGE_MISSCLICK_LAUNCH);
 
     expect(outcome.missclick).toBe(true);
     expect(outcome.hand.pieces.length).toBeGreaterThan(0);
