@@ -94,7 +94,11 @@ src/
 ├── engine/
 │   ├── ...                    # sin cambios de comportamiento
 │   ├── level.ts                 # RENOMBRA createTestLevel -> createLevel (ver data-model.md)
-│   ├── index.ts                  # re-exporta createLevel y el nuevo session.ts
+│   ├── resolve-launch.ts         # NUEVO (extraído de index.ts durante la implementación) —
+│   │                                resolveLaunch/LaunchOutcome, mismo comportamiento, en su
+│   │                                propio fichero para que session.ts pueda importarlo sin
+│   │                                crear un ciclo con index.ts
+│   ├── index.ts                  # re-exporta createLevel, resolve-launch.ts y session.ts
 │   └── session.ts                 # NUEVO — LevelSession: startSession/applySessionLaunch/
 │                                    restartSession. Puro, headless, sin Phaser.
 ├── levels/

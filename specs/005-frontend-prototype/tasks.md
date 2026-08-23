@@ -33,12 +33,12 @@ Proyecto único ya existente. Se añaden `src/levels/`, `src/renderer/`, `index.
 **Purpose**: Preparar el build web (inexistente hasta ahora — el proyecto solo tenía el motor
 headless).
 
-- [ ] T001 Añadir `phaser` y `vite` a `package.json` (dependencies/devDependencies según
+- [X] T001 Añadir `phaser` y `vite` a `package.json` (dependencies/devDependencies según
       corresponda) y los scripts npm `dev` (`vite`) y `build` (`vite build`). Ejecutar
       `npm install`.
-- [ ] T002 [P] Crear `vite.config.ts` en la raíz del repo (config mínima: root del proyecto,
+- [X] T002 [P] Crear `vite.config.ts` en la raíz del repo (config mínima: root del proyecto,
       sin plugins adicionales todavía).
-- [ ] T003 [P] Crear `index.html` en la raíz del repo como entry point de Vite, cargando
+- [X] T003 [P] Crear `index.html` en la raíz del repo como entry point de Vite, cargando
       `src/renderer/main.ts` como módulo.
 
 **Checkpoint**: `npm run dev` levanta un servidor Vite (aunque `main.ts` todavía no exista hasta
@@ -53,20 +53,25 @@ niveles y los 10 niveles del prototipo ya definidos.
 
 **⚠️ CRITICAL**: Ninguna historia empieza hasta cerrar esta fase.
 
-- [ ] T004 En `src/engine/level.ts`, renombrar `createTestLevel` → `createLevel` (mismo cuerpo,
+- [X] T004 En `src/engine/level.ts`, renombrar `createTestLevel` → `createLevel` (mismo cuerpo,
       mismo tipo `Level`), actualizar sus 5 usos internos (`testLevelGreen01`,
       `testLevelOrange01`, `testLevelSameColor01`, `testLevelSameColorCascade01`,
       `testLevelWrapToEmpty01`), y actualizar el export en `src/engine/index.ts`
       (`createLevel` en vez de `createTestLevel`). Ejecutar `npm test && npm run typecheck` y
       confirmar que las suites existentes del motor siguen en verde sin cambios de
-      comportamiento — es un renombrado puro (data-model.md).
-- [ ] T005 [P] Tests estructurales de los 10 niveles del prototipo (10 entradas, ids 1-10
+      comportamiento — es un renombrado puro (data-model.md). *(Hallazgo durante la
+      implementación: `tests/unit/engine/support/levels.ts` también importaba
+      `createTestLevel` directamente — no listado en el análisis original; actualizado también.)*
+- [X] T005 [P] Tests estructurales de los 10 niveles del prototipo (10 entradas, ids 1-10
       únicos, tablero 8×8, al menos una ficha en mano, objetivo dentro del tablero, solo colores
       `'green'`/`'orange'`) en `tests/unit/levels/prototype-levels.test.ts`. Fallará por falta de
       `prototype-levels.ts` hasta T006.
-- [ ] T006 Crear `src/levels/prototype-levels.ts` exportando `PrototypeLevel` (`{id, level}`) y
+- [X] T006 Crear `src/levels/prototype-levels.ts` exportando `PrototypeLevel` (`{id, level}`) y
       `PROTOTYPE_LEVELS` con los 10 niveles, cada uno construido con `createLevel` y usando
       únicamente piezas/reglas de Fase 1 (data-model.md). Depende de T004. Hace pasar T005.
+      *(Winnability de los 10 verificada con un script temporal que ejecuta `resolveLaunch` con
+      el lanzamiento previsto para cada uno -- todos alcanzan `'won'`; script descartado tras
+      confirmarlo, no forma parte de la suite permanente.)*
 
 **Checkpoint**: `createLevel` + los 10 niveles existen y están probados — las historias pueden
 empezar.
@@ -85,27 +90,31 @@ funcione todavía.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Crear `src/renderer/board-view.ts`: función pura que traduce un `Board` +
+- [X] T007 [P] [US1] Crear `src/renderer/board-view.ts`: función pura que traduce un `Board` +
       `Objective` (del motor) a primitivas dibujables de Phaser — rectángulos para la
       cuadrícula 8×8, círculos de color por `PieceColor` para cada `Piece`, marca distintiva
       para la casilla objetivo (data-model.md).
-- [ ] T008 [P] [US1] Crear `src/renderer/scenes/StartScene.ts`: pantalla de inicio con una
+- [X] T008 [P] [US1] Crear `src/renderer/scenes/StartScene.ts`: pantalla de inicio con una
       acción que transiciona a `LevelSelectScene`.
-- [ ] T009 [US1] Crear `src/renderer/scenes/LevelSelectScene.ts`: cuadrícula/lista con los 10
+- [X] T009 [US1] Crear `src/renderer/scenes/LevelSelectScene.ts`: cuadrícula/lista con los 10
       niveles de `PROTOTYPE_LEVELS` (numerados 1-10); al elegir uno, transiciona a `BoardScene`
       pasándole ese nivel.
-- [ ] T010 [US1] Crear `src/renderer/scenes/BoardScene.ts` (alcance de esta historia: solo
+- [X] T010 [US1] Crear `src/renderer/scenes/BoardScene.ts` (alcance de esta historia: solo
       renderizado): al recibir un nivel, dibuja su tablero 8×8 con `board-view.ts` (T007),
       reflejando fielmente fichas y objetivo (FR-004), y añade una acción siempre visible para
       volver a `LevelSelectScene` (T009) en cualquier momento, no solo tras un resultado
       (FR-014, US1 Acceptance Scenario 3). El lanzamiento de fichas se añade en US2 (T016) sobre
       este mismo fichero.
-- [ ] T011 [US1] Crear `src/renderer/main.ts`: bootstrap de `Phaser.Game` registrando
+- [X] T011 [US1] Crear `src/renderer/main.ts`: bootstrap de `Phaser.Game` registrando
       `StartScene`, `LevelSelectScene`, `BoardScene` (T008-T010), arrancando en `StartScene`.
 - [ ] T012 [US1] Validación manual: `npm run dev`, recorrer los 10 niveles desde el selector,
       confirmar que cada tablero coincide con su definición, y confirmar que la acción de volver
       al selector (T010) funciona desde el tablero sin haber lanzado nada todavía (FR-014)
-      (quickstart.md, paso US1).
+      (quickstart.md, paso US1). *(NO verificado por el agente — no hay navegador disponible en
+      esta sesión. Sí verificado en su lugar: `npm run typecheck`, `npm run build`, y que Vite
+      sirve/transforma sin error los 4 módulos nuevos (`main.ts` + las 3 escenas) — confirma que
+      el grafo de módulos y el bootstrap son correctos, pero NO prueba el comportamiento visual/
+      interactivo real. Pendiente de que un humano lo recorra en el navegador.)*
 
 **Checkpoint**: User Story 1 funcional e independientemente verificable — selector + render
 fiel de los 10 niveles.
@@ -123,7 +132,7 @@ lanzamiento — incluyendo el caso de missclick (el tablero no cambia, la ficha 
 
 ### Tests for User Story 2 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T013 [P] [US2] Tests de `LevelSession` en `tests/unit/engine/session.test.ts`: lanzar
+- [X] T013 [P] [US2] Tests de `LevelSession` en `tests/unit/engine/session.test.ts`: lanzar
       actualiza `current`/`status`; un missclick no cambia `current` y deja `status` en
       `'undetermined'`; alcanzar el objetivo produce `status: 'won'`; vaciar la mano sin
       objetivo produce `status: 'lost'`; `restartSession` reproduce exactamente `initial`
@@ -131,20 +140,30 @@ lanzamiento — incluyendo el caso de missclick (el tablero no cambia, la ficha 
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Crear `src/engine/session.ts`: `LevelSession`, `startSession`,
+- [X] T014 [US2] Crear `src/engine/session.ts`: `LevelSession`, `startSession`,
       `applySessionLaunch`, `restartSession`, tal como los define data-model.md (usa
       `resolveLaunch` ya existente sin modificarlo). Depende de T004. Hace pasar T013.
-- [ ] T015 [US2] Actualizar `src/engine/index.ts` para exportar `LevelSession`, `startSession`,
+      *(Deviación durante la implementación: `resolveLaunch`/`LaunchOutcome` vivían definidos
+      directamente dentro de `index.ts`, sin fichero propio. Importarlos desde ahí en
+      `session.ts` habría creado un ciclo real en cuanto T015 hiciera que `index.ts` reexportara
+      `session.ts` -- arriesgado al pasar por dos bundlers distintos (Vitest/Node y Vite). Se
+      extrajeron a `src/engine/resolve-launch.ts`, con `index.ts` reexportándolos igual que ya
+      hace con el resto de módulos internos; mismo comportamiento, sin ciclo.)*
+- [X] T015 [US2] Actualizar `src/engine/index.ts` para exportar `LevelSession`, `startSession`,
       `applySessionLaunch`, `restartSession`. Depende de T014.
-- [ ] T016 [US2] Extender `src/renderer/scenes/BoardScene.ts` (T010): dibujar las 32 casillas
+- [X] T016 [US2] Extender `src/renderer/scenes/BoardScene.ts` (T010): dibujar las 32 casillas
       tocables/clicables justo fuera del tablero (8 por lado), cada una codificando
       `{direction, lane}` (research.md); al tocar una, llamar a `applySessionLaunch` (T015) y
       redibujar el tablero desde `session.current.board` vía `board-view.ts` (T007) — nunca
       recalcular ni reinterpretar el resultado del motor (FR-006, FR-013; contrato
-      engine-renderer-boundary.md). Depende de T010, T015.
+      engine-renderer-boundary.md). Depende de T010, T015. También aplica el guard de US2
+      Acceptance Scenario 3 (mano vacía o nivel ya resuelto → el toque no hace nada).
 - [ ] T017 [US2] Validación manual: en un nivel con al menos una ficha en mano, lanzar hacia una
       ficha real y confirmar que el tablero refleja el estado final del motor; lanzar hacia un
       borde vacío (missclick) y confirmar que el tablero no cambia (quickstart.md, paso US2).
+      *(NO verificado por el agente — mismo motivo que T012: sin navegador disponible en esta
+      sesión. Verificado en su lugar: `npm run typecheck` y `npm run build` limpios tras añadir
+      las 32 casillas y la lógica de lanzamiento.)*
 
 **Checkpoint**: User Stories 1 y 2 funcionan juntas — se puede cargar un nivel y jugarlo hasta
 que el motor lo resuelva.
@@ -162,18 +181,20 @@ al estado esperado desde ella.
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Añadir un overlay de resultado (dentro de `src/renderer/scenes/BoardScene.ts`
+- [X] T018 [US3] Añadir un overlay de resultado (dentro de `src/renderer/scenes/BoardScene.ts`
       o como escena superpuesta separada) que se muestra cuando `session.status` es `'won'` o
       `'lost'` tras un lanzamiento (T016), y permanece oculto cuando es `'undetermined'`
       (FR-007, FR-008, FR-009). Depende de T016.
-- [ ] T019 [US3] Conectar la acción "reiniciar" del overlay a `restartSession` (T015),
+- [X] T019 [US3] Conectar la acción "reiniciar" del overlay a `restartSession` (T015),
       redibujando el tablero desde el nuevo `session.current.board` (FR-010). Depende de T018.
-- [ ] T020 [US3] Conectar la acción "volver al selector" del overlay a una transición hacia
+- [X] T020 [US3] Conectar la acción "volver al selector" del overlay a una transición hacia
       `LevelSelectScene` (T009) (FR-011). Depende de T018.
 - [ ] T021 [US3] Validación manual: jugar un nivel hasta `'won'` y otro hasta `'lost'`,
       confirmar que aparece la ventana correspondiente en cada caso, que "reiniciar" deja el
       tablero exactamente como al entrar al nivel, y que "volver al selector" regresa a la
-      lista de 10 (quickstart.md, paso US3).
+      lista de 10 (quickstart.md, paso US3). *(NO verificado por el agente — mismo motivo que
+      T012/T017: sin navegador disponible. Verificado en su lugar: `npm run typecheck` y
+      `npm run build` limpios.)*
 
 **Checkpoint**: Las 3 historias funcionan juntas — el prototipo completo de Fase 2 es jugable de
 principio a fin.
@@ -182,17 +203,21 @@ principio a fin.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T022 Ejecutar `npm test && npm run typecheck`: confirmar que las suites existentes del
+- [X] T022 Ejecutar `npm test && npm run typecheck`: confirmar que las suites existentes del
       motor (incluidas `session.test.ts` y `prototype-levels.test.ts`) pasan en verde y que el
       renombrado `createLevel` no cambió ningún comportamiento. Depende de T005, T006, T013,
-      T014.
-- [ ] T023 Verificar que `src/engine/` (incluido `session.ts`) sigue sin importar nada de
+      T014. *(10 ficheros de test, 51 tests, todos en verde; typecheck limpio.)*
+- [X] T023 Verificar que `src/engine/` (incluido `session.ts`) sigue sin importar nada de
       `src/renderer/` ni de `phaser` — mismo `grep` de imports externos usado en features
-      anteriores (contracts/engine-renderer-boundary.md). Depende de T014.
+      anteriores (contracts/engine-renderer-boundary.md). Depende de T014. *(Confirmado: todos
+      los imports dentro de `src/engine/` son relativos a otros ficheros del propio motor.)*
 - [ ] T024 Recorrer el checklist completo de "Criterio de hecho" de quickstart.md: los 10
       niveles jugados manualmente hasta `'won'` al menos una vez cada uno (SC-003), y las 3
       historias de usuario recorridas de principio a fin en el navegador. Depende de T012, T017,
-      T021, T022, T023.
+      T021, T022, T023. *(NO verificado por el agente — requiere navegador real, no disponible
+      en esta sesión. La winnability de los 10 niveles SÍ se verificó programáticamente
+      (resolveLaunch) durante T006; lo que falta es el recorrido visual/interactivo real en
+      `npm run dev`.)*
 
 ---
 

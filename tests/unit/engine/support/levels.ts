@@ -1,4 +1,4 @@
-import { createTestLevel, type Coordinate, type Level } from '../../../../src/engine/index.js';
+import { createLevel, type Coordinate, type Level } from '../../../../src/engine/index.js';
 
 /**
  * A single green piece sits in the very first cell a launch from `{ direction: 'E',
@@ -6,7 +6,7 @@ import { createTestLevel, type Coordinate, type Level } from '../../../../src/en
  * as an interaction, not a missclick (spec.md 001 -> Edge Cases).
  */
 export function levelWithPieceAtBoardEdge(): Level {
-  return createTestLevel({
+  return createLevel({
     pieces: [{ at: { row: 2, col: 0 }, color: 'green' }],
     hand: ['green'],
     objective: { at: { row: 2, col: 1 }, color: 'green' },
@@ -31,7 +31,7 @@ export function withUnreachableObjective(level: Level, targetCell: Coordinate): 
  * own color's. See research.md 002 -> Decisión 2 (corrección 2026-08-23).
  */
 export function levelWithMixedColorCascade(): Level {
-  return createTestLevel({
+  return createLevel({
     pieces: [
       { at: { row: 5, col: 4 }, color: 'green' },
       { at: { row: 5, col: 6 }, color: 'orange' },
