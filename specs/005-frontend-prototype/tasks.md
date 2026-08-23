@@ -96,12 +96,16 @@ funcione todavía.
       pasándole ese nivel.
 - [ ] T010 [US1] Crear `src/renderer/scenes/BoardScene.ts` (alcance de esta historia: solo
       renderizado): al recibir un nivel, dibuja su tablero 8×8 con `board-view.ts` (T007),
-      reflejando fielmente fichas y objetivo (FR-004). El lanzamiento de fichas se añade en
-      US2 (T016) sobre este mismo fichero.
+      reflejando fielmente fichas y objetivo (FR-004), y añade una acción siempre visible para
+      volver a `LevelSelectScene` (T009) en cualquier momento, no solo tras un resultado
+      (FR-014, US1 Acceptance Scenario 3). El lanzamiento de fichas se añade en US2 (T016) sobre
+      este mismo fichero.
 - [ ] T011 [US1] Crear `src/renderer/main.ts`: bootstrap de `Phaser.Game` registrando
       `StartScene`, `LevelSelectScene`, `BoardScene` (T008-T010), arrancando en `StartScene`.
-- [ ] T012 [US1] Validación manual: `npm run dev`, recorrer los 10 niveles desde el selector y
-      confirmar que cada tablero coincide con su definición (quickstart.md, paso US1).
+- [ ] T012 [US1] Validación manual: `npm run dev`, recorrer los 10 niveles desde el selector,
+      confirmar que cada tablero coincide con su definición, y confirmar que la acción de volver
+      al selector (T010) funciona desde el tablero sin haber lanzado nada todavía (FR-014)
+      (quickstart.md, paso US1).
 
 **Checkpoint**: User Story 1 funcional e independientemente verificable — selector + render
 fiel de los 10 niveles.
@@ -208,8 +212,8 @@ principio a fin.
 
 ### Within Each User Story
 
-- US1: `board-view.ts` y `StartScene.ts` (T007, T008) son independientes entre sí; `
-  LevelSelectScene.ts` (T009) y `BoardScene.ts` (T010) se apoyan en lo anterior; `main.ts`
+- US1: `board-view.ts` y `StartScene.ts` (T007, T008) son independientes entre sí;
+  `LevelSelectScene.ts` (T009) y `BoardScene.ts` (T010) se apoyan en lo anterior; `main.ts`
   (T011) cierra la historia registrando las 3 escenas.
 - US2: el test (T013) se escribe primero y falla hasta que `session.ts` (T014) existe;
   `index.ts` (T015) expone esa API; `BoardScene.ts` (T016) la consume.

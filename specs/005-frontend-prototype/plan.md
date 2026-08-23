@@ -105,7 +105,8 @@ src/
     ├── scenes/
     │   ├── StartScene.ts             # NUEVO — pantalla de inicio
     │   ├── LevelSelectScene.ts       # NUEVO — selector 1-10
-    │   ├── BoardScene.ts             # NUEVO — tablero + lanzamiento + ventana éxito/fallo
+    │   ├── BoardScene.ts             # NUEVO — tablero + volver al selector + lanzamiento +
+    │   │                              ventana éxito/fallo
     │   └── ...
     └── board-view.ts                  # NUEVO — traduce Board/Piece (motor) a gráficos Phaser
 

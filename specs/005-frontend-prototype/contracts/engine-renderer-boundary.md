@@ -46,4 +46,5 @@ usada en features anteriores (`grep` de imports externos en `src/engine/`).
 | FR-006 (el motor decide, el renderer traduce) | `applySessionLaunch` es la única vía; el renderer no reimplementa ninguna regla. |
 | FR-007/FR-008/FR-009 (éxito/fallo/indeterminado) | El renderer bifurca su UI únicamente sobre `outcome.result`/`session.status`, valores que ya trae `LevelResult`. |
 | FR-010 (reiniciar) | `restartSession` es la única vía — el renderer no reconstruye el estado inicial por su cuenta. |
+| FR-011/FR-014 (volver al selector, desde la ventana de resultado o desde el tablero) | Ambas rutas son solo una transición de escena (`BoardScene` → `LevelSelectScene`); ninguna toca `session` ni el motor — abandonar un nivel simplemente deja de referenciarlo. |
 | FR-013 (Principio I) | La tabla de imports permitidos arriba es exactamente lo verificable en revisión de código. |

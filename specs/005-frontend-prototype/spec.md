@@ -56,13 +56,13 @@ missclick, en el que la ficha simplemente vuelve a la mano y el tablero no cambi
 
 **Acceptance Scenarios**:
 
-1. **Given** un nivel cargado con al menos una ficha en la mano, **When** el jugador especifica
-   una dirección y un carril válidos y confirma el lanzamiento, **Then** el tablero se actualiza
-   para mostrar el estado final tras resolverse toda la cadena de interacciones (sin necesidad
-   de animar cada paso intermedio).
+1. **Given** un nivel cargado con al menos una ficha en la mano, **When** el jugador lanza esa
+   ficha indicando una dirección y un carril válidos en una sola acción, **Then** el tablero se
+   actualiza para mostrar el estado final tras resolverse toda la cadena de interacciones (sin
+   necesidad de animar cada paso intermedio).
 2. **Given** un lanzamiento que no encuentra ninguna ficha en su trayecto (missclick), **When**
-   se confirma ese lanzamiento, **Then** el tablero no cambia y la ficha lanzada permanece
-   disponible en la mano.
+   el jugador lo realiza, **Then** el tablero no cambia y la ficha lanzada permanece disponible
+   en la mano.
 3. **Given** la mano del jugador queda vacía tras un lanzamiento, **When** eso ocurre, **Then**
    ya no se puede iniciar un nuevo lanzamiento en ese nivel.
 
@@ -99,8 +99,9 @@ desde ella tanto "reiniciar" como "volver al selector" llevan al estado esperado
 ### Edge Cases
 
 - ¿Qué ocurre si el jugador navega de vuelta al selector de niveles a mitad de partida, antes de
-  que el lanzamiento se resuelva en 'won' o 'lost'? El progreso de ese nivel se descarta — no
-  hay persistencia entre visitas a un nivel (ver Assumptions).
+  que el lanzamiento se resuelva en 'won' o 'lost'? Puede hacerlo en cualquier momento (FR-014);
+  el progreso de ese nivel se descarta — no hay persistencia entre visitas a un nivel (ver
+  Assumptions).
 - ¿Qué ocurre si el jugador pulsa reiniciar antes de haber lanzado ninguna ficha? El nivel ya
   está en su estado inicial, así que no hay ningún cambio visible.
 - ¿Qué ocurre si un lanzamiento es un missclick y la mano queda vacía justo después (era la
@@ -122,8 +123,8 @@ desde ella tanto "reiniciar" como "volver al selector" llevan al estado esperado
 - **FR-004**: Al seleccionar un nivel, el sistema DEBE renderizar el tablero 8×8 de ese nivel
   reflejando fielmente su definición: posición y color de cada ficha ya colocada, y la
   casilla/color del objetivo.
-- **FR-005**: El sistema DEBE permitir al jugador especificar una dirección de lanzamiento y un
-  carril, y confirmar el lanzamiento de la primera ficha disponible en su mano.
+- **FR-005**: El sistema DEBE permitir al jugador lanzar la primera ficha disponible de su mano
+  indicando, en una sola acción, una dirección de lanzamiento y un carril válidos.
 - **FR-006**: Al confirmarse un lanzamiento, el sistema DEBE pedir al motor de simulación ya
   existente que lo resuelva sobre el nivel y lanzamiento indicados, y actualizar el tablero para
   reflejar el estado final devuelto — sin alterar ni reinterpretar el resultado del motor.
@@ -144,6 +145,9 @@ desde ella tanto "reiniciar" como "volver al selector" llevan al estado esperado
 - **FR-013**: El renderer NO DEBE contener lógica de reglas de juego (Principio I) — toda
   decisión sobre el resultado de un lanzamiento la determina exclusivamente el motor ya
   existente; el renderer solo traduce su salida a pantalla.
+- **FR-014**: El sistema DEBE permitir volver al selector de niveles desde el tablero de un
+  nivel en cualquier momento — no solo desde la ventana de éxito o de fallo (US1, Acceptance
+  Scenario 3). Abandonar un nivel así descarta su progreso (FR-012).
 
 ### Key Entities
 

@@ -39,7 +39,8 @@ SC-003):
 
 1. **US1** — Desde la pantalla de inicio, abrir el selector, elegir el nivel, y comprobar que el
    tablero mostrado coincide con la definición de ese nivel en `prototype-levels.ts` (misma
-   posición/color de cada ficha, misma casilla/color objetivo).
+   posición/color de cada ficha, misma casilla/color objetivo). Sin haber lanzado nada, usar la
+   acción de volver (FR-014) y confirmar que regresa al selector.
 2. **US2** — Tocar/clicar una casilla del borde que SÍ alcance una ficha: el tablero debe
    reflejar el estado final tal cual lo devolvería `resolveLaunch` para ese lanzamiento (se
    puede verificar en paralelo con un test manual headless usando ese mismo nivel/lanzamiento).
@@ -48,10 +49,16 @@ SC-003):
 3. **US3** — Jugar un nivel hasta 'won' (comprobar que aparece la ventana de éxito) y otro hasta
    'lost' (ventana de fallo). Desde cada ventana, comprobar que "reiniciar" deja el tablero
    exactamente como al entrar al nivel, y que "volver al selector" regresa a la lista de 10.
+4. **Sin persistencia (FR-012)** — Tras lanzar alguna ficha en un nivel (sin llegar a 'won'/
+   'lost'), volver al selector (FR-014) y volver a entrar al mismo nivel: debe mostrarse otra
+   vez en su estado inicial declarado, no en el estado a medio jugar que se dejó atrás.
 
 ## Criterio de "hecho" para esta historia
 
 - [ ] `session.test.ts` y `prototype-levels.test.ts` pasan.
+- [ ] Volver al selector desde el tablero (FR-014) funciona en cualquier momento, no solo desde
+      la ventana de resultado, y reentrar a un nivel siempre lo muestra en su estado inicial
+      (FR-012, paso 4 de arriba).
 - [ ] Las suites existentes del motor siguen pasando **sin modificaciones de comportamiento**
       (el renombrado `createTestLevel`→`createLevel` es un cambio de nombre, no de
       comportamiento — las fixtures que lo usan deben seguir produciendo los mismos niveles).
