@@ -1,4 +1,4 @@
-import type { Board, Coordinate, Piece } from './board.js';
+import type { Board, Coordinate, Piece, PieceColor } from './board.js';
 import type { Direction } from './move-step.js';
 
 export type MoveStepEvent = {
@@ -6,10 +6,18 @@ export type MoveStepEvent = {
   piece: Piece;
   from: Coordinate;
   to: Coordinate;
-  collisionResolved: boolean;
+  hasCollision: boolean;
 };
 
-export type EventLog = MoveStepEvent[];
+export type AnnihilationEvent = {
+  type: 'ANNIHILATION';
+  at: Coordinate;
+  color: PieceColor;
+};
+
+export type ChainEvent = MoveStepEvent | AnnihilationEvent;
+
+export type EventLog = ChainEvent[];
 
 export type ImpactSite = {
   piece: Piece;
@@ -21,7 +29,7 @@ export type ImpactSite = {
 export type ImpactHandler = (
   board: Board,
   site: ImpactSite,
-) => { board: Board; events: MoveStepEvent[]; nextSites: ImpactSite[] };
+) => { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] };
 
 export function resolveChain(
   board: Board,
