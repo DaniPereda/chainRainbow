@@ -8,6 +8,19 @@
 
 **Input**: User description: "Añadir la ficha marrón al motor: cuando golpea a otra ficha (lanzada o parte de una cascada), la ficha golpeada se desplaza repetidamente una casilla cada vez, comprobando colisión en cada paso, hasta encontrar una casilla ocupada (desencadena la regla universal ahí) o alcanzar un límite máximo de pasos que evita más de una vuelta completa al tablero. Se compone sobre las reglas ya existentes sin modificarlas."
 
+## Clarifications
+
+### Session 2026-08-23
+
+- Q: ¿Cómo se determina exactamente el número máximo de pasos del desplazamiento largo cuando
+  no encuentra ninguna ficha en su camino? → A: se detiene en el segundo cruce del borde del
+  tablero (segundo wrap-around) que realice esa ficha durante ese desplazamiento — si no se ha
+  detenido antes por encontrar una casilla ocupada. El primer cruce del borde no la detiene (eso
+  es simplemente wrap-around normal, spec.md 004); el segundo, sí. Esto equivale exactamente a
+  "distancia hasta el primer borde + una vuelta completa (8 casillas)", que es la fórmula del
+  documento de diseño del juego, pero expresado de una forma directamente implementable: contar
+  cruces de borde durante el propio desplazamiento, en vez de precalcular una distancia.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Un impacto marrón desplaza la ficha golpeada mucho más lejos (Priority: P1)
@@ -80,9 +93,9 @@ calculando indefinidamente.
 **Acceptance Scenarios**:
 
 1. **Given** la fila o columna por la que se desplaza la ficha golpeada está completamente
-   vacía, **When** el impacto marrón se resuelve, **Then** el desplazamiento se detiene tras un
-   número máximo de pasos y la ficha se asienta en la última casilla alcanzada, sin dar más de
-   una vuelta completa al tablero.
+   vacía, **When** el impacto marrón se resuelve, **Then** el desplazamiento se detiene en el
+   segundo cruce del borde del tablero, y la ficha se asienta en la casilla alcanzada en ese
+   momento.
 
 ---
 
@@ -112,9 +125,9 @@ calculando indefinidamente.
   de ahí se aplica la regla universal de interacción ya existente (mismo color desaparece,
   distinto color se empuja con la distancia de quien golpea), sin ningún comportamiento especial
   adicional para marrón.
-- **FR-004**: Si el desplazamiento no encuentra ninguna casilla ocupada, DEBE detenerse tras un
-  número máximo de pasos que garantice que la ficha nunca recorre más de una vuelta completa al
-  tablero dentro de la resolución de un mismo lanzamiento.
+- **FR-004**: Si el desplazamiento no encuentra ninguna casilla ocupada, DEBE detenerse en
+  cuanto cruce el borde del tablero por segunda vez (segundo wrap-around) durante ese mismo
+  desplazamiento — el primer cruce no lo detiene, es wrap-around normal.
 - **FR-005**: Cada paso individual del desplazamiento DEBE aplicar la regla de wrap-around ya
   existente exactamente igual que a cualquier otro movimiento de ficha.
 - **FR-006**: Una ficha marrón DEBE poder lanzarse desde la mano con el mismo mecanismo ya usado
@@ -149,9 +162,6 @@ calculando indefinidamente.
 - Esta feature es únicamente de motor (headless), igual que las features 001-004 — no incluye
   ningún nivel nuevo en el prototipo frontend de Fase 2 ni ningún cambio de renderer. Añadir
   marrón al prototipo visual, si se decide más adelante, sería trabajo aparte.
-- El número máximo exacto de pasos (más allá de la garantía de "nunca más de una vuelta
-  completa") es un detalle de seguridad interno sin impacto observable para el jugador en la
-  práctica — se decide en la fase de plan técnico, no aquí.
 - Se añadirán niveles de prueba manuales que ejerciten marrón (movimiento largo hasta chocar,
   movimiento largo hasta el límite, marrón lanzado desde la mano), siguiendo el mismo patrón
   declarativo ya usado por las fixtures de motor existentes — su diseño concreto se decide en la
