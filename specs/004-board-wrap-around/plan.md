@@ -76,21 +76,23 @@ specs/004-board-wrap-around/
 src/
 └── engine/
     ├── board.ts            # AÑADE wrapCoordinate(coord): Coordinate (módulo sobre BOARD_SIZE)
+    ├── move-step.ts          # AÑADE stepBy(coord, direction, distance): Coordinate — wrap-around
+    │                          vive aquí, como parte del movimiento, no de la colisión
     ├── pieces/
-    │   └── push.ts           # MODIFICA resolveStrike: `to` se envuelve con wrapCoordinate antes
-    │                          de comprobar ocupación; se elimina la rama `!isInBounds(to)`
-    │                          ("la ficha desaparece") por completo
+    │   └── push.ts           # MODIFICA resolveStrike: `to` viene de stepBy (ya envuelta); se
+    │                          elimina la rama `!isInBounds(to)` ("la ficha desaparece") por
+    │                          completo; deja de conocer wrapCoordinate directamente
     ├── launch.ts               # Sin cambios (el viaje inicial no envuelve, FR-003)
-    └── level.ts                 # AÑADE testLevelWrapToEmpty01, testLevelWrapToDifferentColor01,
-                                   testLevelWrapToSameColor01
+    └── level.ts                 # AÑADE testLevelWrapToEmpty01
 
 tests/
 └── unit/
     └── engine/
         ├── launch.test.ts, chain.test.ts, objective.test.ts, determinism.test.ts,
         │   orange.test.ts, same-color.test.ts   # Sin modificar (regresión)
-        └── wrap-around.test.ts                    # NUEVO: destino vacío, destino de color
-                                                     distinto, destino del mismo color
+        ├── wrap-around.test.ts                    # NUEVO: destino vacío (Acceptance Scenarios 1-2)
+        └── move-step.test.ts                      # NUEVO: stepBy en aislado, cubre el wrap para
+                                                     Acceptance Scenarios 3-4 por composición
 ```
 
 **Structure Decision**: Proyecto único ya existente, sin cambios estructurales de alto nivel. El

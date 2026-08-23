@@ -48,3 +48,8 @@ export function setPieceAt(
 export function cloneBoard(board: Board): Board {
   return { size: board.size, cells: board.cells.map((row) => row.slice()) };
 }
+
+export function wrapCoordinate(coord: Coordinate): Coordinate {
+  const wrap = (n: number) => ((n % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE;
+  return { row: wrap(coord.row), col: wrap(coord.col) };
+}
