@@ -101,3 +101,22 @@ describe('brown: never travels more than one full lap of the board (FR-004, spec
     expect(outcome.result).toBe('won');
   });
 });
+
+describe('brown: launches from hand exactly like green and orange (FR-006, spec.md 008)', () => {
+  // data-model.md fixture 6: a missclick works identically for a brown-handed launch
+  // -- the launch mechanism itself is already color-agnostic, no adjustment needed.
+  it('returns the piece to hand and leaves the board unchanged on a missclick', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 6, col: 4 }, color: 'orange' }],
+      hand: ['brown'],
+      objective: { at: { row: 6, col: 5 }, color: 'orange' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
+
+    expect(outcome.missclick).toBe(true);
+    expect(outcome.board).toEqual(level.board);
+    expect(outcome.hand).toEqual(level.hand);
+    expect(outcome.result).toBe('undetermined');
+  });
+});

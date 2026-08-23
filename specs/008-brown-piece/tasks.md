@@ -136,14 +136,14 @@ motor.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T009 [P] Fixture 6 de data-model.md en `brown.test.ts`: marrón lanzada desde la mano en un
+- [X] T009 [P] Fixture 6 de data-model.md en `brown.test.ts`: marrón lanzada desde la mano en un
       missclick — confirma que el mecanismo de lanzamiento ya existente (FR-006) no necesita
       ningún ajuste para el color nuevo.
-- [ ] T010 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento
+- [X] T010 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento
       final de suites/tests y que `board-view.ts` sigue compilando. Depende de T006, T007, T008,
-      T009.
-- [ ] T011 Verificar que `src/engine/` sigue sin importar nada de `src/renderer/` ni de
-      `phaser` — mismo `grep` de siempre. Depende de T005.
+      T009. *(11 suites, 60 tests, verde; typecheck y build limpios.)*
+- [X] T011 Verificar que `src/engine/` sigue sin importar nada de `src/renderer/` ni de
+      `phaser` — mismo `grep` de siempre. Depende de T005. *(Confirmado: cero imports externos.)*
 
 ---
 
