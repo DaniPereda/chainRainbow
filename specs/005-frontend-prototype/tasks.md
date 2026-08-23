@@ -132,7 +132,7 @@ lanzamiento — incluyendo el caso de missclick (el tablero no cambia, la ficha 
 
 ### Tests for User Story 2 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T013 [P] [US2] Tests de `LevelSession` en `tests/unit/engine/session.test.ts`: lanzar
+- [X] T013 [P] [US2] Tests de `LevelSession` en `tests/unit/engine/session.test.ts`: lanzar
       actualiza `current`/`status`; un missclick no cambia `current` y deja `status` en
       `'undetermined'`; alcanzar el objetivo produce `status: 'won'`; vaciar la mano sin
       objetivo produce `status: 'lost'`; `restartSession` reproduce exactamente `initial`
@@ -140,20 +140,30 @@ lanzamiento — incluyendo el caso de missclick (el tablero no cambia, la ficha 
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Crear `src/engine/session.ts`: `LevelSession`, `startSession`,
+- [X] T014 [US2] Crear `src/engine/session.ts`: `LevelSession`, `startSession`,
       `applySessionLaunch`, `restartSession`, tal como los define data-model.md (usa
       `resolveLaunch` ya existente sin modificarlo). Depende de T004. Hace pasar T013.
-- [ ] T015 [US2] Actualizar `src/engine/index.ts` para exportar `LevelSession`, `startSession`,
+      *(Deviación durante la implementación: `resolveLaunch`/`LaunchOutcome` vivían definidos
+      directamente dentro de `index.ts`, sin fichero propio. Importarlos desde ahí en
+      `session.ts` habría creado un ciclo real en cuanto T015 hiciera que `index.ts` reexportara
+      `session.ts` -- arriesgado al pasar por dos bundlers distintos (Vitest/Node y Vite). Se
+      extrajeron a `src/engine/resolve-launch.ts`, con `index.ts` reexportándolos igual que ya
+      hace con el resto de módulos internos; mismo comportamiento, sin ciclo.)*
+- [X] T015 [US2] Actualizar `src/engine/index.ts` para exportar `LevelSession`, `startSession`,
       `applySessionLaunch`, `restartSession`. Depende de T014.
-- [ ] T016 [US2] Extender `src/renderer/scenes/BoardScene.ts` (T010): dibujar las 32 casillas
+- [X] T016 [US2] Extender `src/renderer/scenes/BoardScene.ts` (T010): dibujar las 32 casillas
       tocables/clicables justo fuera del tablero (8 por lado), cada una codificando
       `{direction, lane}` (research.md); al tocar una, llamar a `applySessionLaunch` (T015) y
       redibujar el tablero desde `session.current.board` vía `board-view.ts` (T007) — nunca
       recalcular ni reinterpretar el resultado del motor (FR-006, FR-013; contrato
-      engine-renderer-boundary.md). Depende de T010, T015.
+      engine-renderer-boundary.md). Depende de T010, T015. También aplica el guard de US2
+      Acceptance Scenario 3 (mano vacía o nivel ya resuelto → el toque no hace nada).
 - [ ] T017 [US2] Validación manual: en un nivel con al menos una ficha en mano, lanzar hacia una
       ficha real y confirmar que el tablero refleja el estado final del motor; lanzar hacia un
       borde vacío (missclick) y confirmar que el tablero no cambia (quickstart.md, paso US2).
+      *(NO verificado por el agente — mismo motivo que T012: sin navegador disponible en esta
+      sesión. Verificado en su lugar: `npm run typecheck` y `npm run build` limpios tras añadir
+      las 32 casillas y la lógica de lanzamiento.)*
 
 **Checkpoint**: User Stories 1 y 2 funcionan juntas — se puede cargar un nivel y jugarlo hasta
 que el motor lo resuelva.
