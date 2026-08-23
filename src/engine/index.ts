@@ -11,8 +11,9 @@ export type { Direction } from './move-step.js';
 export type { Hand, Launch } from './launch.js';
 export type { MoveStepEvent, AnnihilationEvent, ChainEvent, EventLog } from './events.js';
 export type { Objective, LevelResult } from './objective.js';
-export type { Level } from './level.js';
+export type { Level, PiecePlacement } from './level.js';
 export {
+  createTestLevel,
   testLevelGreen01,
   testLevelOrange01,
   testLevelSameColor01,

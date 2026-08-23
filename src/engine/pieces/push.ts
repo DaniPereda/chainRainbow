@@ -40,8 +40,7 @@ function resolveStrike(
     const event: AnnihilationEvent = {
       type: 'ANNIHILATION',
       at: defenderAt,
-      strikerColor,
-      defender,
+      color: strikerColor, // === defender.color by definition of this branch
     };
     return { board: boardAfter, events: [event], annihilated: true };
   }

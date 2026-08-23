@@ -12,8 +12,7 @@ export type MoveStepEvent = {
 export type AnnihilationEvent = {
   type: 'ANNIHILATION';
   at: Coordinate;
-  strikerColor: PieceColor;
-  defender: Piece;
+  color: PieceColor;
 };
 
 export type ChainEvent = MoveStepEvent | AnnihilationEvent;

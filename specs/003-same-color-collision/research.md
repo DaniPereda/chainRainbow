@@ -31,12 +31,15 @@ futuro (el mismo tipo de duplicación que ya se evitó al generalizar verde/nara
 
 ## Decisión 2: La aniquilación necesita su propio tipo de evento, no reutiliza MOVE_STEP
 
-**Decision**: Se añade `AnnihilationEvent = { type: 'ANNIHILATION'; at: Coordinate; strikerColor:
-PieceColor; defender: Piece }` como nueva variante del log de eventos:
+**Decision**: Se añade `AnnihilationEvent = { type: 'ANNIHILATION'; at: Coordinate; color:
+PieceColor }` como nueva variante del log de eventos:
 `type ChainEvent = MoveStepEvent | AnnihilationEvent; type EventLog = ChainEvent[];`. Cada
 colisión (ya sea impacto inicial o eslabón de cascada) sigue generando exactamente un evento —
 `MOVE_STEP` si hubo empuje, `ANNIHILATION` si ambas fichas desaparecieron — nunca cero eventos,
-manteniendo el log como una traza completa de lo ocurrido.
+manteniendo el log como una traza completa de lo ocurrido. Un único campo `color` basta: por
+definición de esta rama, quien golpea y quien recibe comparten color, y `Piece` no tiene ningún
+otro campo — guardar `strikerColor` y `defender: Piece` por separado (versión inicial de esta
+decisión) era información duplicada, señalado en revisión de PR y corregido el 2026-08-23.
 
 **Rationale**: Un `MoveStepEvent` representa un movimiento real (`from` -> `to`) de una ficha
 concreta; en una aniquilación no se mueve nada — dos fichas dejan de existir. Forzar esto en la

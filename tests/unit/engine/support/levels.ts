@@ -1,5 +1,4 @@
-import type { Coordinate, Level } from '../../../../src/engine/index.js';
-import { createBoard, setPieceAt } from '../../../../src/engine/board.js';
+import { createTestLevel, type Coordinate, type Level } from '../../../../src/engine/index.js';
 
 /**
  * A single green piece sits in the very first cell a launch from `{ direction: 'E',
@@ -7,12 +6,11 @@ import { createBoard, setPieceAt } from '../../../../src/engine/board.js';
  * as an interaction, not a missclick (spec.md 001 -> Edge Cases).
  */
 export function levelWithPieceAtBoardEdge(): Level {
-  const board = setPieceAt(createBoard(), { row: 2, col: 0 }, { color: 'green' });
-  return {
-    board,
-    hand: { pieces: [{ color: 'green' }] },
-    objective: { targetColor: 'green', targetCell: { row: 2, col: 1 } },
-  };
+  return createTestLevel({
+    pieces: [{ at: { row: 2, col: 0 }, color: 'green' }],
+    hand: ['green'],
+    objective: { at: { row: 2, col: 1 }, color: 'green' },
+  });
 }
 
 /**
@@ -33,14 +31,12 @@ export function withUnreachableObjective(level: Level, targetCell: Coordinate): 
  * own color's. See research.md 002 -> Decisión 2 (corrección 2026-08-23).
  */
 export function levelWithMixedColorCascade(): Level {
-  const board = setPieceAt(
-    setPieceAt(createBoard(), { row: 5, col: 4 }, { color: 'green' }),
-    { row: 5, col: 6 },
-    { color: 'orange' },
-  );
-  return {
-    board,
-    hand: { pieces: [{ color: 'orange' }] },
-    objective: { targetColor: 'green', targetCell: { row: 0, col: 0 } },
-  };
+  return createTestLevel({
+    pieces: [
+      { at: { row: 5, col: 4 }, color: 'green' },
+      { at: { row: 5, col: 6 }, color: 'orange' },
+    ],
+    hand: ['orange'],
+    objective: { at: { row: 0, col: 0 }, color: 'green' },
+  });
 }

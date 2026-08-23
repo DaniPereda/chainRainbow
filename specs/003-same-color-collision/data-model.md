@@ -9,22 +9,27 @@ Extiende los modelos de `specs/001-green-piece-launch/data-model.md` y
 ```ts
 type AnnihilationEvent = {
   type: 'ANNIHILATION';
-  at: Coordinate;        // casilla donde ambas fichas coincidieron y desaparecieron
-  strikerColor: PieceColor;
-  defender: Piece;
+  at: Coordinate;      // casilla donde ambas fichas coincidieron y desaparecieron
+  color: PieceColor;   // color compartido por ambas fichas (por definición de esta rama)
 };
 
 type ChainEvent = MoveStepEvent | AnnihilationEvent;
 type EventLog = ChainEvent[]; // antes: MoveStepEvent[]
 ```
 
+**Corrección (2026-08-23, comentario de revisión en el PR)**: la primera versión de este tipo
+guardaba `strikerColor: PieceColor` y `defender: Piece` por separado — redundante, ya que una
+aniquilación solo se dispara cuando `defender.color === strikerColor`, y `Piece` no tiene ningún
+campo aparte de `color`. Un único campo `color` es toda la información no duplicada que hay.
+
 Cada colisión resuelta (impacto inicial o cualquier eslabón de cascada) produce exactamente un
 evento: `MOVE_STEP` si hubo empuje, `ANNIHILATION` si los colores coincidían. Nunca cero eventos
 por colisión — ver research.md, Decisión 2.
 
-**Invariante nueva**: si `strikerColor === defender.color` en cualquier punto de resolución, el
-evento generado MUST ser `ANNIHILATION` y ni la ficha que golpea ni la que recibe MUST aparecer en
-el tablero resultante en esa casilla ni en ninguna otra (ninguna ejecuta su efecto de empuje).
+**Invariante**: si la ficha que golpea y la que ocupa la casilla de destino comparten color en
+cualquier punto de la resolución, el evento generado MUST ser `ANNIHILATION` (campo `color` con
+ese color compartido) y ninguna de las dos fichas MUST aparecer en el tablero resultante, ni en
+esa casilla ni en ninguna otra (ninguna ejecuta su efecto de empuje).
 
 ## Cambio sobre `testLevelGreen01` (ver research.md, Decisión 3)
 
