@@ -181,18 +181,20 @@ al estado esperado desde ella.
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Añadir un overlay de resultado (dentro de `src/renderer/scenes/BoardScene.ts`
+- [X] T018 [US3] Añadir un overlay de resultado (dentro de `src/renderer/scenes/BoardScene.ts`
       o como escena superpuesta separada) que se muestra cuando `session.status` es `'won'` o
       `'lost'` tras un lanzamiento (T016), y permanece oculto cuando es `'undetermined'`
       (FR-007, FR-008, FR-009). Depende de T016.
-- [ ] T019 [US3] Conectar la acción "reiniciar" del overlay a `restartSession` (T015),
+- [X] T019 [US3] Conectar la acción "reiniciar" del overlay a `restartSession` (T015),
       redibujando el tablero desde el nuevo `session.current.board` (FR-010). Depende de T018.
-- [ ] T020 [US3] Conectar la acción "volver al selector" del overlay a una transición hacia
+- [X] T020 [US3] Conectar la acción "volver al selector" del overlay a una transición hacia
       `LevelSelectScene` (T009) (FR-011). Depende de T018.
 - [ ] T021 [US3] Validación manual: jugar un nivel hasta `'won'` y otro hasta `'lost'`,
       confirmar que aparece la ventana correspondiente en cada caso, que "reiniciar" deja el
       tablero exactamente como al entrar al nivel, y que "volver al selector" regresa a la
-      lista de 10 (quickstart.md, paso US3).
+      lista de 10 (quickstart.md, paso US3). *(NO verificado por el agente — mismo motivo que
+      T012/T017: sin navegador disponible. Verificado en su lugar: `npm run typecheck` y
+      `npm run build` limpios.)*
 
 **Checkpoint**: Las 3 historias funcionan juntas — el prototipo completo de Fase 2 es jugable de
 principio a fin.

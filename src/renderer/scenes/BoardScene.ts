@@ -3,6 +3,7 @@ import { PROTOTYPE_LEVELS } from '../../levels/prototype-levels.js';
 import { drawBoard, BOARD_PIXELS, CELL_SIZE } from '../board-view.js';
 import {
   applySessionLaunch,
+  restartSession,
   startSession,
   type Direction,
   type LevelSession,
@@ -67,6 +68,7 @@ export class BoardScene extends Phaser.Scene {
   private boardGraphics!: Phaser.GameObjects.Graphics;
   private boardOriginX = 0;
   private boardOriginY = 60;
+  private resultOverlay?: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'BoardScene' });
@@ -124,9 +126,63 @@ export class BoardScene extends Phaser.Scene {
     const { session: nextSession } = applySessionLaunch(this.session, { direction, lane });
     this.session = nextSession;
     this.redraw();
+
+    // FR-007/FR-008/FR-009: solo se muestra una ventana cuando el motor decidió un
+    // resultado; 'undetermined' (incluye missclick) no muestra nada.
+    if (nextSession.status === 'won' || nextSession.status === 'lost') {
+      this.showResultOverlay(nextSession.status);
+    }
   }
 
   private redraw(): void {
     drawBoard(this.boardGraphics, this.session.current.board, this.session.current.objective);
+  }
+
+  private showResultOverlay(status: 'won' | 'lost'): void {
+    this.resultOverlay?.destroy();
+
+    const { width, height } = this.scale;
+    const message = status === 'won' ? '¡Objetivo conseguido!' : 'Mano vacía -- sin éxito';
+
+    const backdrop = this.add.rectangle(0, 0, width, height, 0x000000, 0.6).setOrigin(0, 0);
+    const text = this.add
+      .text(width / 2, height / 2 - 60, message, { fontSize: '26px', color: '#ffffff' })
+      .setOrigin(0.5);
+
+    const restartButton = this.add
+      .text(width / 2, height / 2, 'Reiniciar', {
+        fontSize: '22px',
+        color: '#ffee58',
+        backgroundColor: '#333333',
+        padding: { x: 16, y: 8 },
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    const backButton = this.add
+      .text(width / 2, height / 2 + 56, 'Volver al selector', {
+        fontSize: '22px',
+        color: '#ffee58',
+        backgroundColor: '#333333',
+        padding: { x: 16, y: 8 },
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    this.resultOverlay = this.add.container(0, 0, [backdrop, text, restartButton, backButton]);
+
+    // FR-010: reiniciar vuelve exactamente al estado inicial declarado -- vía
+    // restartSession, nunca reconstruido a mano por el renderer.
+    restartButton.on('pointerdown', () => {
+      this.session = restartSession(this.session);
+      this.resultOverlay?.destroy();
+      this.resultOverlay = undefined;
+      this.redraw();
+    });
+
+    // FR-011: volver al selector desde la ventana de resultado.
+    backButton.on('pointerdown', () => {
+      this.scene.start('LevelSelectScene');
+    });
   }
 }
