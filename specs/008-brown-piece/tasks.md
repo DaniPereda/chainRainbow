@@ -115,11 +115,14 @@ ningún caso especial.
 
 ## Phase 4: User Story 3 - El movimiento largo nunca da más de una vuelta completa (Priority: P1)
 
-**Goal**: Con la fila/columna completamente despejada, el desplazamiento se detiene en el
-segundo cruce de borde en vez de calcular indefinidamente.
+**Goal**: Con la fila/columna completamente despejada, el desplazamiento se detiene justo antes
+del segundo cruce de borde en vez de calcular indefinidamente (ver erratum en spec.md: corregido
+de "13 pasos, se detiene en col0" a "12 pasos, se detiene en col7" tras el playtest del nivel 12
+del prototipo).
 
-**Independent Test**: Fixture 4 de data-model.md — fila despejada, se detiene tras 13 pasos en
-el segundo cruce, sin bloquearse falsamente contra su propia casilla de partida en el paso 8.
+**Independent Test**: Fixture 4 de data-model.md — fila despejada, se detiene tras 12 pasos justo
+antes del segundo cruce, sin bloquearse falsamente contra su propia casilla de partida en el
+paso 8.
 
 ### Implementation for User Story 3
 

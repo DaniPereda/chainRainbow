@@ -72,14 +72,15 @@ naranja):
   col4 ocupada por OTRA green (mismo color que la que se desplaza) → ambas se aniquilan ahí.
 - Resultado esperado: `cells[2][1]` null, `cells[2][4]` null, un evento `ANNIHILATION`.
 
-**4. Fila despejada — se detiene en el segundo cruce de borde** (US3; ejercita también el caso
-`isSelf` de research.md, inevitable en este escenario):
+**4. Fila despejada — se detiene justo antes del segundo cruce de borde** (US3; ejercita también
+el caso `isSelf` de research.md, inevitable en este escenario; ver erratum en spec.md sobre el
+desfase de una casilla corregido tras el playtest del nivel 12 del prototipo):
 - `pieces: [{at:{row:4,col:3},color:'orange'}]`, `hand:['brown']`, fila 4 vacía por lo demás.
 - Lanzamiento `{direction:'E', lane:4}`: marrón golpea orange@(4,3) → camina col4,5,6,7 (4
   pasos, sin cruzar aún) → col0 (1er cruce, vacía, continúa) → col1,2,3(=posición propia,
-  excluida como obstáculo),4,5,6,7 → col0 de nuevo (2º cruce) → se detiene ahí, 13 pasos en
-  total.
-- Resultado esperado: `cells[4][3]` null, `cells[4][0]`=orange (13 pasos después de su posición
+  excluida como obstáculo),4,5,6,7 (12 pasos en total) → el paso 13 cruzaría el borde por
+  segunda vez, así que se detiene ANTES de darlo, asentada en col7.
+- Resultado esperado: `cells[4][3]` null, `cells[4][7]`=orange (12 pasos después de su posición
   original — mucho más lejos que verde o naranja).
 
 **5. Dos fichas marrón se encuentran directamente** (edge case — confirma que la aniquilación ya

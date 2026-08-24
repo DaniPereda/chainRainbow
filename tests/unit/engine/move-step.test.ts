@@ -54,15 +54,19 @@ describe('stepUntilBlocked: walks until blocked or capped by edge crossings (spe
     expect(stepUntilBlocked(board, mover, { row: 2, col: 3 }, 'E', 2)).toEqual({ row: 2, col: 6 });
   });
 
-  it('does not block against its own starting cell, and stops on the second edge crossing', () => {
+  it('does not block against its own starting cell, and stops right before the second edge crossing', () => {
     // The board still shows `mover` itself sitting at `position` -- the same stale
     // snapshot resolveStrike always passes down (it hasn't been erased from the board
     // yet). Without excluding it BY IDENTITY, this would incorrectly stop at step 8 (see
     // research.md 008: every unblocked walk revisits its own start at step 8, since the
     // board is an 8-wide cycle -- this is the normal case, not a rare one).
+    //
+    // col 7, not col 0: the cap is checked BEFORE wrapping into the crossing, so the
+    // piece settles on the last in-bounds cell of its final lap (12 steps from col 3),
+    // not on the first cell of a lap it never actually enters (spec.md 008 erratum).
     const position = { row: 4, col: 3 };
     const board = setPieceAt(createBoard(), position, mover);
 
-    expect(stepUntilBlocked(board, mover, position, 'E', 2)).toEqual({ row: 4, col: 0 });
+    expect(stepUntilBlocked(board, mover, position, 'E', 2)).toEqual({ row: 4, col: 7 });
   });
 });

@@ -13,13 +13,31 @@
 ### Session 2026-08-23
 
 - Q: ¿Cómo se determina exactamente el número máximo de pasos del desplazamiento largo cuando
-  no encuentra ninguna ficha en su camino? → A: se detiene en el segundo cruce del borde del
-  tablero (segundo wrap-around) que realice esa ficha durante ese desplazamiento — si no se ha
-  detenido antes por encontrar una casilla ocupada. El primer cruce del borde no la detiene (eso
-  es simplemente wrap-around normal, spec.md 004); el segundo, sí. Esto equivale exactamente a
-  "distancia hasta el primer borde + una vuelta completa (8 casillas)", que es la fórmula del
-  documento de diseño del juego, pero expresado de una forma directamente implementable: contar
-  cruces de borde durante el propio desplazamiento, en vez de precalcular una distancia.
+  no encuentra ninguna ficha en su camino? → A: se detiene justo ANTES del segundo cruce del
+  borde del tablero (segundo wrap-around) que realizaría esa ficha durante ese desplazamiento —
+  si no se ha detenido antes por encontrar una casilla ocupada. El primer cruce del borde no la
+  detiene (eso es simplemente wrap-around normal, spec.md 004); el segundo nunca llega a
+  producirse — la ficha se asienta en la última casilla válida de esa vuelta adicional. Esto
+  equivale exactamente a "distancia hasta la frontera + una vuelta completa (8 casillas)", que
+  es la fórmula del documento de diseño del juego (`documentation/game_design_context.pdf`,
+  sección 4), leyendo "distancia hasta la frontera" como el número de casillas que quedan por
+  delante DENTRO del tablero antes de salir de él (4, desde una columna 3 hacia el este en un
+  tablero de 8), no como el paso que efectivamente cruza el borde (5).
+
+### Erratum (2026-08-24, tras playtest del nivel 12 del prototipo)
+
+La primera redacción de esta clarificación decía "el segundo [cruce], sí [la detiene]" y
+concluía landing en la casilla siguiente al cruce (col 0 en el ejemplo de data-model.md), no en
+la última casilla antes de él (col 7). Esa lectura interpretaba implícitamente "distancia hasta
+la frontera" como el paso que cruza el borde (5 pasos), no como las casillas que quedan por
+delante dentro del tablero (4 pasos) — un desfase de una casilla frente a la fórmula original
+del documento de diseño. El desfase se manifestó de forma visible en el nivel 12 del prototipo
+frontend (`src/levels/prototype-levels.ts`): la ficha se asentaba en la primera casilla de la
+nueva vuelta en vez de en la última. Corregido en `stepUntilBlocked`
+(`src/engine/move-step.ts`): el tope de cruces se comprueba ANTES de envolver la coordenada, de
+forma que la ficha nunca llega a entrar en la vuelta que la detendría. El texto de esta
+Clarification se ha reescrito arriba para reflejar la lectura correcta; `data-model.md` (fixture
+4) y `tasks.md` de esta misma feature se han actualizado igual.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -93,9 +111,9 @@ calculando indefinidamente.
 **Acceptance Scenarios**:
 
 1. **Given** la fila o columna por la que se desplaza la ficha golpeada está completamente
-   vacía, **When** el impacto marrón se resuelve, **Then** el desplazamiento se detiene en el
-   segundo cruce del borde del tablero, y la ficha se asienta en la casilla alcanzada en ese
-   momento.
+   vacía, **When** el impacto marrón se resuelve, **Then** el desplazamiento se detiene justo
+   antes del segundo cruce del borde del tablero, y la ficha se asienta en la última casilla
+   válida de esa vuelta adicional.
 
 ---
 
@@ -125,9 +143,10 @@ calculando indefinidamente.
   de ahí se aplica la regla universal de interacción ya existente (mismo color desaparece,
   distinto color se empuja con la distancia de quien golpea), sin ningún comportamiento especial
   adicional para marrón.
-- **FR-004**: Si el desplazamiento no encuentra ninguna casilla ocupada, DEBE detenerse en
-  cuanto cruce el borde del tablero por segunda vez (segundo wrap-around) durante ese mismo
-  desplazamiento — el primer cruce no lo detiene, es wrap-around normal.
+- **FR-004**: Si el desplazamiento no encuentra ninguna casilla ocupada, DEBE detenerse justo
+  ANTES de cruzar el borde del tablero por segunda vez durante ese mismo desplazamiento,
+  asentándose en la última casilla válida de esa vuelta adicional — el primer cruce no lo
+  detiene, es wrap-around normal (ver erratum en Clarifications).
 - **FR-005**: Cada paso individual del desplazamiento DEBE aplicar la regla de wrap-around ya
   existente exactamente igual que a cualquier otro movimiento de ficha.
 - **FR-006**: Una ficha marrón DEBE poder lanzarse desde la mano con el mismo mecanismo ya usado

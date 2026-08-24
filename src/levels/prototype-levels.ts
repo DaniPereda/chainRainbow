@@ -135,13 +135,14 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     }),
   },
   // 12: brown's edge-crossing cap -- an otherwise clear lane, so the push wraps
-  // around the board and stops itself at the second edge crossing (spec.md 008).
+  // around the board and stops itself right before the second edge crossing, on the
+  // last in-bounds cell of that additional lap (spec.md 008 erratum).
   {
     id: 12,
     level: createLevel({
       pieces: [{ at: { row: 1, col: 3 }, color: 'orange' }],
       hand: ['brown'],
-      goal: { at: { row: 1, col: 0 }, color: 'orange' },
+      goal: { at: { row: 1, col: 7 }, color: 'orange' },
     }),
   },
   // 13: brown still obeys same-color annihilation first -- the first launch hits a
