@@ -90,7 +90,7 @@ aniquila por mismo color, la otra rama no se ve afectada).
 
 ### Implementation for User Story 2
 
-- [ ] T005 [US2] Fixtures 3 y 4 de data-model.md en `red.test.ts`: una rama golpea a una
+- [X] T005 [US2] Fixtures 3 y 4 de data-model.md en `red.test.ts`: una rama golpea a una
       tercera ficha de distinto color y la empuja con la distancia propia de quien golpea en ese
       punto (no la de rojo), pudiendo la cadena continuar; una rama golpea a una ficha del mismo
       color que ella y ambas se aniquilan, sin afectar a la otra rama. Depende de T003 — no
@@ -113,7 +113,7 @@ veces, mismo resultado exacto ambas veces.
 
 ### Implementation for User Story 3
 
-- [ ] T006 [US3] Fixture 7 de data-model.md en `red.test.ts`: llamar a `resolveLaunch` dos veces
+- [X] T006 [US3] Fixture 7 de data-model.md en `red.test.ts`: llamar a `resolveLaunch` dos veces
       sobre el mismo nivel (reutilizando la fixture 1) y el mismo lanzamiento; confirmar
       resultados estructuralmente idénticos y que el nivel original no se mutó — mismo patrón
       que `determinism.test.ts` (feature 001). Depende de T003 — verificación pura, sin código
@@ -125,13 +125,13 @@ veces, mismo resultado exacto ambas veces.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T007 [P] Fixture 6 de data-model.md en `red.test.ts`: rojo lanzada desde la mano en un
+- [X] T007 [P] Fixture 6 de data-model.md en `red.test.ts`: rojo lanzada desde la mano en un
       missclick — confirma que el mecanismo de lanzamiento ya existente (FR-007) no necesita
       ningún ajuste para el color nuevo. Depende de T003.
-- [ ] T008 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento
+- [X] T008 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento
       final de suites/tests y que `board-view.ts` sigue compilando. Depende de T004, T005, T006,
       T007.
-- [ ] T009 Verificar que `src/engine/` sigue sin importar nada de `src/renderer/` ni de
+- [X] T009 Verificar que `src/engine/` sigue sin importar nada de `src/renderer/` ni de
       `phaser` — mismo `grep` de siempre. Depende de T003.
 
 ---
