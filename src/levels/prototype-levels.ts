@@ -16,7 +16,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     level: createLevel({
       pieces: [{ at: { row: 0, col: 3 }, color: 'orange' }],
       hand: ['green'],
-      objective: { at: { row: 0, col: 4 }, color: 'orange' },
+      goal: { at: { row: 0, col: 4 }, color: 'orange' },
     }),
   },
   // 2: introduces orange's longer push (distance 2).
@@ -25,13 +25,13 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     level: createLevel({
       pieces: [{ at: { row: 1, col: 3 }, color: 'green' }],
       hand: ['orange'],
-      objective: { at: { row: 1, col: 5 }, color: 'green' },
+      goal: { at: { row: 1, col: 5 }, color: 'green' },
     }),
   },
   // 3: same-color annihilation as a first impact clears an obstacle, then a second
   // launch pushes the real target piece into place. A launched piece never settles
   // on the board itself (spec.md 006), so a same-color demonstration needs two
-  // launches: one to annihilate, one to actually reach the objective.
+  // launches: one to annihilate, one to actually reach the goal.
   {
     id: 3,
     level: createLevel({
@@ -40,7 +40,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
         { at: { row: 2, col: 5 }, color: 'green' }, // real target, pushed by hand[1]
       ],
       hand: ['green', 'orange'],
-      objective: { at: { row: 2, col: 7 }, color: 'green' },
+      goal: { at: { row: 2, col: 7 }, color: 'green' },
     }),
   },
   // 4: wrap-around -- pushed past the east edge, reappears on the west edge (empty).
@@ -49,7 +49,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     level: createLevel({
       pieces: [{ at: { row: 3, col: 7 }, color: 'orange' }],
       hand: ['green'],
-      objective: { at: { row: 3, col: 0 }, color: 'orange' },
+      goal: { at: { row: 3, col: 0 }, color: 'orange' },
     }),
   },
   // 5: wrap-around with orange's longer push distance.
@@ -58,7 +58,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     level: createLevel({
       pieces: [{ at: { row: 4, col: 7 }, color: 'green' }],
       hand: ['orange'],
-      objective: { at: { row: 4, col: 1 }, color: 'green' },
+      goal: { at: { row: 4, col: 1 }, color: 'green' },
     }),
   },
   // 6: wrap-around on the vertical axis (south edge to north edge).
@@ -67,11 +67,11 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     level: createLevel({
       pieces: [{ at: { row: 7, col: 2 }, color: 'orange' }],
       hand: ['green'],
-      objective: { at: { row: 0, col: 2 }, color: 'orange' },
+      goal: { at: { row: 0, col: 2 }, color: 'orange' },
     }),
   },
   // 7: same idea as level 3 (same-color annihilation clears an obstacle, then a
-  // second launch reaches the objective), with the colors swapped for variety.
+  // second launch reaches the goal), with the colors swapped for variety.
   {
     id: 7,
     level: createLevel({
@@ -80,7 +80,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
         { at: { row: 5, col: 6 }, color: 'orange' }, // real target, pushed by hand[1]
       ],
       hand: ['orange', 'green'],
-      objective: { at: { row: 5, col: 7 }, color: 'orange' },
+      goal: { at: { row: 5, col: 7 }, color: 'orange' },
     }),
   },
   // 8: a two-hop mixed-color cascade with no annihilation and no wrap -- the launcher
@@ -94,7 +94,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
         { at: { row: 6, col: 2 }, color: 'green' },
       ],
       hand: ['green'],
-      objective: { at: { row: 6, col: 4 }, color: 'green' },
+      goal: { at: { row: 6, col: 4 }, color: 'green' },
     }),
   },
   // 9: wrap-around to the west, going negative before wrapping.
@@ -103,7 +103,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
     level: createLevel({
       pieces: [{ at: { row: 0, col: 0 }, color: 'green' }],
       hand: ['orange'],
-      objective: { at: { row: 0, col: 6 }, color: 'green' },
+      goal: { at: { row: 0, col: 6 }, color: 'green' },
     }),
   },
   // 10: a two-launch puzzle -- the first launch clears an obstacle via same-color
@@ -116,7 +116,7 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
         { at: { row: 5, col: 5 }, color: 'green' },
       ],
       hand: ['orange', 'orange'],
-      objective: { at: { row: 5, col: 7 }, color: 'green' },
+      goal: { at: { row: 5, col: 7 }, color: 'green' },
     }),
   },
 ];

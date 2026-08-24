@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { Board, Objective, PieceColor } from '../engine/index.js';
+import type { Board, Goal, PieceColor } from '../engine/index.js';
 
 export const CELL_SIZE = 48;
 export const BOARD_PIXELS = CELL_SIZE * 8;
@@ -11,10 +11,10 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
 };
 
 const GRID_LINE_COLOR = 0x444444;
-const OBJECTIVE_RING_COLOR = 0xffee58;
+const GOAL_RING_COLOR = 0xffee58;
 
 /**
- * Draws a Board + Objective (engine state) onto a Phaser Graphics object as plain
+ * Draws a Board + Goal (engine state) onto a Phaser Graphics object as plain
  * shapes -- no image assets. Deterministic given the same inputs; the only side
  * effect is drawing onto `graphics`, so it doesn't need its own Vitest coverage
  * (constitution: renderer scenes/drawing are validated manually, see quickstart.md).
@@ -22,7 +22,7 @@ const OBJECTIVE_RING_COLOR = 0xffee58;
 export function drawBoard(
   graphics: Phaser.GameObjects.Graphics,
   board: Board,
-  objective: Objective,
+  goal: Goal,
 ): void {
   graphics.clear();
 
@@ -32,10 +32,10 @@ export function drawBoard(
     graphics.lineBetween(0, i * CELL_SIZE, BOARD_PIXELS, i * CELL_SIZE);
   }
 
-  graphics.lineStyle(3, OBJECTIVE_RING_COLOR, 1);
+  graphics.lineStyle(3, GOAL_RING_COLOR, 1);
   graphics.strokeRect(
-    objective.targetCell.col * CELL_SIZE + 3,
-    objective.targetCell.row * CELL_SIZE + 3,
+    goal.targetCell.col * CELL_SIZE + 3,
+    goal.targetCell.row * CELL_SIZE + 3,
     CELL_SIZE - 6,
     CELL_SIZE - 6,
   );

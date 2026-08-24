@@ -12,7 +12,7 @@ describe('brown: walks much farther than green or orange, checking every cell (F
         { at: { row: 0, col: 5 }, color: 'orange' },
       ],
       hand: ['brown'],
-      objective: { at: { row: 0, col: 5 }, color: 'green' },
+      goal: { at: { row: 0, col: 5 }, color: 'green' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
@@ -33,7 +33,7 @@ describe('brown: walks much farther than green or orange, checking every cell (F
         { at: { row: 1, col: 2 }, color: 'orange' },
       ],
       hand: ['brown'],
-      objective: { at: { row: 1, col: 3 }, color: 'orange' },
+      goal: { at: { row: 1, col: 3 }, color: 'orange' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 1 });
@@ -55,10 +55,10 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
         { at: { row: 2, col: 4 }, color: 'green' },
       ],
       hand: ['brown'],
-      // Nothing survives this launch, so no objective is reachable here -- placed
+      // Nothing survives this launch, so no goal is reachable here -- placed
       // away from both pieces on purpose, so it doesn't read as "already sitting on
       // the goal" before the launch even happens (that piece is destined to vanish).
-      objective: { at: { row: 2, col: 7 }, color: 'green' },
+      goal: { at: { row: 2, col: 7 }, color: 'green' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 2 });
@@ -75,7 +75,7 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
     const level = createLevel({
       pieces: [{ at: { row: 5, col: 1 }, color: 'brown' }],
       hand: ['brown'],
-      objective: { at: { row: 5, col: 1 }, color: 'brown' },
+      goal: { at: { row: 5, col: 1 }, color: 'brown' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 5 });
@@ -95,7 +95,7 @@ describe('brown: never travels more than one full lap of the board (FR-004, spec
     const level = createLevel({
       pieces: [{ at: { row: 4, col: 3 }, color: 'orange' }],
       hand: ['brown'],
-      objective: { at: { row: 4, col: 0 }, color: 'orange' },
+      goal: { at: { row: 4, col: 0 }, color: 'orange' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
@@ -113,7 +113,7 @@ describe('brown: launches from hand exactly like green and orange (FR-006, spec.
     const level = createLevel({
       pieces: [{ at: { row: 6, col: 4 }, color: 'orange' }],
       hand: ['brown'],
-      objective: { at: { row: 6, col: 5 }, color: 'orange' },
+      goal: { at: { row: 6, col: 5 }, color: 'orange' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
