@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { resolveLaunch, testLevelGreen01 } from '../../../src/engine/index.js';
-import { withUnreachableObjective } from './support/levels.js';
+import { withUnreachableGoal } from './support/levels.js';
 import { GREEN_MISSCLICK_LAUNCH, GREEN_WINNING_LAUNCH } from './support/launches.js';
 
-describe('objective: win, loss, restart, and undetermined (FR-007, FR-008, FR-009, FR-010, FR-012)', () => {
-  // Scenario 3 (spec.md 001): won once a piece ends exactly on the objective
+describe('goal: win, loss, restart, and undetermined (FR-007, FR-008, FR-009, FR-010, FR-012)', () => {
+  // Scenario 3 (spec.md 001): won once a piece ends exactly on the goal
   // cell at a stable state.
-  it('marks the level as won when the green piece ends exactly on the objective cell', () => {
+  it('marks the level as won when the green piece ends exactly on the goal cell', () => {
     const outcome = resolveLaunch(testLevelGreen01, GREEN_WINNING_LAUNCH);
 
     expect(outcome.result).toBe('won');
   });
 
   // Scenario 4 (spec.md 001): a collision that consumes the hand without meeting
-  // the objective is an explicit loss.
-  it('marks the level as lost when a collision consumes the hand without meeting the objective', () => {
-    const level = withUnreachableObjective(testLevelGreen01, { row: 4, col: 6 });
+  // the goal is an explicit loss.
+  it('marks the level as lost when a collision consumes the hand without meeting the goal', () => {
+    const level = withUnreachableGoal(testLevelGreen01, { row: 4, col: 6 });
 
     const outcome = resolveLaunch(level, GREEN_WINNING_LAUNCH);
 

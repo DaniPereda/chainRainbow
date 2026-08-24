@@ -1,6 +1,6 @@
 import type { Launch } from './launch.js';
 import type { Level } from './level.js';
-import type { LevelResult } from './objective.js';
+import type { LevelResult } from './goal.js';
 import { resolveLaunch, type LaunchOutcome } from './resolve-launch.js';
 
 /**
@@ -27,7 +27,7 @@ export function applySessionLaunch(
   const current: Level = {
     board: outcome.board,
     hand: outcome.hand,
-    objective: session.current.objective,
+    goal: session.current.goal,
   };
   return { session: { ...session, current, status: outcome.result }, outcome };
 }

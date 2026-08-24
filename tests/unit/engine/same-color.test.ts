@@ -17,9 +17,9 @@ describe('same-color: annihilates on the very first impact (FR-001, FR-002)', ()
     expect(outcome.board.cells[6][4]).toBeNull();
   });
 
-  // Acceptance Scenario 4 (spec.md 003): the objective is evaluated on the board
+  // Acceptance Scenario 4 (spec.md 003): the goal is evaluated on the board
   // that results from the annihilation, using the existing win/lose rules.
-  it('evaluates the objective on the post-annihilation board (nothing survives, so it is lost)', () => {
+  it('evaluates the goal on the post-annihilation board (nothing survives, so it is lost)', () => {
     const outcome = resolveLaunch(testLevelSameColor01, { direction: 'E', lane: 6 });
 
     expect(outcome.hand.pieces).toHaveLength(0);
@@ -46,7 +46,7 @@ describe('same-color: annihilates mid-cascade, without disturbing an unrelated n
     expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(true);
   });
 
-  it('marks the level as lost, since nothing survives to meet any objective', () => {
+  it('marks the level as lost, since nothing survives to meet any goal', () => {
     const outcome = resolveLaunch(testLevelSameColorCascade01, { direction: 'E', lane: 7 });
 
     expect(outcome.hand.pieces).toHaveLength(0);

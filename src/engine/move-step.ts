@@ -1,6 +1,7 @@
 import {
   type Board,
   type Coordinate,
+  type Piece,
   getPieceAt,
   isInBounds,
   setPieceAt,
@@ -34,6 +35,53 @@ export function stepBy(coord: Coordinate, direction: Direction, distance: number
     current = step(current, direction);
   }
   return wrapCoordinate(current);
+}
+
+/**
+ * Walks `position` one cell at a time in `direction`, checking occupancy at every
+ * single step (unlike `stepBy`, which never looks at the board) -- stopping as soon
+ * as a step lands on an occupied cell, or once it has crossed the board edge
+ * `maxEdgeCrossings` times, whichever comes first (marrón, spec.md 008).
+ *
+ * `piece` -- the specific piece being displaced -- is excluded from the occupancy
+ * check by identity, not by coordinate: the board passed in is always the same
+ * unmutated snapshot resolveStrike works from throughout a chain, so it still
+ * shows `piece` sitting wherever it started. That's a stale self-reference, not a
+ * real obstacle, and it isn't a rare case: on an 8-wide board, any unblocked walk
+ * revisits its own starting cell at step 8, strictly before the second edge
+ * crossing can ever happen (research.md 008) -- excluding it is what makes the
+ * crossing cap reachable at all on a clear lane. Checking by identity (this exact
+ * piece) rather than by the coordinate it happened to start at keeps that
+ * intact even if a future primitive ever needs to walk a piece whose recorded
+ * start position isn't where this call began -- e.g. a piece mid-way through a
+ * branched chain (rojo, not yet built).
+ */
+export function stepUntilBlocked(
+  board: Board,
+  piece: Piece,
+  position: Coordinate,
+  direction: Direction,
+  maxEdgeCrossings: number,
+): Coordinate {
+  let current = position;
+  let edgeCrossings = 0;
+
+  for (;;) {
+    const raw = step(current, direction);
+    if (!isInBounds(raw)) {
+      edgeCrossings++;
+    }
+    current = wrapCoordinate(raw);
+
+    const occupant = getPieceAt(board, current);
+    if (occupant !== null && occupant !== piece) {
+      return current;
+    }
+
+    if (edgeCrossings >= maxEdgeCrossings) {
+      return current;
+    }
+  }
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {

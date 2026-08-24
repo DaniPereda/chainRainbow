@@ -1,11 +1,30 @@
-import type { Board, Coordinate, PieceColor } from '../board.js';
+import type { Board, Coordinate, Piece, PieceColor } from '../board.js';
 import { getPieceAt, setPieceAt } from '../board.js';
-import { stepBy, type Direction } from '../move-step.js';
+import { stepBy, stepUntilBlocked, type Direction } from '../move-step.js';
 import type { AnnihilationEvent, ChainEvent, ImpactSite } from '../events.js';
 
-export const PUSH_DISTANCE: Record<PieceColor, number> = {
-  green: 1,
-  orange: 2,
+/**
+ * Computes where a defender ends up after being struck by `strikerColor`, given
+ * which piece it is and where it currently is. Green and orange are fixed-distance
+ * jumps (never look at `board`/`piece`); brown walks one cell at a time, checking
+ * occupancy at every step, until blocked or capped (spec.md 008) -- three
+ * interchangeable strategies, none of them a special case `resolveStrike` needs to
+ * know about (Principle V).
+ */
+type DisplacementStrategy = (
+  board: Board,
+  piece: Piece,
+  position: Coordinate,
+  direction: Direction,
+) => Coordinate;
+
+const MAX_EDGE_CROSSINGS = 2;
+
+export const PUSH_STRATEGY: Record<PieceColor, DisplacementStrategy> = {
+  green: (_board, _piece, position, direction) => stepBy(position, direction, 1),
+  orange: (_board, _piece, position, direction) => stepBy(position, direction, 2),
+  brown: (board, piece, position, direction) =>
+    stepUntilBlocked(board, piece, position, direction, MAX_EDGE_CROSSINGS),
 };
 
 /**
@@ -38,7 +57,7 @@ function resolveStrike(
     return { board: boardAfter, events: [event], annihilated: true };
   }
 
-  const to = stepBy(position, direction, PUSH_DISTANCE[strikerColor]);
+  const to = PUSH_STRATEGY[strikerColor](board, defender, position, direction);
 
   const occupant = getPieceAt(board, to);
 

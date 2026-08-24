@@ -142,7 +142,7 @@ export class BoardScene extends Phaser.Scene {
   }
 
   private redraw(): void {
-    drawBoard(this.boardGraphics, this.session.current.board, this.session.current.objective);
+    drawBoard(this.boardGraphics, this.session.current.board, this.session.current.goal);
     drawHand(this.handGraphics, this.session.current.hand);
   }
 

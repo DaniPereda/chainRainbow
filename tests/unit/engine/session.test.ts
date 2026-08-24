@@ -5,13 +5,13 @@ import { applySessionLaunch, restartSession, startSession } from '../../../src/e
 const WINNABLE_LEVEL = createLevel({
   pieces: [{ at: { row: 4, col: 4 }, color: 'orange' }],
   hand: ['green'],
-  objective: { at: { row: 4, col: 5 }, color: 'orange' },
+  goal: { at: { row: 4, col: 5 }, color: 'orange' },
 });
 
 const LOSABLE_LEVEL = createLevel({
   pieces: [{ at: { row: 0, col: 3 }, color: 'orange' }],
   hand: ['green'],
-  objective: { at: { row: 0, col: 0 }, color: 'orange' }, // unreachable by this launch
+  goal: { at: { row: 0, col: 0 }, color: 'orange' }, // unreachable by this launch
 });
 
 describe('LevelSession: tracks a play-through of a level across launches', () => {
@@ -23,7 +23,7 @@ describe('LevelSession: tracks a play-through of a level across launches', () =>
     expect(session.initial).toEqual(WINNABLE_LEVEL);
   });
 
-  it('a launch that reaches the objective moves the session to won', () => {
+  it('a launch that reaches the goal moves the session to won', () => {
     const session = startSession(WINNABLE_LEVEL);
 
     const { session: after, outcome } = applySessionLaunch(session, { direction: 'E', lane: 4 });
@@ -43,7 +43,7 @@ describe('LevelSession: tracks a play-through of a level across launches', () =>
     expect(after.current).toEqual(session.current);
   });
 
-  it('emptying the hand without reaching the objective moves the session to lost', () => {
+  it('emptying the hand without reaching the goal moves the session to lost', () => {
     const session = startSession(LOSABLE_LEVEL);
 
     const { session: after, outcome } = applySessionLaunch(session, { direction: 'E', lane: 0 });

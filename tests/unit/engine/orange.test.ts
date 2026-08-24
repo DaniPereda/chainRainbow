@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveLaunch, testLevelOrange01 } from '../../../src/engine/index.js';
-import { levelWithMixedColorCascade, withUnreachableObjective } from './support/levels.js';
+import { levelWithMixedColorCascade, withUnreachableGoal } from './support/levels.js';
 import { ORANGE_MISSCLICK_LAUNCH, ORANGE_WINNING_LAUNCH } from './support/launches.js';
 
 describe('orange: jumps 2 cells, intermediate cell untouched (FR-002, FR-003, FR-005)', () => {
@@ -38,18 +38,18 @@ describe('orange: cascade -- each link uses the striking piece\'s own color (FR-
 });
 
 describe('orange: win, loss, and undetermined (FR-007)', () => {
-  // Scenario 2 (spec.md 002): won once a piece ends exactly on the objective
+  // Scenario 2 (spec.md 002): won once a piece ends exactly on the goal
   // cell at a stable state.
-  it('marks the level as won when the jump lands the piece on the objective cell', () => {
+  it('marks the level as won when the jump lands the piece on the goal cell', () => {
     const outcome = resolveLaunch(testLevelOrange01, ORANGE_WINNING_LAUNCH);
 
     expect(outcome.result).toBe('won');
   });
 
   // Scenario 3 (spec.md 002): a collision that consumes the hand without meeting
-  // the objective is an explicit loss.
-  it('marks the level as lost when a collision consumes the hand without meeting the objective', () => {
-    const level = withUnreachableObjective(testLevelOrange01, { row: 3, col: 7 });
+  // the goal is an explicit loss.
+  it('marks the level as lost when a collision consumes the hand without meeting the goal', () => {
+    const level = withUnreachableGoal(testLevelOrange01, { row: 3, col: 7 });
 
     const outcome = resolveLaunch(level, ORANGE_WINNING_LAUNCH);
 

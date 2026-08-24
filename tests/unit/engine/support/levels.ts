@@ -9,18 +9,18 @@ export function levelWithPieceAtBoardEdge(): Level {
   return createLevel({
     pieces: [{ at: { row: 2, col: 0 }, color: 'green' }],
     hand: ['green'],
-    objective: { at: { row: 2, col: 1 }, color: 'green' },
+    goal: { at: { row: 2, col: 1 }, color: 'green' },
   });
 }
 
 /**
- * Same level, with its objective moved to a cell the launch can never reach —
+ * Same level, with its goal moved to a cell the launch can never reach —
  * used to exercise the "lost" path without needing a whole second fixture.
  */
-export function withUnreachableObjective(level: Level, targetCell: Coordinate): Level {
+export function withUnreachableGoal(level: Level, targetCell: Coordinate): Level {
   return {
     ...level,
-    objective: { ...level.objective, targetCell },
+    goal: { ...level.goal, targetCell },
   };
 }
 
@@ -37,6 +37,6 @@ export function levelWithMixedColorCascade(): Level {
       { at: { row: 5, col: 6 }, color: 'orange' },
     ],
     hand: ['orange'],
-    objective: { at: { row: 0, col: 0 }, color: 'green' },
+    goal: { at: { row: 0, col: 0 }, color: 'green' },
   });
 }

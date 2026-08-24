@@ -3,7 +3,7 @@ import { opposite, step } from './move-step.js';
 import { takeFirstPiece, travelLaunch, type Hand, type Launch } from './launch.js';
 import { resolveChain, type EventLog, type ImpactSite } from './events.js';
 import { applyImpact } from './pieces/push.js';
-import { evaluateObjective, type LevelResult } from './objective.js';
+import { evaluateGoal, type LevelResult } from './goal.js';
 import type { Level } from './level.js';
 
 export type LaunchOutcome = {
@@ -23,7 +23,7 @@ export function resolveLaunch(level: Level, launch: Launch): LaunchOutcome {
       hand: level.hand,
       events: [],
       missclick: true,
-      result: evaluateObjective(level.board, level.hand, level.objective),
+      result: evaluateGoal(level.board, level.hand, level.goal),
     };
   }
 
@@ -43,6 +43,6 @@ export function resolveLaunch(level: Level, launch: Launch): LaunchOutcome {
     hand: finalHand,
     events,
     missclick: false,
-    result: evaluateObjective(finalBoard, finalHand, level.objective),
+    result: evaluateGoal(finalBoard, finalHand, level.goal),
   };
 }

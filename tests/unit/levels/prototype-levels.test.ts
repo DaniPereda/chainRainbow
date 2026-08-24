@@ -11,14 +11,14 @@ describe('PROTOTYPE_LEVELS: the 10 hardcoded levels are structurally valid data 
     expect(ids).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
-  it.each(PROTOTYPE_LEVELS)('level $id has a valid board, hand, and objective', ({ level }) => {
+  it.each(PROTOTYPE_LEVELS)('level $id has a valid board, hand, and goal', ({ level }) => {
     expect(level.board.size).toBe(8);
     expect(level.board.cells).toHaveLength(8);
     level.board.cells.forEach((row) => expect(row).toHaveLength(8));
 
     expect(level.hand.pieces.length).toBeGreaterThan(0);
 
-    const { targetCell } = level.objective;
+    const { targetCell } = level.goal;
     expect(targetCell.row).toBeGreaterThanOrEqual(0);
     expect(targetCell.row).toBeLessThan(8);
     expect(targetCell.col).toBeGreaterThanOrEqual(0);
@@ -26,12 +26,12 @@ describe('PROTOTYPE_LEVELS: the 10 hardcoded levels are structurally valid data 
   });
 
   it.each(PROTOTYPE_LEVELS)(
-    'level $id only uses Fase 1 colors (green/orange) on the board, in hand, and as objective',
+    'level $id only uses Fase 1 colors (green/orange) on the board, in hand, and as goal',
     ({ level }) => {
       const boardColors = level.board.cells.flat().filter((cell) => cell !== null).map((piece) => piece.color);
       const handColors = level.hand.pieces.map((piece) => piece.color);
 
-      [...boardColors, ...handColors, level.objective.targetColor].forEach((color) => {
+      [...boardColors, ...handColors, level.goal.targetColor].forEach((color) => {
         expect(FASE_1_COLORS).toContain(color);
       });
     },
