@@ -10,8 +10,9 @@ export function hasAvailablePiece(hand: Hand): boolean {
   return hand.pieces.length > 0;
 }
 
-export function takeFirstPiece(hand: Hand): { piece: Piece; hand: Hand } {
-  const [piece, ...rest] = hand.pieces;
+export function takePieceAt(hand: Hand, index: number): { piece: Piece; hand: Hand } {
+  const piece = hand.pieces[index];
+  const rest = hand.pieces.filter((_, i) => i !== index);
   return { piece, hand: { pieces: rest } };
 }
 
