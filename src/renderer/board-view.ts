@@ -12,7 +12,6 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
 };
 
 const GRID_LINE_COLOR = 0x444444;
-const GOAL_RING_COLOR = 0xffee58;
 
 /**
  * Draws a Board + Goal (engine state) onto a Phaser Graphics object as plain
@@ -33,7 +32,7 @@ export function drawBoard(
     graphics.lineBetween(0, i * CELL_SIZE, BOARD_PIXELS, i * CELL_SIZE);
   }
 
-  graphics.lineStyle(3, GOAL_RING_COLOR, 1);
+  graphics.lineStyle(3, PIECE_COLOR[goal.targetColor], 1);
   graphics.strokeRect(
     goal.targetCell.col * CELL_SIZE + 3,
     goal.targetCell.row * CELL_SIZE + 3,
