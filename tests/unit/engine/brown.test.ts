@@ -88,20 +88,21 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
 
 describe('brown: never travels more than one full lap of the board (FR-004, spec.md 008)', () => {
   // data-model.md fixture 4: a completely clear lane -- nothing ever blocks the walk,
-  // so it must stop by itself at the second edge crossing (13 steps from col 3),
-  // never hang, and never falsely block against its own starting cell at step 8
-  // along the way (research.md 008).
-  it('stops at the second edge crossing on an otherwise empty row', () => {
+  // so it must stop by itself right before the second edge crossing (12 steps from
+  // col 3, landing on the last in-bounds cell of that additional lap -- spec.md 008
+  // erratum), never hang, and never falsely block against its own starting cell at
+  // step 8 along the way (research.md 008).
+  it('stops right before the second edge crossing on an otherwise empty row', () => {
     const level = createLevel({
       pieces: [{ at: { row: 4, col: 3 }, color: 'orange' }],
       hand: ['brown'],
-      goal: { at: { row: 4, col: 0 }, color: 'orange' },
+      goal: { at: { row: 4, col: 7 }, color: 'orange' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
     expect(outcome.board.cells[4][3]).toBeNull();
-    expect(outcome.board.cells[4][0]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange' });
     expect(outcome.result).toBe('won');
   });
 });
