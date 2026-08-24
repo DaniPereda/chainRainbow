@@ -127,7 +127,7 @@ marcada por defecto; tocar otra y ver que el anillo se mueve a esa.
       del tablero, pero con un color de acento fijo (no el color de la propia ficha, que ya
       ocupa el relleno y no daría contraste consigo mismo — research.md). Depende de T007 (ya
       acepta el parámetro `selectedIndex`; esta tarea añade el dibujo).
-- [ ] T011 [US2] Verificación manual (quickstart.md pasos 1-3): entrar a un nivel con 2+ fichas
+- [X] T011 [US2] Verificación manual (quickstart.md pasos 1-3): entrar a un nivel con 2+ fichas
       sin tocar nada y ver la primera marcada por defecto (FR-005); tocar la segunda y ver que el
       anillo se mueve (FR-004). Depende de T010.
 
@@ -147,12 +147,12 @@ reiniciar.
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Fixtures 6, 7 y 8 de data-model.md en `tests/unit/engine/session.test.ts`: tras
+- [X] T012 [US3] Fixtures 6, 7 y 8 de data-model.md en `tests/unit/engine/session.test.ts`: tras
       un lanzamiento no-missclick que consume la ficha marcada, la selección avanza a la primera
       restante; un missclick no cambia la mano ni la selección; con una sola ficha en mano, tras
       lanzarla la selección queda en `null`. Depende de T005 — verificación pura de la misma
       implementación de US1, sin código nuevo (igual que las features 007/008/009).
-- [ ] T013 [US3] Fixture 9 de data-model.md en `tests/unit/engine/session.test.ts`:
+- [X] T013 [US3] Fixture 9 de data-model.md en `tests/unit/engine/session.test.ts`:
       `restartSession` resetea `selectedHandIndex` exactamente al mismo estado que
       `startSession(session.initial)` produciría. Depende de T005 — verificación pura.
 
@@ -162,14 +162,14 @@ reiniciar.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T014 [P] Verificación manual (quickstart.md pasos 4-7): avance visible del anillo tras un
+- [X] T014 [P] Verificación manual (quickstart.md pasos 4-7): avance visible del anillo tras un
       lanzamiento; selección intacta visible tras un missclick; el anillo vuelve a la primera
       ficha tras reiniciar; los 11 niveles de una sola ficha en mano se siguen jugando con un
       solo toque en el borde (SC-003), sin necesitar tocar el panel primero. Depende de T010.
-- [ ] T015 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
+- [X] T015 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
       de suites/tests y que `BoardScene.ts`/`hand-panel.ts` siguen compilando tras los cambios de
       firma. Depende de T009, T012, T013.
-- [ ] T016 Verificar que `src/engine/` sigue sin importar nada de `src/renderer/` ni de
+- [X] T016 Verificar que `src/engine/` sigue sin importar nada de `src/renderer/` ni de
       `phaser` — mismo `grep` de siempre.
 
 ---
