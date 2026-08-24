@@ -161,19 +161,19 @@ referenciada por ningún `pieceIndex` de la solución.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] `tools/generator/cli.ts`: envoltorio de línea de comandos — parsea
+- [X] T016 [P] `tools/generator/cli.ts`: envoltorio de línea de comandos — parsea
       `--launches`/`--colors`/`--seed`/`--chain-origin-probability`/`--decoys`, llama a
       `generateLevel`, imprime el `GeneratedLevel` (o el fallo) por stdout como JSON. Depende de
       T010.
-- [ ] T017 [P] Edge cases de spec.md en `generate.test.ts`: `launchCount:0` se rechaza como
+- [X] T017 [P] Edge cases de spec.md en `generate.test.ts`: `launchCount:0` se rechaza como
       entrada inválida (no se trata como nivel trivial); agotar `maxGenerationAttempts` sin éxito
       devuelve `{ok:false, attemptsUsed}` sin lanzar una excepción ni devolver un nivel a medio
       construir. Depende de T009.
-- [ ] T018 Regresión estadística de quickstart.md: generar al menos 50 niveles con semillas
+- [X] T018 Regresión estadística de quickstart.md: generar al menos 50 niveles con semillas
       distintas (`launchCount:1`, subconjuntos variados de colores) y confirmar que el 100%
       reproduce `result:'won'` al validar su `solution` con el motor real (SC-001/SC-004).
       Depende de T009.
-- [ ] T019 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
+- [X] T019 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
       de tests y que el build del cliente sigue limpio. Depende de T011, T012, T013, T015, T017,
       T018.
 - [X] T020 Verificar que `src/renderer/` sigue sin importar nada de `tools/` — mismo `grep` de

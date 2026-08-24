@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createLevel, resolveLaunch } from '../../../../src/engine/index.js';
 import { generateLevel, generateLevelWithRng, type GenerationParams } from '../../../../tools/generator/generate.js';
 
 function scriptedRng(values: number[]): () => number {
@@ -100,6 +101,37 @@ describe('generateLevelWithRng: decoy pieces do not affect the solution (US3)', 
     // Only pieceIndex 0 is ever referenced -- the two decoys (indices 1-2) are inert.
     const referencedIndices = result.level.solution.map((step) => step.pieceIndex);
     expect(referencedIndices).toEqual([0]);
+  });
+});
+
+describe('generateLevel: statistical regression across real seeds (SC-001/SC-004, quickstart.md)', () => {
+  it('100% of 50 distinctly-seeded levels replay to won through the real engine', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const result = generateLevel({
+        launchCount: 1,
+        availableColors: ['green', 'orange', 'brown'],
+        chainOriginProbability: 0.5,
+        decoyCount: 0,
+        seed,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+
+      const level = createLevel({
+        pieces: result.level.pieces,
+        hand: result.level.hand,
+        goal: { at: result.level.goal.cell, color: result.level.goal.color },
+      });
+      let current = level;
+      let lastResult = 'undetermined';
+      for (const step of result.level.solution) {
+        const outcome = resolveLaunch(current, { direction: step.direction, lane: step.lane }, step.pieceIndex);
+        current = { board: outcome.board, hand: outcome.hand, goal: current.goal };
+        lastResult = outcome.result;
+      }
+      expect(lastResult).toBe('won');
+    }
   });
 });
 
