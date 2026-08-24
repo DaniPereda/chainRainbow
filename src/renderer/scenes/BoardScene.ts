@@ -83,7 +83,8 @@ export class BoardScene extends Phaser.Scene {
   }
 
   create(): void {
-    const entry = PROTOTYPE_LEVELS.find((candidate) => candidate.id === this.levelId);
+    const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
+    const entry = PROTOTYPE_LEVELS[levelIndex];
     if (entry === undefined) {
       throw new Error(`No existe el nivel ${this.levelId}`);
     }
@@ -197,7 +198,7 @@ export class BoardScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const backButton = this.add
-      .text(width / 2, height / 2 + 56, 'Volver al selector', {
+      .text(width / 2, height / 2 + 112, 'Volver al selector', {
         fontSize: '22px',
         color: '#ffee58',
         backgroundColor: '#333333',
@@ -206,7 +207,56 @@ export class BoardScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    this.resultOverlay = this.add.container(0, 0, [backdrop, text, restartButton, backButton]);
+    const overlayObjects: Phaser.GameObjects.GameObject[] = [backdrop, text, restartButton, backButton];
+
+    // Navegación directa entre niveles consecutivos desde la propia ventana de
+    // resultado, sin pasar por el selector -- por orden en PROTOTYPE_LEVELS, no
+    // por aritmética sobre el id (el id es simplemente el número que ve el
+    // jugador). Ausente en los extremos (nivel 1 no tiene anterior, el último no
+    // tiene siguiente) en vez de deshabilitado, para no sugerir una acción que no
+    // puede completarse.
+    const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
+    const previousLevel = PROTOTYPE_LEVELS[levelIndex - 1];
+    const nextLevel = PROTOTYPE_LEVELS[levelIndex + 1];
+    const navY = height / 2 + 56;
+
+    if (previousLevel !== undefined) {
+      const previousButton = this.add
+        .text(width / 2 - 90, navY, '‹ Anterior', {
+          fontSize: '18px',
+          color: '#ffee58',
+          backgroundColor: '#333333',
+          padding: { x: 10, y: 6 },
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+
+      previousButton.on('pointerdown', () => {
+        this.scene.start('BoardScene', { levelId: previousLevel.id });
+      });
+
+      overlayObjects.push(previousButton);
+    }
+
+    if (nextLevel !== undefined) {
+      const nextButton = this.add
+        .text(width / 2 + 90, navY, 'Siguiente ›', {
+          fontSize: '18px',
+          color: '#ffee58',
+          backgroundColor: '#333333',
+          padding: { x: 10, y: 6 },
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+
+      nextButton.on('pointerdown', () => {
+        this.scene.start('BoardScene', { levelId: nextLevel.id });
+      });
+
+      overlayObjects.push(nextButton);
+    }
+
+    this.resultOverlay = this.add.container(0, 0, overlayObjects);
 
     // FR-010: reiniciar vuelve exactamente al estado inicial declarado -- vía
     // restartSession, nunca reconstruido a mano por el renderer.
