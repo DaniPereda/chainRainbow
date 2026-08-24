@@ -8,6 +8,7 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
   green: 0x2ecc71,
   orange: 0xe67e22,
   brown: 0x8d6e63,
+  red: 0xe74c3c,
 };
 
 const GRID_LINE_COLOR = 0x444444;
