@@ -35,7 +35,7 @@ siquiera construirse.
 
 **⚠️ CRITICAL**: Ninguna historia empieza hasta cerrar esta fase.
 
-- [ ] T001 En `src/engine/board.ts`, añadir `'red'` a `PieceColor`. En
+- [X] T001 En `src/engine/board.ts`, añadir `'red'` a `PieceColor`. En
       `src/renderer/board-view.ts`, añadir `red: 0xe74c3c` a `PIECE_COLOR` — lo mínimo para que
       `Record<PieceColor, number>` siga siendo exhaustivo y el build no se rompa (plan.md →
       Constraints). NO añade rojo a ningún nivel del prototipo de Fase 2.
@@ -56,20 +56,20 @@ rojo, donde la aniquilación ya existente tiene prioridad y la división nunca s
 
 ### Tests for User Story 1 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T002 [P] [US1] Fixtures 1, 2 y 5 de data-model.md en `tests/unit/engine/red.test.ts`
+- [X] T002 [P] [US1] Fixtures 1, 2 y 5 de data-model.md en `tests/unit/engine/red.test.ts`
       (nuevo fichero): división con impacto vertical → ramas E/O; división con impacto
       horizontal → ramas N/S; rojo contra rojo aniquila directamente, sin ninguna división.
       Fallará por falta de la lógica de ramificación hasta T003.
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] En `src/engine/pieces/push.ts`, añadir `PERPENDICULAR_DIRECTIONS`,
+- [X] T003 [US1] En `src/engine/pieces/push.ts`, añadir `PERPENDICULAR_DIRECTIONS`,
       `resolveBranch`, y `resolveSplit` según data-model.md/research.md (incluida la colocación
       explícita de la propia ficha de cada rama en el caso "ocupado, sin aniquilar" — ver el bug
       documentado en research.md). En `resolveStrike`, añadir la rama `if (strikerColor ===
       'red') { return resolveSplit(...); }` justo después de la comprobación de mismo color y
       antes del cálculo de `to` vía `PUSH_STRATEGY`. Depende de T001. Hace pasar T002.
-- [ ] T004 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T002 pasa (verde) y que
+- [X] T004 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T002 pasa (verde) y que
       el resto de suites del motor (verde, naranja, marrón, mismo color, wrap-around, sesión,
       niveles del prototipo) siguen en verde sin cambios de comportamiento. Depende de T003.
 
