@@ -55,7 +55,10 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
         { at: { row: 2, col: 4 }, color: 'green' },
       ],
       hand: ['brown'],
-      objective: { at: { row: 2, col: 4 }, color: 'green' },
+      // Nothing survives this launch, so no objective is reachable here -- placed
+      // away from both pieces on purpose, so it doesn't read as "already sitting on
+      // the goal" before the launch even happens (that piece is destined to vanish).
+      objective: { at: { row: 2, col: 7 }, color: 'green' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 2 });
@@ -63,6 +66,7 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
     expect(outcome.board.cells[2][1]).toBeNull();
     expect(outcome.board.cells[2][4]).toBeNull();
     expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(true);
+    expect(outcome.result).toBe('lost');
   });
 
   // data-model.md fixture 5: two brown pieces meeting directly -- the long walk never
