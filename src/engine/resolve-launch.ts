@@ -1,6 +1,6 @@
 import type { Board } from './board.js';
 import { opposite, step } from './move-step.js';
-import { takeFirstPiece, travelLaunch, type Hand, type Launch } from './launch.js';
+import { takePieceAt, travelLaunch, type Hand, type Launch } from './launch.js';
 import { resolveChain, type EventLog, type ImpactSite } from './events.js';
 import { applyImpact } from './pieces/push.js';
 import { evaluateGoal, type LevelResult } from './goal.js';
@@ -14,7 +14,11 @@ export type LaunchOutcome = {
   result: LevelResult;
 };
 
-export function resolveLaunch(level: Level, launch: Launch): LaunchOutcome {
+export function resolveLaunch(
+  level: Level,
+  launch: Launch,
+  pieceIndex: number = 0,
+): LaunchOutcome {
   const travel = travelLaunch(level.board, launch);
 
   if (travel.hitAt === null) {
@@ -27,7 +31,7 @@ export function resolveLaunch(level: Level, launch: Launch): LaunchOutcome {
     };
   }
 
-  const piece = level.hand.pieces[0];
+  const piece = level.hand.pieces[pieceIndex];
   const initialSite: ImpactSite = {
     piece,
     direction: launch.direction,
@@ -36,7 +40,7 @@ export function resolveLaunch(level: Level, launch: Launch): LaunchOutcome {
   };
 
   const { board: finalBoard, events } = resolveChain(level.board, initialSite, applyImpact);
-  const { hand: finalHand } = takeFirstPiece(level.hand);
+  const { hand: finalHand } = takePieceAt(level.hand, pieceIndex);
 
   return {
     board: finalBoard,

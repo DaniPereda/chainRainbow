@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { PROTOTYPE_LEVELS } from '../../levels/prototype-levels.js';
 import { drawBoard, BOARD_PIXELS, CELL_SIZE } from '../board-view.js';
-import { drawHand } from '../hand-panel.js';
+import { drawHand, PIECE_RADIUS } from '../hand-panel.js';
 import {
   applySessionLaunch,
   restartSession,
+  selectHandPiece,
   startSession,
   type Direction,
   type LevelSession,
@@ -68,6 +69,7 @@ export class BoardScene extends Phaser.Scene {
   private session!: LevelSession;
   private boardGraphics!: Phaser.GameObjects.Graphics;
   private handGraphics!: Phaser.GameObjects.Graphics;
+  private handHitZones: Phaser.GameObjects.Zone[] = [];
   private boardOriginX = 0;
   private boardOriginY = 60;
   private resultOverlay?: Phaser.GameObjects.Container;
@@ -143,7 +145,34 @@ export class BoardScene extends Phaser.Scene {
 
   private redraw(): void {
     drawBoard(this.boardGraphics, this.session.current.board, this.session.current.goal);
-    drawHand(this.handGraphics, this.session.current.hand);
+
+    const positions = drawHand(
+      this.handGraphics,
+      this.session.current.hand,
+      this.session.selectedHandIndex,
+    );
+
+    // El número de fichas cambia con cada lanzamiento (a diferencia de los
+    // marcadores de borde del tablero, fijos) -- las zonas táctiles se recrean en
+    // cada redraw en vez de crearse una única vez (research.md 010).
+    this.handHitZones.forEach((zone) => zone.destroy());
+    this.handHitZones = positions.map(({ x, y }, index) => {
+      const zone = this.add
+        .zone(
+          this.handGraphics.x + x,
+          this.handGraphics.y + y,
+          PIECE_RADIUS * 2,
+          PIECE_RADIUS * 2,
+        )
+        .setInteractive({ useHandCursor: true });
+
+      zone.on('pointerdown', () => {
+        this.session = selectHandPiece(this.session, index);
+        this.redraw();
+      });
+
+      return zone;
+    });
   }
 
   private showResultOverlay(status: 'won' | 'lost'): void {

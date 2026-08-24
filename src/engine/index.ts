@@ -15,4 +15,4 @@ export {
 export type { LaunchOutcome } from './resolve-launch.js';
 export { resolveLaunch } from './resolve-launch.js';
 export type { LevelSession } from './session.js';
-export { startSession, applySessionLaunch, restartSession } from './session.js';
+export { startSession, applySessionLaunch, restartSession, selectHandPiece } from './session.js';
