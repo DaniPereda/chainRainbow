@@ -67,6 +67,42 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
   });
 });
 
+describe('generateLevelWithRng: launchCount:2 produces two independent hand launches (US2)', () => {
+  it('composes two separate chains, both required to reach the goal', () => {
+    const params: GenerationParams = { ...BASE_PARAMS, launchCount: 2, defenderContinuationProbability: 0.5 };
+    const rng = scriptedRng([0.6, 0.4, 0.4, 0.5, 0, 0.3, 0.3, 0, 0.9, 0.9, 0.9]);
+
+    const result = generateLevelWithRng(params, rng);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.level.pieces).toEqual([{ at: { row: 2, col: 2 }, color: 'orange' }]);
+    expect(result.level.hand).toEqual(['green', 'green']);
+    expect(result.level.goal).toEqual({ color: 'orange', cell: { row: 3, col: 3 } });
+    expect(result.level.solution).toEqual([
+      { direction: 'S', lane: 2, pieceIndex: 0 },
+      { direction: 'E', lane: 3, pieceIndex: 0 },
+    ]);
+  });
+});
+
+describe('generateLevelWithRng: decoy pieces do not affect the solution (US3)', () => {
+  it('appends decoyCount extra pieces to the hand, none referenced by the solution', () => {
+    const params: GenerationParams = { ...BASE_PARAMS, decoyCount: 2 };
+    const rng = scriptedRng([0.5, 0.5, 0.5, 0.5, 0, 0.9, 0.9, 0.1, 0.9]);
+
+    const result = generateLevelWithRng(params, rng);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.level.hand).toEqual(['green', 'green', 'orange']);
+    expect(result.level.solution).toEqual([{ direction: 'E', lane: 4, pieceIndex: 0 }]);
+    // Only pieceIndex 0 is ever referenced -- the two decoys (indices 1-2) are inert.
+    const referencedIndices = result.level.solution.map((step) => step.pieceIndex);
+    expect(referencedIndices).toEqual([0]);
+  });
+});
+
 describe('generateLevel: edge cases (spec.md)', () => {
   it('rejects launchCount:0 as invalid input, not a trivial level', () => {
     expect(() => generateLevel({ ...BASE_PARAMS, launchCount: 0 })).toThrow();

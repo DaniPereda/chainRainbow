@@ -118,13 +118,13 @@ reproducirlo con el motor real.
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Fixture con `launchCount:2` en `generate.test.ts`, `rng` guionizado para
+- [X] T012 [US2] Fixture con `launchCount:2` en `generate.test.ts`, `rng` guionizado para
       producir dos cadenas independientes (dos lanzamientos de mano distintos, cada uno con su
       propia obligación inicial y su propio empuje) — confirma que el contador `launchesUsed`
       controla correctamente más de un lanzamiento. Depende de T009 — verificación pura de la
       misma implementación de US1, sin código nuevo (mismo patrón que las features
       007/008/009/010).
-- [ ] T013 [US2] Fixture de profundidad de cadena en `obligations.test.ts`: una obligación de
+- [X] T013 [US2] Fixture de profundidad de cadena en `obligations.test.ts`: una obligación de
       origen de golpeador que decide continuación varias veces seguidas antes de forzarse a
       lanzamiento de mano al alcanzar `maxChainDepth`. Depende de T008 — verificación pura.
 
@@ -144,13 +144,13 @@ referenciada por ningún `pieceIndex` de la solución.
 
 ### Tests for User Story 3 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T014 [P] [US3] Fixture en `generate.test.ts`: `decoyCount:2` produce una mano final con 2
+- [X] T014 [P] [US3] Fixture en `generate.test.ts`: `decoyCount:2` produce una mano final con 2
       fichas más que la secuencia de referencia necesita, y ninguna de ellas es referenciada por
       ningún `pieceIndex` de `solution`. Fallará hasta T015.
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] En `tools/generator/generate.ts`, añadir el paso de fichas señuelo tras validar
+- [X] T015 [US3] En `tools/generator/generate.ts`, añadir el paso de fichas señuelo tras validar
       la construcción real: `decoyCount` fichas de colores aleatorios (de `availableColors`)
       añadidas al final de la mano, sin recalcular ningún `pieceIndex` ya asignado (research.md).
       Depende de T009. Hace pasar T014.
@@ -176,7 +176,7 @@ referenciada por ningún `pieceIndex` de la solución.
 - [ ] T019 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
       de tests y que el build del cliente sigue limpio. Depende de T011, T012, T013, T015, T017,
       T018.
-- [ ] T020 Verificar que `src/renderer/` sigue sin importar nada de `tools/` — mismo `grep` de
+- [X] T020 Verificar que `src/renderer/` sigue sin importar nada de `tools/` — mismo `grep` de
       siempre, extendido a esta carpeta nueva (quickstart.md).
 
 ---

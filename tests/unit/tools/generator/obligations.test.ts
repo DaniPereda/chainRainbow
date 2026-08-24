@@ -90,4 +90,32 @@ describe('resolveObligations: drains the queue for a single-launch construction 
 
     expect(outcome.ok).toBe(false);
   });
+
+  // data-model.md / research.md: maxChainDepth forces a hand launch eventually,
+  // even when chainOriginProbability would otherwise always choose continuation
+  // (research.md, "control del número de lanzamientos... profundidad máxima").
+  it('forces a hand launch once maxChainDepth is reached, even with chainOriginProbability:1', () => {
+    const root: Obligation = {
+      cell: { row: 5, col: 5 },
+      color: 'green',
+      kind: 'defender',
+      direction: null,
+      chainDepth: 0,
+      isRoot: true,
+    };
+    const ctx: ResolutionContext = {
+      board: createBoard(),
+      rng: scriptedRng([0.5, 0, 0.9, 0.5, 0, 0.9, 0.5, 0, 0.9]),
+      availableColors: ['green', 'orange'],
+      launchCount: 1,
+      defenderContinuationProbability: 0,
+      chainOriginProbability: 1, // would always choose continuation if not for the depth cap
+      maxChainDepth: 2,
+    };
+
+    const outcome = resolveObligations(root, ctx);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.rawLaunches).toEqual([{ direction: 'E', lane: 5, color: 'orange' }]);
+  });
 });

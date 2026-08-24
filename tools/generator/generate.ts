@@ -94,10 +94,14 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
   // Los lanzamientos se descubren en orden inverso al de juego real (data-model.md).
   const playOrder = outcome.rawLaunches.slice().reverse();
   const hand: PieceColor[] = playOrder.map((launch) => launch.color);
-  const solution: SolutionStep[] = playOrder.map((launch, index) => ({
+  // pieceIndex es siempre 0: cada lanzamiento consume la PRIMERA ficha de la mano
+  // restante en ese momento (takePieceAt la retira, desplazando el resto), y las
+  // fichas de la solución siempre ocupan el frente de la mano -- las señuelo se
+  // añaden al final, después de validar (más abajo), nunca intercaladas.
+  const solution: SolutionStep[] = playOrder.map((launch) => ({
     direction: launch.direction,
     lane: launch.lane,
-    pieceIndex: index,
+    pieceIndex: 0,
   }));
 
   const pieces = boardPieces(outcome.board);
