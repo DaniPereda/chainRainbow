@@ -59,7 +59,7 @@ describe('resolveObligations: drains the queue for a single-launch construction 
     const outcome = resolveObligations(root, ctx);
 
     expect(outcome.ok).toBe(true);
-    expect(outcome.board.cells[4][2]).toEqual({ color: 'green' });
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'new' });
     expect(outcome.rawLaunches).toEqual([{ direction: 'E', lane: 4, color: 'orange' }]);
   });
 
@@ -67,7 +67,7 @@ describe('resolveObligations: drains the queue for a single-launch construction 
     // A piece already sitting between the board edge and the striker-origin cell
     // makes the intended hand-launch impossible to reproduce -- generation must
     // report failure here, not silently produce a wrong level (FR-007).
-    const blockedBoard = setPieceAt(createBoard(), { row: 4, col: 1 }, { color: 'brown' });
+    const blockedBoard = setPieceAt(createBoard(), { row: 4, col: 1 }, { color: 'brown', fragility: 'new' });
     const root: Obligation = {
       cell: { row: 4, col: 4 },
       color: 'green',
@@ -147,7 +147,7 @@ describe('resolveObligations: board decoys are re-rolled at every construction s
     const outcome = resolveObligations(root, ctx);
 
     expect(outcome.ok).toBe(true);
-    expect(outcome.board.cells[4][2]).toEqual({ color: 'green' });
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'new' });
   });
 
   it('places one decoy per construction step when boardDecoyProbability is 1', () => {
@@ -180,9 +180,9 @@ describe('resolveObligations: board decoys are re-rolled at every construction s
     const outcome = resolveObligations(root, ctx);
 
     expect(outcome.ok).toBe(true);
-    expect(outcome.board.cells[2][0]).toEqual({ color: 'green' }); // la solución real
-    expect(outcome.board.cells[0][0]).toEqual({ color: 'green' }); // señuelo 1
-    expect(outcome.board.cells[0][1]).toEqual({ color: 'green' }); // señuelo 2
-    expect(outcome.board.cells[0][2]).toEqual({ color: 'green' }); // señuelo 3
+    expect(outcome.board.cells[2][0]).toEqual({ color: 'green', fragility: 'new' }); // la solución real
+    expect(outcome.board.cells[0][0]).toEqual({ color: 'green', fragility: 'new' }); // señuelo 1
+    expect(outcome.board.cells[0][1]).toEqual({ color: 'green', fragility: 'new' }); // señuelo 2
+    expect(outcome.board.cells[0][2]).toEqual({ color: 'green', fragility: 'new' }); // señuelo 3
   });
 });

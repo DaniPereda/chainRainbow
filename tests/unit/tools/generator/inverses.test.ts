@@ -38,7 +38,7 @@ describe('inverseCandidates: brown "settle" mode only lands on the far edge of t
   });
 
   it('excludes candidates whose path to the far edge is blocked by an existing piece', () => {
-    const board = setPieceAt(createBoard(), { row: 3, col: 5 }, { color: 'orange' });
+    const board = setPieceAt(createBoard(), { row: 3, col: 5 }, { color: 'orange', fragility: 'new' });
 
     const candidates = inverseCandidates('brown', 'E', { row: 3, col: 7 }, board, 'settle');
 
@@ -49,7 +49,7 @@ describe('inverseCandidates: brown "settle" mode only lands on the far edge of t
 
 describe('inverseCandidates: brown "occupied" mode accepts any clear-path candidate (research.md)', () => {
   it('offers every clear-path cell along the lane toward the already-occupied destination', () => {
-    const board = setPieceAt(createBoard(), { row: 1, col: 6 }, { color: 'green' });
+    const board = setPieceAt(createBoard(), { row: 1, col: 6 }, { color: 'green', fragility: 'new' });
 
     const candidates = inverseCandidates('brown', 'E', { row: 1, col: 6 }, board, 'occupied');
 
@@ -60,9 +60,9 @@ describe('inverseCandidates: brown "occupied" mode accepts any clear-path candid
 
   it('excludes candidates whose path is blocked by a piece before the destination', () => {
     const board = setPieceAt(
-      setPieceAt(createBoard(), { row: 1, col: 6 }, { color: 'green' }),
+      setPieceAt(createBoard(), { row: 1, col: 6 }, { color: 'green', fragility: 'new' }),
       { row: 1, col: 3 },
-      { color: 'orange' },
+      { color: 'orange', fragility: 'new' },
     );
 
     const candidates = inverseCandidates('brown', 'E', { row: 1, col: 6 }, board, 'occupied');

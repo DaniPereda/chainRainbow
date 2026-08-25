@@ -147,7 +147,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
       const cell = pickRandomEmptyCell(board, ctx.rng);
       if (cell !== null) {
         const color = ctx.availableColors[Math.floor(ctx.rng() * ctx.availableColors.length)];
-        board = setPieceAt(board, cell, { color });
+        board = setPieceAt(board, cell, { color, fragility: 'new' });
       }
     }
 
@@ -156,7 +156,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
         const mustFurniture = launchesUsed >= ctx.launchCount;
         const chooseFurniture = mustFurniture || ctx.rng() >= ctx.defenderContinuationProbability;
         if (chooseFurniture) {
-          board = setPieceAt(board, obligation.cell, { color: obligation.color });
+          board = setPieceAt(board, obligation.cell, { color: obligation.color, fragility: 'new' });
           continue;
         }
       }
