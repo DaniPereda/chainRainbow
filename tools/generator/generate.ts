@@ -1,6 +1,7 @@
 import type { Board, Coordinate, PieceColor } from '../../src/engine/board.js';
 import { createBoard } from '../../src/engine/board.js';
 import type { Direction } from '../../src/engine/move-step.js';
+import { evaluateGoal } from '../../src/engine/goal.js';
 import { createLevel, resolveLaunch, type Level } from '../../src/engine/index.js';
 import { resolveObligations, type Obligation } from './obligations.js';
 import { createRng } from './rng.js';
@@ -46,21 +47,42 @@ function boardPieces(board: Board): { at: Coordinate; color: PieceColor }[] {
 }
 
 /**
- * Reproduce la traza completa con el motor real (FR-006). Devuelve `true` solo si
- * cada lanzamiento golpea sin missclick y el resultado final es 'won' -- cualquier
- * discrepancia significa que la construcción no es fiel a lo que el motor haría de
- * verdad, y el intento entero se descarta (FR-007).
+ * Reproduce la traza completa con el motor real (FR-006). Devuelve `true` solo si:
+ * (a) el objetivo NO está ya satisfecho antes del primer lanzamiento -- si lo
+ *     estuviera, el juego real evaluaría 'won' tras CUALQUIER lanzamiento que no
+ *     toque esa casilla, sin relación alguna con la solución construida (bug
+ *     encontrado jugando un nivel generado -- ver research.md);
+ * (b) cada lanzamiento golpea sin missclick;
+ * (c) el objetivo NO se satisface (ni se pierde) antes del ÚLTIMO paso -- el juego
+ *     real deja de aceptar lanzamientos en cuanto `status` deja de ser
+ *     'undetermined' (BoardScene.launch), así que una victoria/derrota prematura
+ *     significaría que la partida real nunca llegaría a jugar el resto de la
+ *     solución construida;
+ * (d) el resultado del último paso es exactamente 'won'.
+ * Cualquier discrepancia significa que la construcción no es fiel a lo que el
+ * motor haría de verdad, y el intento entero se descarta (FR-007).
  */
-function validatesForward(level: Level, solution: SolutionStep[]): boolean {
+export function validatesForward(level: Level, solution: SolutionStep[]): boolean {
+  if (evaluateGoal(level.board, level.hand, level.goal) !== 'undetermined') {
+    return false; // el objetivo ya estaría satisfecho (o perdido) sin jugar nada
+  }
+
   let current = level;
-  let lastResult: string = 'undetermined';
-  for (const step of solution) {
+  for (let i = 0; i < solution.length; i++) {
+    const step = solution[i];
     const outcome = resolveLaunch(current, { direction: step.direction, lane: step.lane }, step.pieceIndex);
     if (outcome.missclick) return false;
     current = { board: outcome.board, hand: outcome.hand, goal: current.goal };
-    lastResult = outcome.result;
+
+    const isLastStep = i === solution.length - 1;
+    if (isLastStep) {
+      return outcome.result === 'won';
+    }
+    if (outcome.result !== 'undetermined') {
+      return false; // victoria/derrota antes de agotar la secuencia de referencia
+    }
   }
-  return lastResult === 'won';
+  return false; // solution vacía -- no debería ocurrir con launchCount >= 1
 }
 
 function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLevel | null {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createLevel, resolveLaunch } from '../../../../src/engine/index.js';
-import { generateLevel, generateLevelWithRng, type GenerationParams } from '../../../../tools/generator/generate.js';
+import {
+  generateLevel,
+  generateLevelWithRng,
+  validatesForward,
+  type GenerationParams,
+} from '../../../../tools/generator/generate.js';
 
 function scriptedRng(values: number[]): () => number {
   let i = 0;
@@ -65,6 +70,74 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
     expect(result.level.hand).toEqual(['green']);
     expect(result.level.goal).toEqual({ color: 'green', cell: { row: 6, col: 4 } });
     expect(result.level.solution).toEqual([{ direction: 'E', lane: 6, pieceIndex: 0 }]);
+  });
+});
+
+// Bug real encontrado jugando un nivel generado en el visor de frontend: si una
+// ficha del color del objetivo ya está sentada en la casilla del objetivo desde
+// el principio, el juego real declara 'won' tras CUALQUIER lanzamiento que no
+// toque esa casilla -- sin relación alguna con la solución construida.
+describe('validatesForward: rejects a level whose goal is already met before playing anything', () => {
+  it('rejects when the initial board already satisfies the goal, regardless of the solution', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 4 }, color: 'green' }],
+      hand: ['orange'],
+      goal: { at: { row: 4, col: 4 }, color: 'green' }, // ya satisfecho, sin jugar nada
+    });
+
+    expect(validatesForward(level, [{ direction: 'E', lane: 0, pieceIndex: 0 }])).toBe(false);
+  });
+
+  it('rejects when a non-final step already reaches won -- the real game would stop there', () => {
+    // First launch alone already reaches the goal; a second solution step exists
+    // but the real BoardScene would never let the player fire it (session.status
+    // stops being 'undetermined' after the first launch).
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'orange' }],
+      hand: ['green', 'orange'],
+      goal: { at: { row: 4, col: 4 }, color: 'orange' },
+    });
+
+    const prematureSolution = [
+      { direction: 'E' as const, lane: 4, pieceIndex: 0 }, // green pushes orange onto the goal already
+      { direction: 'S' as const, lane: 0, pieceIndex: 0 }, // never actually reachable in real play
+    ];
+
+    expect(validatesForward(level, prematureSolution)).toBe(false);
+  });
+
+  it('accepts a normal construction where the goal is only met on the final step', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'orange' }],
+      hand: ['green'],
+      goal: { at: { row: 4, col: 4 }, color: 'orange' },
+    });
+
+    expect(validatesForward(level, [{ direction: 'E', lane: 4, pieceIndex: 0 }])).toBe(true);
+  });
+});
+
+describe('generateLevelWithRng: the exact hand-traced collision that produced the reported bug', () => {
+  it('rejects a construction where an unrelated furniture placement lands on the goal cell', () => {
+    // Traced by hand: root push (green goal, orange striker, E) creates a
+    // defender obligation that ALSO pushes (orange striker, O direction) --
+    // its own inverse lands EXACTLY back on the goal cell, and closes as
+    // furniture there, with the goal's own color. generateLevelWithRng must
+    // never return this as a valid level.
+    const params: GenerationParams = {
+      launchCount: 2,
+      availableColors: ['green', 'orange'],
+      chainOriginProbability: 0,
+      decoyCount: 0,
+      seed: 0,
+      defenderContinuationProbability: 0.5,
+      maxGenerationAttempts: 1, // solo queremos observar ESTE intento concreto
+    };
+    const rng = scriptedRng([0, 0.5, 0.5, 0.5, 0, 0.3, 0.8, 0, 0.9, 0.9, 0.9]);
+
+    const result = generateLevelWithRng(params, rng);
+
+    expect(result).toEqual({ ok: false, attemptsUsed: 1 });
   });
 });
 

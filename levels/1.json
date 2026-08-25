@@ -2,40 +2,33 @@
   "pieces": [
     {
       "at": {
-        "row": 0,
-        "col": 3
-      },
-      "color": "orange"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 3
+        "row": 7,
+        "col": 6
       },
       "color": "green"
     }
   ],
   "hand": [
-    "brown",
+    "orange",
     "orange",
     "green"
   ],
   "goal": {
-    "color": "orange",
+    "color": "green",
     "cell": {
-      "row": 0,
-      "col": 3
+      "row": 1,
+      "col": 0
     }
   },
   "solution": [
     {
       "direction": "S",
-      "lane": 3,
+      "lane": 6,
       "pieceIndex": 0
     },
     {
-      "direction": "N",
-      "lane": 3,
+      "direction": "E",
+      "lane": 1,
       "pieceIndex": 0
     }
   ],

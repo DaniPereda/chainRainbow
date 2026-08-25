@@ -4,4 +4,4 @@ export type {
   GenerationResult,
   SolutionStep,
 } from './generate.js';
-export { generateLevel, generateLevelWithRng } from './generate.js';
+export { generateLevel, generateLevelWithRng, validatesForward } from './generate.js';
