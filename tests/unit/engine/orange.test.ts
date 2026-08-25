@@ -16,7 +16,7 @@ describe('orange: jumps 2 cells, intermediate cell untouched (FR-002, FR-003, FR
     expect(outcome.board.cells[3][5]).toEqual({ color: 'green', fragility: 'new' });
 
     // Impacted piece landed exactly 2 cells beyond the impact point.
-    expect(outcome.board.cells[3][6]).toEqual({ color: 'green', fragility: 'new' });
+    expect(outcome.board.cells[3][6]).toEqual({ color: 'green', fragility: 'cracked' });
 
     // The launched orange piece is consumed by its own impact -- it never
     // persists on the board, whatever the result (spec.md 006).
@@ -32,8 +32,8 @@ describe('orange: cascade -- each link uses the striking piece\'s own color (FR-
     const outcome = resolveLaunch(levelWithMixedColorCascade(), { direction: 'E', lane: 5 });
 
     expect(outcome.board.cells[5][4]).toBeNull(); // launcher consumed, never settles (spec.md 006)
-    expect(outcome.board.cells[5][6]).toEqual({ color: 'green', fragility: 'new' }); // first piece: pushed 2 (orange)
-    expect(outcome.board.cells[5][7]).toEqual({ color: 'orange', fragility: 'new' }); // second piece: pushed 1 (green), not 2
+    expect(outcome.board.cells[5][6]).toEqual({ color: 'green', fragility: 'cracked' }); // first piece: pushed 2 (orange)
+    expect(outcome.board.cells[5][7]).toEqual({ color: 'orange', fragility: 'cracked' }); // second piece: pushed 1 (green), not 2
   });
 });
 

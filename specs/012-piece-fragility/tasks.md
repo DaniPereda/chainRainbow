@@ -111,14 +111,16 @@ motor, headless.
       golpeada por rojo avanza su fragilidad una vez (mismo `advance()` de T008) antes de
       dividirse; ambas ramas heredan ese estado ya avanzado; cada rama comprueba `'broken'`
       antes de asentarse, igual que en T008. Depende de T008. Hace pasar T007.
-- [ ] T010 [US1] Revisar las 22 aserciones actualizadas en T004 (`brown.test.ts`,
+- [X] T010 [US1] Revisar las 22 aserciones actualizadas en T004 (`brown.test.ts`,
       `orange.test.ts`, `red.test.ts`, `wrap-around.test.ts`, `launch.test.ts`,
       `session.test.ts`): cualquier ficha que la propia cascada de ESE test golpee de verdad
       pasa a `fragility: 'cracked'`; las que no participan en ninguna colisión de ese lanzamiento
-      se quedan en `'new'`. Depende de T008, T009.
-- [ ] T011 [US1] Ejecutar `npm test && npm run typecheck`: T006, T007 y T010 en verde, y el
+      se quedan en `'new'`. Depende de T008, T009. (También cubrió 5 aserciones equivalentes en
+      brown.test.ts traídas por el rebase de T007, no contadas en el recuento original de 22.)
+- [X] T011 [US1] Ejecutar `npm test && npm run typecheck`: T006, T007 y T010 en verde, y el
       resto de la suite (niveles del prototipo, generador si aplica) sigue pasando sin cambios
-      de comportamiento fuera de lo tocado por esta historia. Depende de T010.
+      de comportamiento fuera de lo tocado por esta historia. Depende de T010. **95/95 tests,
+      typecheck limpio.**
 
 **Checkpoint**: el mecanismo de desgaste y ruptura está completo y probado — MVP de esta
 feature.

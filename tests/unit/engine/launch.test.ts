@@ -47,7 +47,7 @@ describe('resolveLaunch: pieceIndex selects which hand piece is used (FR-003)', 
     const outcome = resolveLaunch(level, launch, 1);
 
     expect(outcome.board.cells[3][3]).toBeNull();
-    expect(outcome.board.cells[3][5]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(outcome.board.cells[3][5]).toEqual({ color: 'brown', fragility: 'cracked' });
     expect(outcome.hand.pieces).toEqual([{ color: 'green', fragility: 'new' }]);
   });
 

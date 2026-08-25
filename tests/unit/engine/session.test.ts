@@ -44,7 +44,7 @@ describe('LevelSession: tracks a play-through of a level across launches', () =>
 
     expect(outcome.result).toBe('won');
     expect(after.status).toBe('won');
-    expect(after.current.board.cells[4][5]).toEqual({ color: 'orange', fragility: 'new' });
+    expect(after.current.board.cells[4][5]).toEqual({ color: 'orange', fragility: 'cracked' });
   });
 
   it('a missclick leaves the current state unchanged and the session undetermined', () => {
@@ -110,7 +110,7 @@ describe('selectHandPiece: marks any valid hand position as the one to launch ne
     const { session: after } = applySessionLaunch(session, { direction: 'E', lane: 2 });
 
     expect(after.current.board.cells[2][2]).toBeNull();
-    expect(after.current.board.cells[2][4]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(after.current.board.cells[2][4]).toEqual({ color: 'brown', fragility: 'cracked' });
     expect(after.current.hand.pieces).toEqual([{ color: 'green', fragility: 'new' }]);
   });
 });
