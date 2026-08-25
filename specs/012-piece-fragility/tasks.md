@@ -99,7 +99,7 @@ motor, headless.
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] `src/engine/pieces/push.ts`, `resolveStrike` — añadir
+- [X] T008 [US1] `src/engine/pieces/push.ts`, `resolveStrike` — añadir
       `advance(f: 'new' | 'cracked'): 'cracked' | 'broken'` (tipado para excluir `'broken'` de
       la entrada, research.md); avanzar la fragilidad de la defensora justo donde ya se
       determina que va a ser desplazada (antes de calcular `to`); comprobar `fragility ===
@@ -107,7 +107,7 @@ motor, headless.
       este nivel de recursión (en su propia casilla, la que la defensora deja libre) como la
       defensora en su destino (condicionado también, como hoy, a que no se haya aniquilado por
       mismo color). Depende de T005. Hace pasar T006.
-- [ ] T009 [US1] `src/engine/pieces/push.ts`, `resolveSplit`/`resolveBranch` — la defensora
+- [X] T009 [US1] `src/engine/pieces/push.ts`, `resolveSplit`/`resolveBranch` — la defensora
       golpeada por rojo avanza su fragilidad una vez (mismo `advance()` de T008) antes de
       dividirse; ambas ramas heredan ese estado ya avanzado; cada rama comprueba `'broken'`
       antes de asentarse, igual que en T008. Depende de T008. Hace pasar T007.
