@@ -38,12 +38,12 @@ generador, aunque los tests del algoritmo en sí inyecten un `rng` guionizado) y
 
 **⚠️ CRITICAL**: Ninguna historia empieza hasta cerrar esta fase.
 
-- [ ] T001 En `tsconfig.json`, añadir `"tools"` al array `include`, para que
+- [X] T001 En `tsconfig.json`, añadir `"tools"` al array `include`, para que
       `npm run typecheck` cubra el código nuevo. Sin ningún otro cambio de configuración.
-- [ ] T002 [P] `tests/unit/tools/generator/rng.test.ts`: la misma semilla produce siempre la
+- [X] T002 [P] `tests/unit/tools/generator/rng.test.ts`: la misma semilla produce siempre la
       misma secuencia de valores; semillas distintas producen secuencias distinguibles. Fallará
       hasta T003.
-- [ ] T003 `tools/generator/rng.ts`: PRNG determinista con semilla (mulberry32 o equivalente,
+- [X] T003 `tools/generator/rng.ts`: PRNG determinista con semilla (mulberry32 o equivalente,
       research.md — sin dependencia externa nueva). Depende de T001. Hace pasar T002.
 
 **Checkpoint**: existe una fuente de aleatoriedad reproducible — las historias pueden empezar.
@@ -62,42 +62,42 @@ reproducida con `resolveLaunch` del motor real, siempre da `result:'won'`.
 
 ### Tests for User Story 1 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T004 [P] [US1] `tests/unit/tools/generator/inverses.test.ts`: inversos de verde y naranja
+- [X] T004 [P] [US1] `tests/unit/tools/generator/inverses.test.ts`: inversos de verde y naranja
       (unívocos, con wrap-around); marrón en modo "asentamiento directo" (solo válido si la
       casilla de llegada es el borde lejano de su carril — research.md); marrón en modo "destino
       ocupado" (conjunto de candidatos con camino despejado hacia una casilla ya ocupada).
       Fallará hasta T007.
-- [ ] T005 [P] [US1] `tests/unit/tools/generator/obligations.test.ts`: resolver una obligación
+- [X] T005 [P] [US1] `tests/unit/tools/generator/obligations.test.ts`: resolver una obligación
       con un empuje encola dos obligaciones independientes en la misma casilla (defensor y
       origen del golpeador, cada una con su propio color); el golpeador elegido nunca puede
       coincidir con el color de la obligación que resuelve; cerrar una obligación de origen de
       golpeador como lanzamiento de mano exige camino despejado desde el borde de entrada.
       Fallará hasta T008.
-- [ ] T006 [P] [US1] `tests/unit/tools/generator/generate.test.ts`: fixtures 1, 2 y 3 de
+- [X] T006 [P] [US1] `tests/unit/tools/generator/generate.test.ts`: fixtures 1, 2 y 3 de
       data-model.md con `rng` guionizado — cada una produce el `GeneratedLevel` exacto esperado,
       y reproducir su `solution` con `resolveLaunch` del motor real da `result:'won'`. Fallará
       hasta T009.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] `tools/generator/inverses.ts`: inversos de verde/naranja/marrón según
+- [X] T007 [US1] `tools/generator/inverses.ts`: inversos de verde/naranja/marrón según
       research.md/data-model.md (importando `step`/`stepBy`/`stepUntilBlocked`/`wrapCoordinate`
       directamente de `src/engine/move-step.js`/`src/engine/board.js`, mismo patrón que ya usan
       los tests del motor — sin tocar `src/engine/index.ts`). Depende de T003. Hace pasar T004.
-- [ ] T008 [US1] `tools/generator/obligations.ts`: tipos `Obligation`/`SolutionStep`, la cola, y
+- [X] T008 [US1] `tools/generator/obligations.ts`: tipos `Obligation`/`SolutionStep`, la cola, y
       la resolución de obligaciones defensor y origen-de-golpeador (exclusión de mismo color,
       dirección heredada vs. nueva, requisito de camino despejado desde el borde). Depende de
       T007. Hace pasar T005.
-- [ ] T009 [US1] `tools/generator/generate.ts`: el bucle completo — elegir objetivo (color +
+- [X] T009 [US1] `tools/generator/generate.ts`: el bucle completo — elegir objetivo (color +
       casilla) con el `rng`, encolar la obligación inicial (siempre resuelta con un empuje),
       drenar la cola, revertir el orden de los `SolutionStep` recogidos y asignarles su
       `pieceIndex`, reproducir la traza completa con `resolveLaunch` del motor real, y la
       política de descartar-y-reintentar (FR-007) hasta `maxGenerationAttempts`. Depende de
       T008. Hace pasar T006.
-- [ ] T010 [US1] `tools/generator/index.ts`: reexporta `generateLevel` y los tipos públicos
+- [X] T010 [US1] `tools/generator/index.ts`: reexporta `generateLevel` y los tipos públicos
       (`GenerationParams`, `GeneratedLevel`, `SolutionStep`, `GenerationResult`). Depende de
       T009.
-- [ ] T011 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T002, T004, T005 y T006
+- [X] T011 [US1] Ejecutar `npm test && npm run typecheck`: confirmar que T002, T004, T005 y T006
       pasan (verde) y que el resto de la suite (motor, niveles del prototipo) sigue en verde sin
       cambios de comportamiento. Depende de T009, T010.
 
@@ -118,13 +118,13 @@ reproducirlo con el motor real.
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Fixture con `launchCount:2` en `generate.test.ts`, `rng` guionizado para
+- [X] T012 [US2] Fixture con `launchCount:2` en `generate.test.ts`, `rng` guionizado para
       producir dos cadenas independientes (dos lanzamientos de mano distintos, cada uno con su
       propia obligación inicial y su propio empuje) — confirma que el contador `launchesUsed`
       controla correctamente más de un lanzamiento. Depende de T009 — verificación pura de la
       misma implementación de US1, sin código nuevo (mismo patrón que las features
       007/008/009/010).
-- [ ] T013 [US2] Fixture de profundidad de cadena en `obligations.test.ts`: una obligación de
+- [X] T013 [US2] Fixture de profundidad de cadena en `obligations.test.ts`: una obligación de
       origen de golpeador que decide continuación varias veces seguidas antes de forzarse a
       lanzamiento de mano al alcanzar `maxChainDepth`. Depende de T008 — verificación pura.
 
@@ -144,13 +144,13 @@ referenciada por ningún `pieceIndex` de la solución.
 
 ### Tests for User Story 3 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T014 [P] [US3] Fixture en `generate.test.ts`: `decoyCount:2` produce una mano final con 2
+- [X] T014 [P] [US3] Fixture en `generate.test.ts`: `decoyCount:2` produce una mano final con 2
       fichas más que la secuencia de referencia necesita, y ninguna de ellas es referenciada por
       ningún `pieceIndex` de `solution`. Fallará hasta T015.
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] En `tools/generator/generate.ts`, añadir el paso de fichas señuelo tras validar
+- [X] T015 [US3] En `tools/generator/generate.ts`, añadir el paso de fichas señuelo tras validar
       la construcción real: `decoyCount` fichas de colores aleatorios (de `availableColors`)
       añadidas al final de la mano, sin recalcular ningún `pieceIndex` ya asignado (research.md).
       Depende de T009. Hace pasar T014.
@@ -161,22 +161,22 @@ referenciada por ningún `pieceIndex` de la solución.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] `tools/generator/cli.ts`: envoltorio de línea de comandos — parsea
+- [X] T016 [P] `tools/generator/cli.ts`: envoltorio de línea de comandos — parsea
       `--launches`/`--colors`/`--seed`/`--chain-origin-probability`/`--decoys`, llama a
       `generateLevel`, imprime el `GeneratedLevel` (o el fallo) por stdout como JSON. Depende de
       T010.
-- [ ] T017 [P] Edge cases de spec.md en `generate.test.ts`: `launchCount:0` se rechaza como
+- [X] T017 [P] Edge cases de spec.md en `generate.test.ts`: `launchCount:0` se rechaza como
       entrada inválida (no se trata como nivel trivial); agotar `maxGenerationAttempts` sin éxito
       devuelve `{ok:false, attemptsUsed}` sin lanzar una excepción ni devolver un nivel a medio
       construir. Depende de T009.
-- [ ] T018 Regresión estadística de quickstart.md: generar al menos 50 niveles con semillas
+- [X] T018 Regresión estadística de quickstart.md: generar al menos 50 niveles con semillas
       distintas (`launchCount:1`, subconjuntos variados de colores) y confirmar que el 100%
       reproduce `result:'won'` al validar su `solution` con el motor real (SC-001/SC-004).
       Depende de T009.
-- [ ] T019 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
+- [X] T019 Ejecutar `npm test && npm run typecheck && npm run build`: confirmar el recuento final
       de tests y que el build del cliente sigue limpio. Depende de T011, T012, T013, T015, T017,
       T018.
-- [ ] T020 Verificar que `src/renderer/` sigue sin importar nada de `tools/` — mismo `grep` de
+- [X] T020 Verificar que `src/renderer/` sigue sin importar nada de `tools/` — mismo `grep` de
       siempre, extendido a esta carpeta nueva (quickstart.md).
 
 ---

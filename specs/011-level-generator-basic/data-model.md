@@ -77,8 +77,11 @@ export type GenerationResult =
    distinto (el defensor `C`, el golpeador `S`) y se resuelve de forma completamente
    independiente en un ciclo posterior del bucle (paso 3).
 5. Al vaciar la cola: revertir el orden de los `SolutionStep` recogidos (se descubren en orden
-   inverso al de juego real — el primero descubierto es el ÚLTIMO lanzamiento real) y asignar a
-   cada uno el `pieceIndex` correspondiente a su posición en la mano final.
+   inverso al de juego real — el primero descubierto es el ÚLTIMO lanzamiento real). El
+   `pieceIndex` de CADA paso es siempre `0`: cada lanzamiento consume la primera ficha de la
+   mano restante en ese momento (`takePieceAt` la retira, desplazando el resto), y las fichas de
+   la solución siempre ocupan el frente de la mano — nunca la posición según el índice original
+   de la mano completa.
 6. Reproducir la traza completa con el motor real (`resolveLaunch` en cada paso, en el orden ya
    corregido). Si el resultado final no coincide exactamente (mismo tablero, `result: 'won'`),
    descartar TODO el intento y empezar de nuevo desde el paso 1 (spec.md FR-007), hasta

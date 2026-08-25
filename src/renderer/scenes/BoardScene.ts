@@ -8,10 +8,33 @@ import {
   selectHandPiece,
   startSession,
   type Direction,
+  type Level,
   type LevelSession,
 } from '../../engine/index.js';
 
-type BoardSceneData = { levelId: number };
+/**
+ * Además de un nivel del prototipo (por id), BoardScene puede cargar un `Level`
+ * ya construido directamente -- la vía que usa el visor de niveles generados
+ * (dev-levels.html), que nunca pasa por PROTOTYPE_LEVELS. `backSceneKey` decide
+ * a qué escena vuelve el botón "< Niveles"/"Volver al selector", ya que cada
+ * origen tiene su propio selector.
+ *
+ * `previousId`/`nextId`/`onNavigate` son opcionales: cualquier fuente cuyos
+ * niveles tengan id numérico consecutivo (como `levels/index.json`) puede
+ * ofrecer la misma navegación "‹ Anterior/Siguiente ›" que ya tiene el
+ * prototipo, sin que BoardScene necesite saber nada de esa fuente -- calcular
+ * los vecinos y cargar el nivel correspondiente es responsabilidad de quien
+ * llama (la propia escena selectora), no de BoardScene.
+ */
+type BoardSceneData =
+  | { levelId: number }
+  | {
+      level: Level;
+      backSceneKey: string;
+      previousId?: number;
+      nextId?: number;
+      onNavigate?: (id: number) => void;
+    };
 
 const EDGE_SIZE = 20;
 const EDGE_GAP = 6;
@@ -65,7 +88,12 @@ function edgeMarkers(
 }
 
 export class BoardScene extends Phaser.Scene {
-  private levelId = 1;
+  private levelId: number | null = null;
+  private customLevel: Level | null = null;
+  private backSceneKey = 'LevelSelectScene';
+  private customPreviousId: number | null = null;
+  private customNextId: number | null = null;
+  private onNavigate: ((id: number) => void) | null = null;
   private session!: LevelSession;
   private boardGraphics!: Phaser.GameObjects.Graphics;
   private handGraphics!: Phaser.GameObjects.Graphics;
@@ -79,19 +107,39 @@ export class BoardScene extends Phaser.Scene {
   }
 
   init(data: BoardSceneData): void {
-    this.levelId = data.levelId;
+    if ('level' in data) {
+      this.levelId = null;
+      this.customLevel = data.level;
+      this.backSceneKey = data.backSceneKey;
+      this.customPreviousId = data.previousId ?? null;
+      this.customNextId = data.nextId ?? null;
+      this.onNavigate = data.onNavigate ?? null;
+    } else {
+      this.levelId = data.levelId;
+      this.customLevel = null;
+      this.backSceneKey = 'LevelSelectScene';
+      this.customPreviousId = null;
+      this.customNextId = null;
+      this.onNavigate = null;
+    }
   }
 
   create(): void {
-    const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
-    const entry = PROTOTYPE_LEVELS[levelIndex];
-    if (entry === undefined) {
-      throw new Error(`No existe el nivel ${this.levelId}`);
+    let initialLevel: Level;
+
+    if (this.customLevel !== null) {
+      initialLevel = this.customLevel;
+    } else {
+      const entry = PROTOTYPE_LEVELS.find((candidate) => candidate.id === this.levelId);
+      if (entry === undefined) {
+        throw new Error(`No existe el nivel ${this.levelId}`);
+      }
+      initialLevel = entry.level;
     }
 
     // FR-012: cada entrada a un nivel (primera vez o tras volver) parte de su
     // definición inicial -- no se reutiliza ningún estado de una partida anterior.
-    this.session = startSession(entry.level);
+    this.session = startSession(initialLevel);
 
     this.boardOriginX = (this.scale.width - BOARD_PIXELS) / 2;
     this.boardGraphics = this.add.graphics({ x: this.boardOriginX, y: this.boardOriginY });
@@ -122,7 +170,7 @@ export class BoardScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     backButton.on('pointerdown', () => {
-      this.scene.start('LevelSelectScene');
+      this.scene.start(this.backSceneKey);
     });
   }
 
@@ -210,17 +258,38 @@ export class BoardScene extends Phaser.Scene {
     const overlayObjects: Phaser.GameObjects.GameObject[] = [backdrop, text, restartButton, backButton];
 
     // Navegación directa entre niveles consecutivos desde la propia ventana de
-    // resultado, sin pasar por el selector -- por orden en PROTOTYPE_LEVELS, no
-    // por aritmética sobre el id (el id es simplemente el número que ve el
-    // jugador). Ausente en los extremos (nivel 1 no tiene anterior, el último no
-    // tiene siguiente) en vez de deshabilitado, para no sugerir una acción que no
-    // puede completarse.
-    const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
-    const previousLevel = PROTOTYPE_LEVELS[levelIndex - 1];
-    const nextLevel = PROTOTYPE_LEVELS[levelIndex + 1];
+    // resultado, sin pasar por el selector -- por id numérico, sea cual sea la
+    // fuente (PROTOTYPE_LEVELS o cualquier otra con ids consecutivos, como
+    // levels/index.json). Ausente en los extremos en vez de deshabilitado, para
+    // no sugerir una acción que no puede completarse. BoardScene no decide QUÉ
+    // vecino existe ni CÓMO cargarlo -- eso lo calcula quien la invocó.
     const navY = height / 2 + 56;
+    let onPrevious: (() => void) | null = null;
+    let onNext: (() => void) | null = null;
 
-    if (previousLevel !== undefined) {
+    if (this.customLevel === null) {
+      const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
+      const previousLevel = PROTOTYPE_LEVELS[levelIndex - 1];
+      const nextLevel = PROTOTYPE_LEVELS[levelIndex + 1];
+      if (previousLevel !== undefined) {
+        onPrevious = () => this.scene.start('BoardScene', { levelId: previousLevel.id });
+      }
+      if (nextLevel !== undefined) {
+        onNext = () => this.scene.start('BoardScene', { levelId: nextLevel.id });
+      }
+    } else if (this.onNavigate !== null) {
+      const navigate = this.onNavigate;
+      if (this.customPreviousId !== null) {
+        const id = this.customPreviousId;
+        onPrevious = () => navigate(id);
+      }
+      if (this.customNextId !== null) {
+        const id = this.customNextId;
+        onNext = () => navigate(id);
+      }
+    }
+
+    if (onPrevious !== null) {
       const previousButton = this.add
         .text(width / 2 - 90, navY, '‹ Anterior', {
           fontSize: '18px',
@@ -231,14 +300,11 @@ export class BoardScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
-      previousButton.on('pointerdown', () => {
-        this.scene.start('BoardScene', { levelId: previousLevel.id });
-      });
-
+      previousButton.on('pointerdown', onPrevious);
       overlayObjects.push(previousButton);
     }
 
-    if (nextLevel !== undefined) {
+    if (onNext !== null) {
       const nextButton = this.add
         .text(width / 2 + 90, navY, 'Siguiente ›', {
           fontSize: '18px',
@@ -249,10 +315,7 @@ export class BoardScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
 
-      nextButton.on('pointerdown', () => {
-        this.scene.start('BoardScene', { levelId: nextLevel.id });
-      });
-
+      nextButton.on('pointerdown', onNext);
       overlayObjects.push(nextButton);
     }
 
@@ -269,7 +332,7 @@ export class BoardScene extends Phaser.Scene {
 
     // FR-011: volver al selector desde la ventana de resultado.
     backButton.on('pointerdown', () => {
-      this.scene.start('LevelSelectScene');
+      this.scene.start(this.backSceneKey);
     });
   }
 }

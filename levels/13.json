@@ -1,0 +1,108 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 0,
+        "col": 4
+      },
+      "color": "orange"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 2
+      },
+      "color": "green"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 2
+      },
+      "color": "brown"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 1
+      },
+      "color": "orange"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 3
+      },
+      "color": "green"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 5
+      },
+      "color": "green"
+    }
+  ],
+  "hand": [
+    "brown",
+    "green",
+    "brown",
+    "green",
+    "green",
+    "green",
+    "brown",
+    "green"
+  ],
+  "goal": {
+    "color": "brown",
+    "cell": {
+      "row": 6,
+      "col": 3
+    }
+  },
+  "solution": [
+    {
+      "direction": "O",
+      "lane": 7,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 4,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 2,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 7,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 7,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 3,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "launchCount": 6,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown"
+    ],
+    "chainOriginProbability": 0.5,
+    "decoyCount": 2,
+    "boardDecoyProbability": 0,
+    "maxGenerationAttempts": 5000,
+    "seed": 13
+  }
+}
