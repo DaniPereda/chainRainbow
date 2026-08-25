@@ -39,6 +39,9 @@ const availableColors = (flags.get('colors') ?? 'green,orange,brown')
 const chainOriginProbability = Number(flags.get('chain-origin-probability') ?? '0.5');
 const decoyCount = Number(flags.get('decoys') ?? '0');
 const boardDecoyProbability = Number(flags.get('board-decoy-probability') ?? '0');
+const maxGenerationAttemptsRaw = flags.get('max-attempts');
+const maxGenerationAttempts =
+  maxGenerationAttemptsRaw === undefined ? undefined : Number(maxGenerationAttemptsRaw);
 
 if (!existsSync(LEVELS_DIR)) mkdirSync(LEVELS_DIR, { recursive: true });
 
@@ -55,6 +58,7 @@ for (let i = 0; i < count; i++) {
     chainOriginProbability,
     decoyCount,
     boardDecoyProbability,
+    maxGenerationAttempts,
     seed: id,
   });
 

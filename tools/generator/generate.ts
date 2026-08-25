@@ -72,19 +72,33 @@ export function validatesForward(level: Level, solution: SolutionStep[]): boolea
   }
 
   let current = level;
-  for (let i = 0; i < solution.length; i++) {
-    const step = solution[i];
-    const outcome = resolveLaunch(current, { direction: step.direction, lane: step.lane }, step.pieceIndex);
-    if (outcome.missclick) return false;
-    current = { board: outcome.board, hand: outcome.hand, goal: current.goal };
+  try {
+    for (let i = 0; i < solution.length; i++) {
+      const step = solution[i];
+      const outcome = resolveLaunch(current, { direction: step.direction, lane: step.lane }, step.pieceIndex);
+      if (outcome.missclick) return false;
+      current = { board: outcome.board, hand: outcome.hand, goal: current.goal };
 
-    const isLastStep = i === solution.length - 1;
-    if (isLastStep) {
-      return outcome.result === 'won';
+      const isLastStep = i === solution.length - 1;
+      if (isLastStep) {
+        return outcome.result === 'won';
+      }
+      if (outcome.result !== 'undetermined') {
+        return false; // victoria/derrota antes de agotar la secuencia de referencia
+      }
     }
-    if (outcome.result !== 'undetermined') {
-      return false; // victoria/derrota antes de agotar la secuencia de referencia
-    }
+  } catch {
+    // El motor real puede entrar en una cascada sin fin ante ciertas
+    // adyacencias con marrón en un carril por lo demás vacío (bug de motor
+    // real, no del generador -- ver hallazgo de esta sesión: marrón, al
+    // convertirse en el "golpeador" de una cadena, excluye por identidad solo
+    // la ficha que transporta, y su propio paseo puede dar una vuelta
+    // completa al carril y volver a topar con la ficha que lo golpeó,
+    // repitiendo la misma colisión indefinidamente porque el tablero no se
+    // muta hasta que la recursión empieza a deshacerse). Se trata como
+    // cualquier otra discrepancia de reproducción (FR-007): el intento
+    // entero se descarta, sin tocar `src/engine/`.
+    return false;
   }
   return false; // solution vacía -- no debería ocurrir con launchCount >= 1
 }

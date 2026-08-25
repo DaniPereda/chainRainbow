@@ -20,8 +20,19 @@ function parseArgs(argv: string[]): GenerationParams {
   const chainOriginProbability = Number(flags.get('chain-origin-probability') ?? '0.5');
   const decoyCount = Number(flags.get('decoys') ?? '0');
   const boardDecoyProbability = Number(flags.get('board-decoy-probability') ?? '0');
+  const maxGenerationAttemptsRaw = flags.get('max-attempts');
+  const maxGenerationAttempts =
+    maxGenerationAttemptsRaw === undefined ? undefined : Number(maxGenerationAttemptsRaw);
 
-  return { launchCount, availableColors, seed, chainOriginProbability, decoyCount, boardDecoyProbability };
+  return {
+    launchCount,
+    availableColors,
+    seed,
+    chainOriginProbability,
+    decoyCount,
+    boardDecoyProbability,
+    maxGenerationAttempts,
+  };
 }
 
 const result = generateLevel(parseArgs(process.argv.slice(2)));
