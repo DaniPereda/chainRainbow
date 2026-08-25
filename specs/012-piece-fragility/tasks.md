@@ -182,15 +182,23 @@ cuál está más desgastada (SC-001).
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] `src/renderer/board-view.ts`, `drawBoard` — añadir una variación visual por
+- [X] T016 [US3] `src/renderer/board-view.ts`, `drawBoard` — añadir una variación visual por
       `piece.fragility` (opacidad, borde o anillo superpuesto sobre el relleno de color ya
       existente — decisión de tratamiento concreto en esta misma tarea) sin introducir ninguna
-      lógica de reglas (Principio I). Depende de T015.
-- [ ] T017 [US3] Validación manual (`quickstart.md`, "Validación visual"): `npm run dev`,
+      lógica de reglas (Principio I). Depende de T015. Tratamiento elegido: CRACKED reduce la
+      opacidad del relleno (0.55) y añade un borde oscuro; BROKEN (nunca debería llegar a
+      dibujarse -- se elimina en el motor antes de asentarse, FR-004) usa el mismo patrón con
+      más énfasis, para no dejar el caso sin definir. `npm run typecheck`/`npm run build`
+      limpios.
+- [~] T017 [US3] Validación manual (`quickstart.md`, "Validación visual"): `npm run dev`,
       confirmar que dos fichas del mismo color en distinto estado se distinguen sin acción
       adicional, y que una ficha desaparece del tablero justo en el instante en que le toca
       asentarse rota, no antes ni en una limpieza aparte. Depende de T016. Sin cobertura Vitest
       propia (mismo criterio ya establecido para `drawBoard`, comentario en el propio fichero).
+      **Parcial**: confirmado que el servidor de desarrollo arranca y sirve la página sin
+      errores (`npm run dev`, HTTP 200), pero esta sesión no tiene acceso a un navegador para
+      confirmar visualmente el resultado en el canvas de Phaser -- pendiente de que el usuario
+      lo confirme a simple vista.
 
 **Checkpoint**: la fragilidad es visible para el jugador — Historias 1, 2 y 3 completas.
 

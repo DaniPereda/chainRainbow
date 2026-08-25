@@ -13,6 +13,17 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
 
 const GRID_LINE_COLOR = 0x444444;
 
+// FR-014 (fragilidad, Historia 3): una ficha CRACKED se dibuja con menos opacidad de
+// relleno y un borde oscuro alrededor -- distinguible sin ninguna acción del jugador
+// (SC-001), sin introducir ninguna regla nueva aquí (Principio I: el renderer solo lee
+// `piece.fragility`, ya calculado por el motor). BROKEN nunca debería llegar a
+// dibujarse -- una ficha rota se elimina en el motor antes de asentarse (FR-004) -- pero
+// se trata igual que CRACKED, con más énfasis, para no dejar el caso sin definir.
+const CRACKED_FILL_ALPHA = 0.55;
+const CRACKED_BORDER_COLOR = 0x1a1a1a;
+const BROKEN_FILL_ALPHA = 0.3;
+const BROKEN_BORDER_COLOR = 0x000000;
+
 /**
  * Draws a Board + Goal (engine state) onto a Phaser Graphics object as plain
  * shapes -- no image assets. Deterministic given the same inputs; the only side
@@ -44,12 +55,21 @@ export function drawBoard(
     for (let col = 0; col < board.size; col++) {
       const piece = board.cells[row][col];
       if (piece === null) continue;
-      graphics.fillStyle(PIECE_COLOR[piece.color], 1);
-      graphics.fillCircle(
-        col * CELL_SIZE + CELL_SIZE / 2,
-        row * CELL_SIZE + CELL_SIZE / 2,
-        CELL_SIZE / 2 - 6,
-      );
+
+      const centerX = col * CELL_SIZE + CELL_SIZE / 2;
+      const centerY = row * CELL_SIZE + CELL_SIZE / 2;
+      const radius = CELL_SIZE / 2 - 6;
+
+      const fillAlpha =
+        piece.fragility === 'broken' ? BROKEN_FILL_ALPHA : piece.fragility === 'cracked' ? CRACKED_FILL_ALPHA : 1;
+      graphics.fillStyle(PIECE_COLOR[piece.color], fillAlpha);
+      graphics.fillCircle(centerX, centerY, radius);
+
+      if (piece.fragility !== 'new') {
+        const borderColor = piece.fragility === 'broken' ? BROKEN_BORDER_COLOR : CRACKED_BORDER_COLOR;
+        graphics.lineStyle(2, borderColor, 1);
+        graphics.strokeCircle(centerX, centerY, radius);
+      }
     }
   }
 }
