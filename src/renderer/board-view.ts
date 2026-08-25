@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { Board, Goal, PieceColor } from '../engine/index.js';
+import type { Board, Fragility, Goal, PieceColor } from '../engine/index.js';
 
 export const CELL_SIZE = 48;
 export const BOARD_PIXELS = CELL_SIZE * 8;
@@ -58,6 +58,31 @@ function drawCrack(
 }
 
 /**
+ * Draws the fragility marking for a single piece already filled at
+ * `(centerX, centerY)` with the given `radius` -- shared between the board
+ * (`drawBoard`) and the hand (`hand-panel.ts`'s `drawHand`), so a BROKEN piece
+ * looks the same wherever it's shown. Board pieces should never actually be
+ * BROKEN (FR-004 removes one before it would settle), but a hand piece can be
+ * dealt already-BROKEN (FR-008/FR-011) and stays there, visible, until it's
+ * thrown -- so this needs to handle both states for real, not just for
+ * completeness.
+ */
+export function drawPieceFragility(
+  graphics: Phaser.GameObjects.Graphics,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  fragility: Fragility,
+): void {
+  if (fragility === 'cracked') {
+    drawCrack(graphics, centerX, centerY, radius, 0);
+  } else if (fragility === 'broken') {
+    drawCrack(graphics, centerX, centerY, radius, 0);
+    drawCrack(graphics, centerX, centerY, radius, Math.PI / 2);
+  }
+}
+
+/**
  * Draws a Board + Goal (engine state) onto a Phaser Graphics object as plain
  * shapes -- no image assets. Deterministic given the same inputs; the only side
  * effect is drawing onto `graphics`, so it doesn't need its own Vitest coverage
@@ -95,13 +120,7 @@ export function drawBoard(
 
       graphics.fillStyle(PIECE_COLOR[piece.color], 1);
       graphics.fillCircle(centerX, centerY, radius);
-
-      if (piece.fragility === 'cracked') {
-        drawCrack(graphics, centerX, centerY, radius, 0);
-      } else if (piece.fragility === 'broken') {
-        drawCrack(graphics, centerX, centerY, radius, 0);
-        drawCrack(graphics, centerX, centerY, radius, Math.PI / 2);
-      }
+      drawPieceFragility(graphics, centerX, centerY, radius, piece.fragility);
     }
   }
 }
