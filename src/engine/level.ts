@@ -22,13 +22,13 @@ export function createLevel(config: {
   goal: PiecePlacement;
 }): Level {
   const board = config.pieces.reduce(
-    (boardSoFar, { at, color }) => setPieceAt(boardSoFar, at, { color }),
+    (boardSoFar, { at, color }) => setPieceAt(boardSoFar, at, { color, fragility: 'new' }),
     createBoard(),
   );
 
   return {
     board,
-    hand: { pieces: config.hand.map((color) => ({ color })) },
+    hand: { pieces: config.hand.map((color) => ({ color, fragility: 'new' })) },
     goal: { targetColor: config.goal.color, targetCell: config.goal.at },
   };
 }

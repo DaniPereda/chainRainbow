@@ -42,27 +42,29 @@ esto rompe la compilación de cualquier sitio que construya un `Piece` a mano ha
 actualice, y las aserciones `toEqual({color:...})` sobre fichas del tablero en los tests ya
 existentes dejan de ser una igualdad exacta hasta añadirles `fragility`.
 
-- [ ] T001 En `src/engine/board.ts`, añadir `export type Fragility = 'new' | 'cracked' | 'broken'`
+- [X] T001 En `src/engine/board.ts`, añadir `export type Fragility = 'new' | 'cracked' | 'broken'`
       y extender `Piece` a `{ color: PieceColor; fragility: Fragility }` (data-model.md).
-- [ ] T002 [P] En `src/engine/level.ts`, `createLevel` — actualizar la construcción interna de
+- [X] T002 [P] En `src/engine/level.ts`, `createLevel` — actualizar la construcción interna de
       fichas (tablero y mano) para satisfacer el nuevo campo obligatorio, usando siempre
       `fragility: 'new'`. Firma pública sin cambios todavía (`pieces: PiecePlacement[]`,
       `hand: PieceColor[]`, `goal: PiecePlacement`) — ningún comportamiento ni capacidad nueva
       expuesta aún, eso es trabajo de US4. Depende de T001.
-- [ ] T003 [P] En `src/engine/pieces/push.ts`, `resolveBranch` — su construcción de ficha
+- [X] T003 [P] En `src/engine/pieces/push.ts`, `resolveBranch` — su construcción de ficha
       (`const piece: Piece = { color }`) pasa a `{ color, fragility: 'new' }`. Mismo criterio que
       T002: arreglo mecánico para compilar, sin lógica de avance/rotura todavía (eso es US1).
       Depende de T001.
-- [ ] T004 [P] Actualizar las 22 aserciones `toEqual({ color: ... })` sobre fichas de tablero ya
+- [X] T004 [P] Actualizar las 22 aserciones `toEqual({ color: ... })` sobre fichas de tablero ya
       existentes en `tests/unit/engine/brown.test.ts`, `orange.test.ts`, `red.test.ts`,
       `wrap-around.test.ts`, `launch.test.ts` y `session.test.ts` a
       `toEqual({ color: ..., fragility: 'new' })` — correcto en este punto exacto del código,
       porque todavía no existe ninguna lógica que avance la fragilidad de nadie. Depende de
       T001 (no depende de T002/T003 para poder escribirse, aunque si depende de ellas para que
-      la suite compile).
-- [ ] T005 Ejecutar `npm run typecheck && npm test`: la suite completa vuelve a estar en verde,
+      la suite compile). También hizo falta un arreglo mecánico equivalente en
+      `move-step.test.ts` (construcción directa de `Piece`, no detectado en el recuento inicial
+      de 22 -- ver Notes).
+- [X] T005 Ejecutar `npm run typecheck && npm test`: la suite completa vuelve a estar en verde,
       sin ningún cambio de comportamiento respecto a antes de esta feature. Depende de T002, T003,
-      T004.
+      T004. **87/87 tests, typecheck limpio.**
 
 **Checkpoint**: el tipo existe, todo compila y la suite pasa exactamente igual que antes —
 listo para que las historias añadan comportamiento real.

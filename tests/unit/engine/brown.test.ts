@@ -18,8 +18,8 @@ describe('brown: walks much farther than green or orange, checking every cell (F
     const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
 
     expect(outcome.board.cells[0][1]).toBeNull(); // vacated by the pushed green
-    expect(outcome.board.cells[0][5]).toEqual({ color: 'green' }); // walked here, far past orange's reach
-    expect(outcome.board.cells[0][6]).toEqual({ color: 'orange' }); // pushed onward by green's own distance (1)
+    expect(outcome.board.cells[0][5]).toEqual({ color: 'green', fragility: 'new' }); // walked here, far past orange's reach
+    expect(outcome.board.cells[0][6]).toEqual({ color: 'orange', fragility: 'new' }); // pushed onward by green's own distance (1)
     expect(outcome.board.cells[0][0]).toBeNull(); // the launched brown never settles (spec.md 006)
     expect(outcome.result).toBe('won');
   });
@@ -39,8 +39,8 @@ describe('brown: walks much farther than green or orange, checking every cell (F
     const outcome = resolveLaunch(level, { direction: 'E', lane: 1 });
 
     expect(outcome.board.cells[1][1]).toBeNull();
-    expect(outcome.board.cells[1][2]).toEqual({ color: 'green' });
-    expect(outcome.board.cells[1][3]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[1][2]).toEqual({ color: 'green', fragility: 'new' });
+    expect(outcome.board.cells[1][3]).toEqual({ color: 'orange', fragility: 'new' });
     expect(outcome.result).toBe('won');
   });
 });
@@ -102,7 +102,7 @@ describe('brown: never travels more than one full lap of the board (FR-004, spec
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
     expect(outcome.board.cells[4][3]).toBeNull();
-    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange', fragility: 'new' });
     expect(outcome.result).toBe('won');
   });
 });

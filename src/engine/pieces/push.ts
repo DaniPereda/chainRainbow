@@ -60,7 +60,7 @@ function resolveBranch(
   direction: Direction,
 ): { board: Board; events: ChainEvent[] } {
   const to = stepBy(from, direction, 1);
-  const piece: Piece = { color };
+  const piece: Piece = { color, fragility: 'new' };
   const occupant = getPieceAt(board, to);
 
   if (occupant === null) {

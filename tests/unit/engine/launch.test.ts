@@ -47,8 +47,8 @@ describe('resolveLaunch: pieceIndex selects which hand piece is used (FR-003)', 
     const outcome = resolveLaunch(level, launch, 1);
 
     expect(outcome.board.cells[3][3]).toBeNull();
-    expect(outcome.board.cells[3][5]).toEqual({ color: 'brown' });
-    expect(outcome.hand.pieces).toEqual([{ color: 'green' }]);
+    expect(outcome.board.cells[3][5]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(outcome.hand.pieces).toEqual([{ color: 'green', fragility: 'new' }]);
   });
 
   it('is deterministic for a non-zero pieceIndex, same as the default-index path', () => {
