@@ -217,7 +217,7 @@ aparece en el tablero resultante.
 
 ### Tests for User Story 4 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T018 [P] [US4] `tests/unit/engine/level.test.ts` (nuevo fichero): los 2 escenarios de la
+- [X] T018 [P] [US4] `tests/unit/engine/level.test.ts` (nuevo fichero): los 2 escenarios de la
       Historia 4 del spec (ficha de tablero declarada CRACKED se respeta; nivel sin declarar
       nada usa NEW en todas sus fichas, de tablero y de mano) más FR-016 (ficha de tablero
       declarada BROKEN nunca aparece en el tablero resultante) y un caso de mano BROKEN
@@ -225,14 +225,15 @@ aparece en el tablero resultante.
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] `src/engine/level.ts`, `createLevel` — `PiecePlacement` gana
+- [X] T019 [US4] `src/engine/level.ts`, `createLevel` — `PiecePlacement` gana
       `fragility?: Fragility`; nuevo tipo `HandPieceInput = PieceColor | { color: PieceColor;
       fragility?: Fragility }` y `hand: HandPieceInput[]` (data-model.md). La construcción del
       tablero omite cualquier entrada de `pieces` con `fragility: 'broken'` (FR-016); cualquier
       otra entrada, de tablero o de mano, usa `fragility ?? 'new'`. Depende de T005 (Foundational
       ya deja `createLevel` compilando con el shape mínimo; esta tarea añade la capacidad real
       sin depender de US1/US2/US3). Hace pasar T018.
-- [ ] T020 [US4] Ejecutar `npm test && npm run typecheck`. Depende de T019.
+- [X] T020 [US4] Ejecutar `npm test && npm run typecheck`. Depende de T019. **102/102 tests,
+      typecheck y build limpios.**
 
 **Checkpoint**: las 4 historias completas — el mecanismo de motor, su persistencia visual, y la
 capacidad de autoría de niveles, todos probados de forma independiente.
