@@ -18,6 +18,8 @@ type GeneratedLevelFile = {
  * de Vite aparte de `index.html` -- nunca llega al build del jugador.
  */
 export class GeneratedLevelSelectScene extends Phaser.Scene {
+  private ids: number[] = [];
+
   constructor() {
     super({ key: 'GeneratedLevelSelectScene' });
   }
@@ -29,11 +31,10 @@ export class GeneratedLevelSelectScene extends Phaser.Scene {
       .text(width / 2, 32, 'Niveles generados', { fontSize: '22px', color: '#ffffff' })
       .setOrigin(0.5);
 
-    let ids: number[] = [];
     try {
       const response = await fetch('/levels/index.json');
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      ids = await response.json();
+      this.ids = await response.json();
     } catch (error) {
       this.add
         .text(width / 2, 100, `No se pudo leer levels/index.json\n(${String(error)})`, {
@@ -45,7 +46,7 @@ export class GeneratedLevelSelectScene extends Phaser.Scene {
       return;
     }
 
-    if (ids.length === 0) {
+    if (this.ids.length === 0) {
       this.add
         .text(width / 2, 100, 'levels/index.json está vacío -- genera alguno con tools/generator/batch.ts', {
           fontSize: '14px',
@@ -61,7 +62,7 @@ export class GeneratedLevelSelectScene extends Phaser.Scene {
     const originX = (width - gridWidth) / 2 + CELL / 2;
     const originY = 80;
 
-    ids.forEach((id, index) => {
+    this.ids.forEach((id, index) => {
       const col = index % COLUMNS;
       const row = Math.floor(index / COLUMNS);
       const x = originX + col * CELL;
@@ -94,6 +95,19 @@ export class GeneratedLevelSelectScene extends Phaser.Scene {
       goal: { at: file.goal.cell, color: file.goal.color },
     });
 
-    this.scene.start('BoardScene', { level, backSceneKey: 'GeneratedLevelSelectScene' });
+    // Mismos ids consecutivos que ya trae levels/index.json -- BoardScene no
+    // sabe nada de esta lista, solo recibe "el vecino es este id" y, si el
+    // jugador lo pide, vuelve a llamar a loadAndPlay con ese id (research.md).
+    const position = this.ids.indexOf(id);
+    const previousId = position > 0 ? this.ids[position - 1] : undefined;
+    const nextId = position >= 0 && position < this.ids.length - 1 ? this.ids[position + 1] : undefined;
+
+    this.scene.start('BoardScene', {
+      level,
+      backSceneKey: 'GeneratedLevelSelectScene',
+      previousId,
+      nextId,
+      onNavigate: (targetId: number) => this.loadAndPlay(targetId),
+    });
   }
 }
