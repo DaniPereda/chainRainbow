@@ -185,11 +185,12 @@ cuál está más desgastada (SC-001).
 - [X] T016 [US3] `src/renderer/board-view.ts`, `drawBoard` — añadir una variación visual por
       `piece.fragility` (opacidad, borde o anillo superpuesto sobre el relleno de color ya
       existente — decisión de tratamiento concreto en esta misma tarea) sin introducir ninguna
-      lógica de reglas (Principio I). Depende de T015. Tratamiento elegido: CRACKED reduce la
-      opacidad del relleno (0.55) y añade un borde oscuro; BROKEN (nunca debería llegar a
-      dibujarse -- se elimina en el motor antes de asentarse, FR-004) usa el mismo patrón con
-      más énfasis, para no dejar el caso sin definir. `npm run typecheck`/`npm run build`
-      limpios.
+      lógica de reglas (Principio I). Depende de T015. Tratamiento elegido (revisado tras
+      feedback del usuario): una grieta dibujada sobre el relleno de color habitual -- una
+      línea en zigzag fija y determinista de esquina a esquina de la ficha, en vez de opacidad
+      reducida + borde. BROKEN (nunca debería llegar a dibujarse -- se elimina en el motor antes
+      de asentarse, FR-004) añade una segunda grieta cruzada, para no dejar el caso sin definir.
+      `npm run typecheck`/`npm run build` limpios.
 - [~] T017 [US3] Validación manual (`quickstart.md`, "Validación visual"): `npm run dev`,
       confirmar que dos fichas del mismo color en distinto estado se distinguen sin acción
       adicional, y que una ficha desaparece del tablero justo en el instante en que le toca

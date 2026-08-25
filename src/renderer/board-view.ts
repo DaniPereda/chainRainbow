@@ -13,16 +13,49 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
 
 const GRID_LINE_COLOR = 0x444444;
 
-// FR-014 (fragilidad, Historia 3): una ficha CRACKED se dibuja con menos opacidad de
-// relleno y un borde oscuro alrededor -- distinguible sin ninguna acción del jugador
-// (SC-001), sin introducir ninguna regla nueva aquí (Principio I: el renderer solo lee
+// FR-014 (fragilidad, Historia 3): una ficha CRACKED se dibuja con una grieta encima de
+// su relleno de color habitual -- distinguible sin ninguna acción del jugador (SC-001),
+// sin introducir ninguna regla nueva aquí (Principio I: el renderer solo lee
 // `piece.fragility`, ya calculado por el motor). BROKEN nunca debería llegar a
 // dibujarse -- una ficha rota se elimina en el motor antes de asentarse (FR-004) -- pero
-// se trata igual que CRACKED, con más énfasis, para no dejar el caso sin definir.
-const CRACKED_FILL_ALPHA = 0.55;
-const CRACKED_BORDER_COLOR = 0x1a1a1a;
-const BROKEN_FILL_ALPHA = 0.3;
-const BROKEN_BORDER_COLOR = 0x000000;
+// se trata igual que CRACKED, con una segunda grieta cruzada (aspecto "hecha añicos"),
+// para no dejar el caso sin definir.
+const CRACK_COLOR = 0x1a1a1a;
+const CRACK_LINE_WIDTH = 2;
+
+/** A jagged line from one edge of the piece to the opposite edge, through near the
+ * center -- fixed, deterministic zigzag (no randomness: Principio III doesn't bind
+ * pure rendering, but there's no reason for the same piece to look different frame
+ * to frame either). `angle` rotates the whole crack so a second one can cross it. */
+function drawCrack(
+  graphics: Phaser.GameObjects.Graphics,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  angle: number,
+): void {
+  const points: [number, number][] = [
+    [-0.35, -0.85],
+    [0.15, -0.25],
+    [-0.2, 0.15],
+    [0.35, 0.85],
+  ];
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  graphics.lineStyle(CRACK_LINE_WIDTH, CRACK_COLOR, 1);
+  graphics.beginPath();
+  points.forEach(([px, py], index) => {
+    const x = centerX + (px * cos - py * sin) * radius;
+    const y = centerY + (px * sin + py * cos) * radius;
+    if (index === 0) {
+      graphics.moveTo(x, y);
+    } else {
+      graphics.lineTo(x, y);
+    }
+  });
+  graphics.strokePath();
+}
 
 /**
  * Draws a Board + Goal (engine state) onto a Phaser Graphics object as plain
@@ -60,15 +93,14 @@ export function drawBoard(
       const centerY = row * CELL_SIZE + CELL_SIZE / 2;
       const radius = CELL_SIZE / 2 - 6;
 
-      const fillAlpha =
-        piece.fragility === 'broken' ? BROKEN_FILL_ALPHA : piece.fragility === 'cracked' ? CRACKED_FILL_ALPHA : 1;
-      graphics.fillStyle(PIECE_COLOR[piece.color], fillAlpha);
+      graphics.fillStyle(PIECE_COLOR[piece.color], 1);
       graphics.fillCircle(centerX, centerY, radius);
 
-      if (piece.fragility !== 'new') {
-        const borderColor = piece.fragility === 'broken' ? BROKEN_BORDER_COLOR : CRACKED_BORDER_COLOR;
-        graphics.lineStyle(2, borderColor, 1);
-        graphics.strokeCircle(centerX, centerY, radius);
+      if (piece.fragility === 'cracked') {
+        drawCrack(graphics, centerX, centerY, radius, 0);
+      } else if (piece.fragility === 'broken') {
+        drawCrack(graphics, centerX, centerY, radius, 0);
+        drawCrack(graphics, centerX, centerY, radius, Math.PI / 2);
       }
     }
   }
