@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Fragilidad de fichas (NUEVA/TOCADA/ROTA)
+# Specification Quality Checklist: Fragilidad de fichas (NEW/CRACKED/BROKEN)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-25
@@ -32,4 +32,4 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
-- Todos los items pasan. Dos rondas de clarificación en la sesión del 2026-08-25 (ver spec.md, sección Clarifications): (1) herencia de estado en la división de rojo (FR-015); (2) qué ocurre al golpear una ficha de tablero ya ROTA por diseño de nivel — se normaliza a casilla vacía antes de que el nivel sea jugable (FR-016).
+- Todos los items pasan. Dos rondas de clarificación en la sesión del 2026-08-25 (ver spec.md, sección Clarifications): (1) herencia de estado en la división de rojo (FR-015); (2) qué ocurre al golpear una ficha de tablero ya BROKEN por diseño de nivel — se normaliza a casilla vacía antes de que el nivel sea jugable (FR-016).
