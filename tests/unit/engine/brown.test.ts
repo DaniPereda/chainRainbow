@@ -133,8 +133,8 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
 
     expect(outcome.missclick).toBe(false);
     expect(outcome.board.cells[5][3]).toBeNull();
-    expect(outcome.board.cells[6][3]).toEqual({ color: 'brown' });
-    expect(outcome.board.cells[7][3]).toEqual({ color: 'green' });
+    expect(outcome.board.cells[6][3]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(outcome.board.cells[7][3]).toEqual({ color: 'green', fragility: 'new' });
   });
 
   // Same failure mode, but with two links between the launch and where brown
@@ -155,9 +155,9 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
 
     expect(outcome.missclick).toBe(false);
     expect(outcome.board.cells[4][0]).toBeNull();
-    expect(outcome.board.cells[4][2]).toEqual({ color: 'green' });
-    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown' });
-    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'new' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange', fragility: 'new' });
   });
 });
 

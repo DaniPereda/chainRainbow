@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createBoard, setPieceAt } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
 
 describe('red: splits whatever it hits into two branches instead of pushing it (FR-001..FR-005)', () => {
@@ -137,6 +138,42 @@ describe('red hitting red: same-color annihilation has priority, the split never
     expect(outcome.board.cells[0][1]).toBeNull();
     expect(outcome.events).toHaveLength(1);
     expect(outcome.events[0].type).toBe('ANNIHILATION');
+    expect(outcome.result).toBe('lost');
+  });
+});
+
+// data-model.md, Fixture 3: la división de rojo cuenta como un golpe más (FR-015) -- la
+// defensora avanza su fragilidad UNA vez antes de dividirse, y ambas ramas heredan ese mismo
+// estado ya avanzado.
+describe('red: the split counts as one hit on the defender, and both branches inherit its advanced state (FR-015)', () => {
+  it('produces two CRACKED branches when the defender was NEW', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 3 }, { color: 'green', fragility: 'new' });
+    const level = {
+      board,
+      hand: { pieces: [{ color: 'red' as const, fragility: 'new' as const }] },
+      goal: { targetColor: 'green' as const, targetCell: { row: 4, col: 4 } },
+    };
+
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
+
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' }); // west branch
+    expect(outcome.board.cells[4][4]).toEqual({ color: 'green', fragility: 'cracked' }); // east branch
+    expect(outcome.result).toBe('won');
+  });
+
+  it('eliminates BOTH resulting branches when the defender was already CRACKED', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 3 }, { color: 'green', fragility: 'cracked' });
+    const level = {
+      board,
+      hand: { pieces: [{ color: 'red' as const, fragility: 'new' as const }] },
+      goal: { targetColor: 'green' as const, targetCell: { row: 4, col: 4 } },
+    };
+
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
+
+    expect(outcome.board.cells[4][2]).toBeNull(); // west branch -- never settles, BROKEN
+    expect(outcome.board.cells[4][3]).toBeNull(); // the split cell itself
+    expect(outcome.board.cells[4][4]).toBeNull(); // east branch -- never settles either
     expect(outcome.result).toBe('lost');
   });
 });
