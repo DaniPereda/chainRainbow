@@ -225,11 +225,19 @@ export function applyImpact(
   board: Board,
   site: ImpactSite,
 ): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
-  // The launched piece is the agent that triggers this impact, not a piece that
-  // comes to reside on the board -- it never persists, whatever resolveStrike
-  // decides (annihilation, a plain push, or a push that cascades into an
-  // annihilation further down the chain). resolveStrike already leaves site.to
-  // cleared in every case, so there is nothing left to do here (spec.md 006).
+  // The launched piece is the agent that triggers this impact -- resolveStrike
+  // resolves what happens to whatever it hits, exactly as for any other link of a
+  // cascade. Once that settles, site.piece itself settles at site.to (the cell its
+  // own defender just vacated), unless it annihilated there by same color or its
+  // own fragility is 'broken' (FR-007/FR-008) -- the exact same settle-or-omit
+  // pattern resolveStrike already applies at every deeper link, applied here once
+  // more for the piece that started the chain. This replaces the old rule that a
+  // launched piece could never persist on the board (spec.md 006, feature 008).
   const result = resolveStrike(board, site.piece.color, site.to, site.direction);
-  return { board: result.board, events: result.events, nextSites: [] };
+  const shouldSettle = !result.annihilated && site.piece.fragility !== 'broken';
+  const boardAfter = shouldSettle ? setPieceAt(result.board, site.to, site.piece) : result.board;
+  const events: ChainEvent[] = shouldSettle
+    ? [{ type: 'MOVE_STEP', piece: site.piece, from: site.from, to: site.to, hasCollision: true }, ...result.events]
+    : result.events;
+  return { board: boardAfter, events, nextSites: [] };
 }

@@ -14,7 +14,7 @@ describe('red: splits whatever it hits into two branches instead of pushing it (
     const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
 
     expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' }); // west branch
-    expect(outcome.board.cells[4][3]).toBeNull(); // the split cell itself
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'red', fragility: 'new' }); // the launcher settles at the split cell itself (FR-007)
     expect(outcome.board.cells[4][4]).toEqual({ color: 'green', fragility: 'cracked' }); // east branch
     expect(outcome.result).toBe('won');
   });
@@ -30,7 +30,7 @@ describe('red: splits whatever it hits into two branches instead of pushing it (
     const outcome = resolveLaunch(level, { direction: 'E', lane: 2 });
 
     expect(outcome.board.cells[1][4]).toEqual({ color: 'orange', fragility: 'cracked' }); // north branch
-    expect(outcome.board.cells[2][4]).toBeNull(); // the split cell itself
+    expect(outcome.board.cells[2][4]).toEqual({ color: 'red', fragility: 'new' }); // the launcher settles at the split cell itself (FR-007)
     expect(outcome.board.cells[3][4]).toEqual({ color: 'orange', fragility: 'cracked' }); // south branch
     expect(outcome.result).toBe('won');
   });
@@ -53,7 +53,7 @@ describe('red: each branch composes with the existing universal rule, independen
     const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
 
     expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' }); // west branch, unaffected
-    expect(outcome.board.cells[4][3]).toBeNull(); // the split cell itself
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'red', fragility: 'new' }); // the launcher settles at the split cell itself (FR-007)
     expect(outcome.board.cells[4][4]).toEqual({ color: 'green', fragility: 'cracked' }); // east branch settles where orange was
     expect(outcome.board.cells[4][5]).toEqual({ color: 'orange', fragility: 'cracked' }); // pushed onward by green's own distance
     expect(outcome.result).toBe('won');
@@ -74,7 +74,7 @@ describe('red: each branch composes with the existing universal rule, independen
     const outcome = resolveLaunch(level, { direction: 'E', lane: 6 });
 
     expect(outcome.board.cells[5][3]).toBeNull(); // north branch: annihilated with the pre-existing orange
-    expect(outcome.board.cells[6][3]).toBeNull(); // the split cell itself
+    expect(outcome.board.cells[6][3]).toEqual({ color: 'red', fragility: 'new' }); // the launcher settles at the split cell itself (FR-007), unaffected by either branch's own fate
     expect(outcome.board.cells[7][3]).toEqual({ color: 'orange', fragility: 'cracked' }); // south branch: unaffected, settles normally
     expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(true);
     expect(outcome.result).toBe('won');
@@ -172,7 +172,7 @@ describe('red: the split counts as one hit on the defender, and both branches in
     const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
 
     expect(outcome.board.cells[4][2]).toBeNull(); // west branch -- never settles, BROKEN
-    expect(outcome.board.cells[4][3]).toBeNull(); // the split cell itself
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'red', fragility: 'new' }); // the launcher settles at the split cell itself (FR-007), unaffected by either branch breaking
     expect(outcome.board.cells[4][4]).toBeNull(); // east branch -- never settles either
     expect(outcome.result).toBe('lost');
   });

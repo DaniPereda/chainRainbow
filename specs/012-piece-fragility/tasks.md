@@ -139,7 +139,7 @@ primer impacto, en vez de desaparecer; lanzar una ficha ya BROKEN (nivel constru
 
 ### Tests for User Story 2 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T012 [P] [US2] `tests/unit/engine/fragility.test.ts`: los 3 escenarios de la Historia 2
+- [X] T012 [P] [US2] `tests/unit/engine/fragility.test.ts`: los 3 escenarios de la Historia 2
       del spec — ficha NEW lanzada se asienta conservando su estado; ficha ya BROKEN en mano
       (construida directamente como `Hand`/`Level`, sin pasar por `createLevel` — no depende de
       US4) se elimina tras su impacto sin asentarse; un missclick no cambia el estado de la
@@ -147,18 +147,24 @@ primer impacto, en vez de desaparecer; lanzar una ficha ya BROKEN (nivel constru
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] `src/engine/pieces/push.ts`, `applyImpact` — tras resolver el impacto inicial
+- [X] T013 [US2] `src/engine/pieces/push.ts`, `applyImpact` — tras resolver el impacto inicial
       con `resolveStrike` (sin cambiar su firma ni su comportamiento interno), asentar
       `site.piece` en `site.to` salvo que el resultado haya sido una aniquilación por mismo
       color o que `site.piece.fragility === 'broken'` — mismo patrón exacto que T008 aplica
       dentro de `resolveStrike`, aplicado aquí una vez más (research.md). Depende de T011. Hace
-      pasar T012.
-- [ ] T014 [US2] Revisar los tests existentes que comprobaban implícitamente que la celda de
+      pasar T012. Descubrimiento no anticipado: rojo también se asienta en su propia casilla de
+      división tras causar un split (ya lo hacía cualquier rojo golpeado en mitad de una cadena
+      antes de esta feature — `resolveSplit` siempre devuelve `annihilated:false`; FR-007 solo
+      extendía ese mismo patrón, ya existente, al lanzamiento de nivel superior).
+- [X] T014 [US2] Revisar los tests existentes que comprobaban implícitamente que la celda de
       origen de un lanzamiento queda vacía tras el impacto (buscar aserciones sobre esa celda
       concreta en `launch.test.ts`, `chain.test.ts` y cualquier otro fichero que lance una
       ficha NEW/CRACKED contra un objetivo distinto) y actualizarlas para reflejar que ahora esa
       celda puede quedar ocupada por la ficha lanzada, cuando sobrevive. Depende de T013.
-- [ ] T015 [US2] Ejecutar `npm test && npm run typecheck`. Depende de T013, T014.
+      17 aserciones revisadas en brown/orange/red/same-color/session/wrap-around/launch.test.ts
+      (`chain.test.ts` no necesitó cambios -- no comprueba esa celda).
+- [X] T015 [US2] Ejecutar `npm test && npm run typecheck`. Depende de T013, T014. **98/98 tests,
+      typecheck limpio.**
 
 **Checkpoint**: el mecanismo de motor está completo de extremo a extremo (Historias 1 y 2) —
 todo lo que falta a partir de aquí es visibilidad para el jugador y autoría de niveles.

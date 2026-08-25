@@ -5,6 +5,7 @@ import { resolveLaunch, type Level } from '../../../src/engine/index.js';
 function levelWith(config: {
   boardPieces: { row: number; col: number; color: 'green' | 'orange' | 'brown'; fragility: Fragility }[];
   handColor: 'green' | 'orange' | 'brown';
+  handFragility?: Fragility;
   goalColor: 'green' | 'orange' | 'brown';
   goalCell: { row: number; col: number };
 }): Level {
@@ -15,7 +16,7 @@ function levelWith(config: {
   );
   return {
     board,
-    hand: { pieces: [{ color: config.handColor, fragility: 'new' }] },
+    hand: { pieces: [{ color: config.handColor, fragility: config.handFragility ?? 'new' }] },
     goal: { targetColor: config.goalColor, targetCell: config.goalCell },
   };
 }
@@ -33,7 +34,8 @@ describe('fragility: a piece struck by a different color advances one step (FR-0
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
-    expect(outcome.board.cells[4][1]).toBeNull();
+    // the launcher (green, NEW) survives its own throw and settles here (FR-007/US2).
+    expect(outcome.board.cells[4][1]).toEqual({ color: 'green', fragility: 'new' });
     expect(outcome.board.cells[4][2]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(outcome.result).toBe('won');
   });
@@ -52,7 +54,9 @@ describe('fragility: a piece that reaches BROKEN is removed instead of settling 
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
-    expect(outcome.board.cells[4][1]).toBeNull(); // origin vacated
+    // the launcher (green, NEW) survives its own throw and settles here (FR-007/US2) --
+    // unaffected by the DEFENDER's own fate.
+    expect(outcome.board.cells[4][1]).toEqual({ color: 'green', fragility: 'new' });
     expect(outcome.board.cells[4][2]).toBeNull(); // never placed -- it broke
   });
 
@@ -89,11 +93,67 @@ describe('fragility: multiple pieces reaching BROKEN in one chain are each remov
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
+    // the launcher (green, NEW) survives its own throw and settles here (FR-007/US2).
+    expect(outcome.board.cells[4][1]).toEqual({ color: 'green', fragility: 'new' });
     // orange (struck by green, distance 1) -- CRACKED -> BROKEN, never settles at col2.
-    expect(outcome.board.cells[4][1]).toBeNull();
     expect(outcome.board.cells[4][2]).toBeNull();
     // brown (struck by orange, distance 2) -- CRACKED -> BROKEN, never settles at col4 either.
     expect(outcome.board.cells[4][4]).toBeNull();
     expect(outcome.result).toBe('lost');
+  });
+});
+
+// Historia 2, escenario 1: la ficha lanzada sobrevive a su propio impacto -- deja de
+// desvanecerse (spec.md 006, feature 008) y se asienta en la casilla de su primer impacto,
+// conservando el estado que ya traía (ella es quien golpea, no quien es golpeada, en ESTE
+// lanzamiento -- su propio estado no cambia).
+describe('fragility: a launched piece that survives its own impact settles instead of vanishing (FR-007)', () => {
+  it('settles at the site of its first impact, keeping the state it already had', () => {
+    const level = levelWith({
+      boardPieces: [{ row: 4, col: 1, color: 'orange', fragility: 'new' }],
+      handColor: 'green',
+      goalColor: 'orange',
+      goalCell: { row: 4, col: 2 },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.board.cells[4][1]).toEqual({ color: 'green', fragility: 'new' }); // the launcher itself
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'orange', fragility: 'cracked' }); // the defender it struck
+    expect(outcome.result).toBe('won');
+  });
+
+  // Historia 2, escenario 2: si la ficha lanzada YA estaba BROKEN antes del lanzamiento, se
+  // elimina tras su impacto en vez de asentarse -- igual que cualquier otra ficha rota (FR-008).
+  it('is eliminated after its own impact instead of settling, when it was already BROKEN', () => {
+    const level = levelWith({
+      boardPieces: [{ row: 4, col: 1, color: 'orange', fragility: 'new' }],
+      handColor: 'green',
+      handFragility: 'broken',
+      goalColor: 'orange',
+      goalCell: { row: 4, col: 2 },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.board.cells[4][1]).toBeNull(); // the launcher never settles -- it was BROKEN
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'orange', fragility: 'cracked' }); // its impact still happened
+    expect(outcome.result).toBe('won');
+  });
+
+  // Historia 2, escenario 3: un missclick no cambia el estado de la ficha lanzada -- vuelve
+  // intacta a la mano, exactamente igual que hoy (FR-009).
+  it('a missclick leaves the launched piece\'s fragility unchanged in hand', () => {
+    const level: Level = {
+      board: createBoard(),
+      hand: { pieces: [{ color: 'green', fragility: 'cracked' }] },
+      goal: { targetColor: 'green', targetCell: { row: 0, col: 0 } },
+    };
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
+
+    expect(outcome.missclick).toBe(true);
+    expect(outcome.hand.pieces).toEqual([{ color: 'green', fragility: 'cracked' }]);
+    expect(outcome.board).toEqual(level.board);
   });
 });

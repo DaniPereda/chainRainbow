@@ -109,7 +109,7 @@ describe('selectHandPiece: marks any valid hand position as the one to launch ne
 
     const { session: after } = applySessionLaunch(session, { direction: 'E', lane: 2 });
 
-    expect(after.current.board.cells[2][2]).toBeNull();
+    expect(after.current.board.cells[2][2]).toEqual({ color: 'orange', fragility: 'new' }); // the launcher survives and settles here (FR-007)
     expect(after.current.board.cells[2][4]).toEqual({ color: 'brown', fragility: 'cracked' });
     expect(after.current.hand.pieces).toEqual([{ color: 'green', fragility: 'new' }]);
   });
