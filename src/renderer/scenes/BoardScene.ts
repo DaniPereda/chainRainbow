@@ -8,10 +8,18 @@ import {
   selectHandPiece,
   startSession,
   type Direction,
+  type Level,
   type LevelSession,
 } from '../../engine/index.js';
 
-type BoardSceneData = { levelId: number };
+/**
+ * Además de un nivel del prototipo (por id), BoardScene puede cargar un `Level`
+ * ya construido directamente -- la vía que usa el visor de niveles generados
+ * (dev-levels.html), que nunca pasa por PROTOTYPE_LEVELS. `backSceneKey` decide
+ * a qué escena vuelve el botón "< Niveles"/"Volver al selector", ya que cada
+ * origen tiene su propio selector.
+ */
+type BoardSceneData = { levelId: number } | { level: Level; backSceneKey: string };
 
 const EDGE_SIZE = 20;
 const EDGE_GAP = 6;
@@ -65,7 +73,9 @@ function edgeMarkers(
 }
 
 export class BoardScene extends Phaser.Scene {
-  private levelId = 1;
+  private levelId: number | null = null;
+  private customLevel: Level | null = null;
+  private backSceneKey = 'LevelSelectScene';
   private session!: LevelSession;
   private boardGraphics!: Phaser.GameObjects.Graphics;
   private handGraphics!: Phaser.GameObjects.Graphics;
@@ -79,19 +89,33 @@ export class BoardScene extends Phaser.Scene {
   }
 
   init(data: BoardSceneData): void {
-    this.levelId = data.levelId;
+    if ('level' in data) {
+      this.levelId = null;
+      this.customLevel = data.level;
+      this.backSceneKey = data.backSceneKey;
+    } else {
+      this.levelId = data.levelId;
+      this.customLevel = null;
+      this.backSceneKey = 'LevelSelectScene';
+    }
   }
 
   create(): void {
-    const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
-    const entry = PROTOTYPE_LEVELS[levelIndex];
-    if (entry === undefined) {
-      throw new Error(`No existe el nivel ${this.levelId}`);
+    let initialLevel: Level;
+
+    if (this.customLevel !== null) {
+      initialLevel = this.customLevel;
+    } else {
+      const entry = PROTOTYPE_LEVELS.find((candidate) => candidate.id === this.levelId);
+      if (entry === undefined) {
+        throw new Error(`No existe el nivel ${this.levelId}`);
+      }
+      initialLevel = entry.level;
     }
 
     // FR-012: cada entrada a un nivel (primera vez o tras volver) parte de su
     // definición inicial -- no se reutiliza ningún estado de una partida anterior.
-    this.session = startSession(entry.level);
+    this.session = startSession(initialLevel);
 
     this.boardOriginX = (this.scale.width - BOARD_PIXELS) / 2;
     this.boardGraphics = this.add.graphics({ x: this.boardOriginX, y: this.boardOriginY });
@@ -122,7 +146,7 @@ export class BoardScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     backButton.on('pointerdown', () => {
-      this.scene.start('LevelSelectScene');
+      this.scene.start(this.backSceneKey);
     });
   }
 
@@ -214,10 +238,11 @@ export class BoardScene extends Phaser.Scene {
     // por aritmética sobre el id (el id es simplemente el número que ve el
     // jugador). Ausente en los extremos (nivel 1 no tiene anterior, el último no
     // tiene siguiente) en vez de deshabilitado, para no sugerir una acción que no
-    // puede completarse.
+    // puede completarse. No aplica a un nivel generado (`customLevel`) -- no
+    // existe ningún "siguiente" fuera de PROTOTYPE_LEVELS.
     const levelIndex = PROTOTYPE_LEVELS.findIndex((candidate) => candidate.id === this.levelId);
-    const previousLevel = PROTOTYPE_LEVELS[levelIndex - 1];
-    const nextLevel = PROTOTYPE_LEVELS[levelIndex + 1];
+    const previousLevel = this.customLevel === null ? PROTOTYPE_LEVELS[levelIndex - 1] : undefined;
+    const nextLevel = this.customLevel === null ? PROTOTYPE_LEVELS[levelIndex + 1] : undefined;
     const navY = height / 2 + 56;
 
     if (previousLevel !== undefined) {
@@ -269,7 +294,7 @@ export class BoardScene extends Phaser.Scene {
 
     // FR-011: volver al selector desde la ventana de resultado.
     backButton.on('pointerdown', () => {
-      this.scene.start('LevelSelectScene');
+      this.scene.start(this.backSceneKey);
     });
   }
 }

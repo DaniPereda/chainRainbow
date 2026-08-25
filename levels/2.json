@@ -1,0 +1,46 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 3,
+        "col": 7
+      },
+      "color": "brown"
+    }
+  ],
+  "hand": [
+    "orange",
+    "orange",
+    "orange"
+  ],
+  "goal": {
+    "color": "brown",
+    "cell": {
+      "row": 5,
+      "col": 5
+    }
+  },
+  "solution": [
+    {
+      "direction": "O",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 5,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "launchCount": 2,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown"
+    ],
+    "seed": 2,
+    "chainOriginProbability": 0.5,
+    "decoyCount": 1
+  }
+}
