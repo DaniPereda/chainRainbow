@@ -24,6 +24,11 @@ export type ResolutionContext = {
   defenderContinuationProbability: number;
   chainOriginProbability: number; // FR-005: prob. de que el origen de un golpeador sea cadena
   maxChainDepth: number;
+  // Probabilidad de colocar una ficha señuelo extra en el tablero, sorteada de
+  // nuevo en CADA paso de construcción (a diferencia de las señuelo en mano,
+  // cuya cantidad es fija -- ver research.md). Opcional y con valor por defecto
+  // 0 para no alterar ninguna secuencia de `rng` ya existente cuando no se pide.
+  boardDecoyProbability?: number;
 };
 
 export type ResolutionOutcome = {
@@ -36,6 +41,16 @@ const DIRECTIONS: Direction[] = ['N', 'S', 'E', 'O'];
 
 function pickDirection(rng: () => number): Direction {
   return DIRECTIONS[Math.floor(rng() * DIRECTIONS.length)];
+}
+
+function pickRandomEmptyCell(board: Board, rng: () => number): Coordinate | null {
+  const empty: Coordinate[] = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (getPieceAt(board, { row, col }) === null) empty.push({ row, col });
+    }
+  }
+  return empty.length === 0 ? null : empty[Math.floor(rng() * empty.length)];
 }
 
 function shuffle<T>(items: T[], rng: () => number): T[] {
@@ -119,6 +134,22 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
 
   while (queue.length > 0) {
     const obligation = queue.shift()!;
+
+    // Ficha señuelo de tablero: se sortea de nuevo en cada paso (a diferencia de
+    // las señuelo en mano, que son una cantidad fija) -- el `>0` evita consumir
+    // ningún `rng()` cuando no se pide, para no alterar ninguna secuencia ya
+    // existente (research.md, misma disciplina que el resto del generador). Una
+    // colisión con una casilla que otra obligación aún pendiente necesita se
+    // resuelve como cualquier otra inconsistencia: la reproducción hacia
+    // delante la descarta y el intento entero se reintenta (FR-007).
+    const boardDecoyProbability = ctx.boardDecoyProbability ?? 0;
+    if (boardDecoyProbability > 0 && ctx.rng() < boardDecoyProbability) {
+      const cell = pickRandomEmptyCell(board, ctx.rng);
+      if (cell !== null) {
+        const color = ctx.availableColors[Math.floor(ctx.rng() * ctx.availableColors.length)];
+        board = setPieceAt(board, cell, { color });
+      }
+    }
 
     if (obligation.kind === 'defender') {
       if (!obligation.isRoot) {

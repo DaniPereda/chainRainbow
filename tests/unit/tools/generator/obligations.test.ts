@@ -119,3 +119,70 @@ describe('resolveObligations: drains the queue for a single-launch construction 
     expect(outcome.rawLaunches).toEqual([{ direction: 'E', lane: 5, color: 'orange' }]);
   });
 });
+
+describe('resolveObligations: board decoys are re-rolled at every construction step', () => {
+  it('never places a decoy when boardDecoyProbability is 0 (default), consuming zero extra rng calls', () => {
+    // Reuses the exact same scripted sequence as the first fixture above --
+    // if a decoy roll consumed a call even at probability 0, this would throw
+    // ("scriptedRng exhausted") or desync the whole trace.
+    const root: Obligation = {
+      cell: { row: 4, col: 4 },
+      color: 'green',
+      kind: 'defender',
+      direction: null,
+      chainDepth: 0,
+      isRoot: true,
+    };
+    const ctx: ResolutionContext = {
+      board: createBoard(),
+      rng: scriptedRng([0.5, 0, 0.9, 0.1]),
+      availableColors: ['green', 'orange'],
+      launchCount: 1,
+      defenderContinuationProbability: 0,
+      chainOriginProbability: 0,
+      maxChainDepth: 4,
+      boardDecoyProbability: 0,
+    };
+
+    const outcome = resolveObligations(root, ctx);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green' });
+  });
+
+  it('places one decoy per construction step when boardDecoyProbability is 1', () => {
+    const root: Obligation = {
+      cell: { row: 2, col: 2 },
+      color: 'green',
+      kind: 'defender',
+      direction: null,
+      chainDepth: 0,
+      isRoot: true,
+    };
+    const ctx: ResolutionContext = {
+      board: createBoard(),
+      // 3 pasos de construcción (raíz, defensor, origen del golpeador) -- cada
+      // uno tira el dado (siempre true con prob:1), elige la primera casilla
+      // vacía en orden y siempre el color 'green' (índice 0).
+      rng: scriptedRng([
+        0.5, 0, 0, 0.5, 0, // paso 1: decoy + dirección + candidato
+        0.5, 0, 0, 0.9, // paso 2: decoy + mobiliario
+        0.5, 0, 0, 0.9, // paso 3: decoy + lanzamiento de mano
+      ]),
+      availableColors: ['green', 'orange'],
+      launchCount: 1,
+      defenderContinuationProbability: 0,
+      chainOriginProbability: 0,
+      maxChainDepth: 4,
+      boardDecoyProbability: 1,
+    };
+
+    const outcome = resolveObligations(root, ctx);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.board.cells[2][0]).toEqual({ color: 'green' }); // la solución real
+    expect(outcome.board.cells[0][0]).toEqual({ color: 'green' }); // señuelo 1
+    expect(outcome.board.cells[0][1]).toEqual({ color: 'green' }); // señuelo 2
+    expect(outcome.board.cells[0][2]).toEqual({ color: 'green' }); // señuelo 3
+  });
+});

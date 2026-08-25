@@ -38,6 +38,7 @@ const availableColors = (flags.get('colors') ?? 'green,orange,brown')
   .map((c) => c.trim()) as PieceColor[];
 const chainOriginProbability = Number(flags.get('chain-origin-probability') ?? '0.5');
 const decoyCount = Number(flags.get('decoys') ?? '0');
+const boardDecoyProbability = Number(flags.get('board-decoy-probability') ?? '0');
 
 if (!existsSync(LEVELS_DIR)) mkdirSync(LEVELS_DIR, { recursive: true });
 
@@ -48,7 +49,14 @@ const failed: number[] = [];
 
 for (let i = 0; i < count; i++) {
   const id = nextId;
-  const result = generateLevel({ launchCount, availableColors, chainOriginProbability, decoyCount, seed: id });
+  const result = generateLevel({
+    launchCount,
+    availableColors,
+    chainOriginProbability,
+    decoyCount,
+    boardDecoyProbability,
+    seed: id,
+  });
 
   if (result.ok) {
     writeFileSync(join(LEVELS_DIR, `${id}.json`), `${JSON.stringify(result.level, null, 2)}\n`);

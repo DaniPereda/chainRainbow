@@ -19,8 +19,9 @@ function parseArgs(argv: string[]): GenerationParams {
   const seed = Number(flags.get('seed') ?? String(Date.now()));
   const chainOriginProbability = Number(flags.get('chain-origin-probability') ?? '0.5');
   const decoyCount = Number(flags.get('decoys') ?? '0');
+  const boardDecoyProbability = Number(flags.get('board-decoy-probability') ?? '0');
 
-  return { launchCount, availableColors, seed, chainOriginProbability, decoyCount };
+  return { launchCount, availableColors, seed, chainOriginProbability, decoyCount, boardDecoyProbability };
 }
 
 const result = generateLevel(parseArgs(process.argv.slice(2)));

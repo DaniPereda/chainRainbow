@@ -12,11 +12,15 @@ export type GenerationParams = {
   launchCount: number; // FR-008
   availableColors: PieceColor[]; // subconjunto de green/orange/brown
   chainOriginProbability: number; // FR-005
-  decoyCount: number; // FR-008
+  decoyCount: number; // FR-008 -- cantidad FIJA de señuelo en mano
   seed: number; // FR-008/FR-009
   defenderContinuationProbability?: number; // por defecto 0.4 (research.md)
   maxChainDepth?: number; // por defecto 4 (research.md)
   maxGenerationAttempts?: number; // por defecto 200 (research.md)
+  // Probabilidad de señuelo en el TABLERO, sorteada de nuevo en cada paso de
+  // construcción -- la cantidad resultante es aleatoria (0 a N), a diferencia
+  // de decoyCount. Por defecto 0 (ninguna).
+  boardDecoyProbability?: number;
 };
 
 export type GeneratedLevel = {
@@ -110,6 +114,7 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
     defenderContinuationProbability,
     chainOriginProbability: params.chainOriginProbability,
     maxChainDepth,
+    boardDecoyProbability: params.boardDecoyProbability,
   });
   if (!outcome.ok) return null;
 
