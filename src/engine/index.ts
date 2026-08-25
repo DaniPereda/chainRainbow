@@ -1,9 +1,9 @@
-export type { Coordinate, PieceColor, Piece, Board } from './board.js';
+export type { Coordinate, PieceColor, Piece, Board, Fragility } from './board.js';
 export type { Direction } from './move-step.js';
 export type { Hand, Launch } from './launch.js';
 export type { MoveStepEvent, AnnihilationEvent, ChainEvent, EventLog } from './events.js';
 export type { Goal, LevelResult } from './goal.js';
-export type { Level, PiecePlacement } from './level.js';
+export type { Level, PiecePlacement, HandPieceInput } from './level.js';
 export {
   createLevel,
   testLevelGreen01,

@@ -36,8 +36,9 @@ describe('same-color: annihilates mid-cascade, without disturbing an unrelated n
   it('lets the first (different-color) collision push normally, then annihilates the second (same-color) one', () => {
     const outcome = resolveLaunch(testLevelSameColorCascade01, { direction: 'E', lane: 7 });
 
-    // The launcher never persists on the board, whatever its impact resolves to.
-    expect(outcome.board.cells[7][4]).toBeNull();
+    // The launcher (green) successfully displaced the first orange -- it settles here
+    // (FR-007), unaffected by that orange's own later annihilation two cells further on.
+    expect(outcome.board.cells[7][4]).toEqual({ color: 'green', fragility: 'new' });
 
     // The two orange pieces annihilated each other; neither survives anywhere.
     expect(outcome.board.cells[7][5]).toBeNull();

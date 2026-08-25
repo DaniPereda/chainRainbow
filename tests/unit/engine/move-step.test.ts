@@ -40,16 +40,16 @@ describe('stepBy: multi-cell movement wraps around the board edges (FR-001)', ()
 describe('stepUntilBlocked: walks until blocked or capped by edge crossings (spec.md 008)', () => {
   // `mover` is deliberately a distinct object from whatever is placed on the board as an
   // obstacle in these two tests -- it must NOT be excluded from the blocking check.
-  const mover: Piece = { color: 'brown' };
+  const mover: Piece = { color: 'brown', fragility: 'new' };
 
   it('stops at the very first step if it is already occupied -- no blind skip like orange', () => {
-    const board = setPieceAt(createBoard(), { row: 2, col: 4 }, { color: 'orange' });
+    const board = setPieceAt(createBoard(), { row: 2, col: 4 }, { color: 'orange', fragility: 'new' });
 
     expect(stepUntilBlocked(board, mover, { row: 2, col: 3 }, 'E', 2)).toEqual({ row: 2, col: 4 });
   });
 
   it('walks past several empty cells before stopping at the first occupied one', () => {
-    const board = setPieceAt(createBoard(), { row: 2, col: 6 }, { color: 'orange' });
+    const board = setPieceAt(createBoard(), { row: 2, col: 6 }, { color: 'orange', fragility: 'new' });
 
     expect(stepUntilBlocked(board, mover, { row: 2, col: 3 }, 'E', 2)).toEqual({ row: 2, col: 6 });
   });

@@ -17,10 +17,10 @@ describe('brown: walks much farther than green or orange, checking every cell (F
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
 
-    expect(outcome.board.cells[0][1]).toBeNull(); // vacated by the pushed green
-    expect(outcome.board.cells[0][5]).toEqual({ color: 'green' }); // walked here, far past orange's reach
-    expect(outcome.board.cells[0][6]).toEqual({ color: 'orange' }); // pushed onward by green's own distance (1)
-    expect(outcome.board.cells[0][0]).toBeNull(); // the launched brown never settles (spec.md 006)
+    expect(outcome.board.cells[0][1]).toEqual({ color: 'brown', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[0][5]).toEqual({ color: 'green', fragility: 'cracked' }); // walked here, far past orange's reach
+    expect(outcome.board.cells[0][6]).toEqual({ color: 'orange', fragility: 'cracked' }); // pushed onward by green's own distance (1)
+    expect(outcome.board.cells[0][0]).toBeNull(); // the entry cell itself was never occupied
     expect(outcome.result).toBe('won');
   });
 
@@ -38,9 +38,9 @@ describe('brown: walks much farther than green or orange, checking every cell (F
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 1 });
 
-    expect(outcome.board.cells[1][1]).toBeNull();
-    expect(outcome.board.cells[1][2]).toEqual({ color: 'green' });
-    expect(outcome.board.cells[1][3]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[1][1]).toEqual({ color: 'brown', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[1][2]).toEqual({ color: 'green', fragility: 'cracked' });
+    expect(outcome.board.cells[1][3]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(outcome.result).toBe('won');
   });
 });
@@ -63,8 +63,10 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 2 });
 
-    expect(outcome.board.cells[2][1]).toBeNull();
-    expect(outcome.board.cells[2][4]).toBeNull();
+    // the launcher (brown) only struck the FIRST green -- its own settling here is
+    // unaffected by what happens two links further down the chain (FR-007).
+    expect(outcome.board.cells[2][1]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(outcome.board.cells[2][4]).toBeNull(); // both greens annihilated each other, two links down
     expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(true);
     expect(outcome.result).toBe('lost');
   });
@@ -101,8 +103,8 @@ describe('brown: never travels more than one full lap of the board (FR-004, spec
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
-    expect(outcome.board.cells[4][3]).toBeNull();
-    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(outcome.result).toBe('won');
   });
 });
@@ -132,9 +134,9 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
     const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
 
     expect(outcome.missclick).toBe(false);
-    expect(outcome.board.cells[5][3]).toBeNull();
-    expect(outcome.board.cells[6][3]).toEqual({ color: 'brown' });
-    expect(outcome.board.cells[7][3]).toEqual({ color: 'green' });
+    expect(outcome.board.cells[5][3]).toEqual({ color: 'green', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[6][3]).toEqual({ color: 'brown', fragility: 'cracked' });
+    expect(outcome.board.cells[7][3]).toEqual({ color: 'green', fragility: 'cracked' });
   });
 
   // Same failure mode, but with two links between the launch and where brown
@@ -154,10 +156,10 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
     expect(outcome.missclick).toBe(false);
-    expect(outcome.board.cells[4][0]).toBeNull();
-    expect(outcome.board.cells[4][2]).toEqual({ color: 'green' });
-    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown' });
-    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange' });
+    expect(outcome.board.cells[4][0]).toEqual({ color: 'orange', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown', fragility: 'cracked' });
+    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange', fragility: 'cracked' });
   });
 });
 

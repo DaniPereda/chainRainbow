@@ -2,7 +2,9 @@ export type Coordinate = { row: number; col: number };
 
 export type PieceColor = 'green' | 'orange' | 'brown' | 'red';
 
-export type Piece = { color: PieceColor };
+export type Fragility = 'new' | 'cracked' | 'broken';
+
+export type Piece = { color: PieceColor; fragility: Fragility };
 
 export type Board = {
   size: 8;

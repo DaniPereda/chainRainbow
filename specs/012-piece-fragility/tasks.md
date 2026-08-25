@@ -42,27 +42,29 @@ esto rompe la compilación de cualquier sitio que construya un `Piece` a mano ha
 actualice, y las aserciones `toEqual({color:...})` sobre fichas del tablero en los tests ya
 existentes dejan de ser una igualdad exacta hasta añadirles `fragility`.
 
-- [ ] T001 En `src/engine/board.ts`, añadir `export type Fragility = 'new' | 'cracked' | 'broken'`
+- [X] T001 En `src/engine/board.ts`, añadir `export type Fragility = 'new' | 'cracked' | 'broken'`
       y extender `Piece` a `{ color: PieceColor; fragility: Fragility }` (data-model.md).
-- [ ] T002 [P] En `src/engine/level.ts`, `createLevel` — actualizar la construcción interna de
+- [X] T002 [P] En `src/engine/level.ts`, `createLevel` — actualizar la construcción interna de
       fichas (tablero y mano) para satisfacer el nuevo campo obligatorio, usando siempre
       `fragility: 'new'`. Firma pública sin cambios todavía (`pieces: PiecePlacement[]`,
       `hand: PieceColor[]`, `goal: PiecePlacement`) — ningún comportamiento ni capacidad nueva
       expuesta aún, eso es trabajo de US4. Depende de T001.
-- [ ] T003 [P] En `src/engine/pieces/push.ts`, `resolveBranch` — su construcción de ficha
+- [X] T003 [P] En `src/engine/pieces/push.ts`, `resolveBranch` — su construcción de ficha
       (`const piece: Piece = { color }`) pasa a `{ color, fragility: 'new' }`. Mismo criterio que
       T002: arreglo mecánico para compilar, sin lógica de avance/rotura todavía (eso es US1).
       Depende de T001.
-- [ ] T004 [P] Actualizar las 22 aserciones `toEqual({ color: ... })` sobre fichas de tablero ya
+- [X] T004 [P] Actualizar las 22 aserciones `toEqual({ color: ... })` sobre fichas de tablero ya
       existentes en `tests/unit/engine/brown.test.ts`, `orange.test.ts`, `red.test.ts`,
       `wrap-around.test.ts`, `launch.test.ts` y `session.test.ts` a
       `toEqual({ color: ..., fragility: 'new' })` — correcto en este punto exacto del código,
       porque todavía no existe ninguna lógica que avance la fragilidad de nadie. Depende de
       T001 (no depende de T002/T003 para poder escribirse, aunque si depende de ellas para que
-      la suite compile).
-- [ ] T005 Ejecutar `npm run typecheck && npm test`: la suite completa vuelve a estar en verde,
+      la suite compile). También hizo falta un arreglo mecánico equivalente en
+      `move-step.test.ts` (construcción directa de `Piece`, no detectado en el recuento inicial
+      de 22 -- ver Notes).
+- [X] T005 Ejecutar `npm run typecheck && npm test`: la suite completa vuelve a estar en verde,
       sin ningún cambio de comportamiento respecto a antes de esta feature. Depende de T002, T003,
-      T004.
+      T004. **87/87 tests, typecheck limpio.**
 
 **Checkpoint**: el tipo existe, todo compila y la suite pasa exactamente igual que antes —
 listo para que las historias añadan comportamiento real.
@@ -97,7 +99,7 @@ motor, headless.
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] `src/engine/pieces/push.ts`, `resolveStrike` — añadir
+- [X] T008 [US1] `src/engine/pieces/push.ts`, `resolveStrike` — añadir
       `advance(f: 'new' | 'cracked'): 'cracked' | 'broken'` (tipado para excluir `'broken'` de
       la entrada, research.md); avanzar la fragilidad de la defensora justo donde ya se
       determina que va a ser desplazada (antes de calcular `to`); comprobar `fragility ===
@@ -105,18 +107,20 @@ motor, headless.
       este nivel de recursión (en su propia casilla, la que la defensora deja libre) como la
       defensora en su destino (condicionado también, como hoy, a que no se haya aniquilado por
       mismo color). Depende de T005. Hace pasar T006.
-- [ ] T009 [US1] `src/engine/pieces/push.ts`, `resolveSplit`/`resolveBranch` — la defensora
+- [X] T009 [US1] `src/engine/pieces/push.ts`, `resolveSplit`/`resolveBranch` — la defensora
       golpeada por rojo avanza su fragilidad una vez (mismo `advance()` de T008) antes de
       dividirse; ambas ramas heredan ese estado ya avanzado; cada rama comprueba `'broken'`
       antes de asentarse, igual que en T008. Depende de T008. Hace pasar T007.
-- [ ] T010 [US1] Revisar las 22 aserciones actualizadas en T004 (`brown.test.ts`,
+- [X] T010 [US1] Revisar las 22 aserciones actualizadas en T004 (`brown.test.ts`,
       `orange.test.ts`, `red.test.ts`, `wrap-around.test.ts`, `launch.test.ts`,
       `session.test.ts`): cualquier ficha que la propia cascada de ESE test golpee de verdad
       pasa a `fragility: 'cracked'`; las que no participan en ninguna colisión de ese lanzamiento
-      se quedan en `'new'`. Depende de T008, T009.
-- [ ] T011 [US1] Ejecutar `npm test && npm run typecheck`: T006, T007 y T010 en verde, y el
+      se quedan en `'new'`. Depende de T008, T009. (También cubrió 5 aserciones equivalentes en
+      brown.test.ts traídas por el rebase de T007, no contadas en el recuento original de 22.)
+- [X] T011 [US1] Ejecutar `npm test && npm run typecheck`: T006, T007 y T010 en verde, y el
       resto de la suite (niveles del prototipo, generador si aplica) sigue pasando sin cambios
-      de comportamiento fuera de lo tocado por esta historia. Depende de T010.
+      de comportamiento fuera de lo tocado por esta historia. Depende de T010. **95/95 tests,
+      typecheck limpio.**
 
 **Checkpoint**: el mecanismo de desgaste y ruptura está completo y probado — MVP de esta
 feature.
@@ -135,7 +139,7 @@ primer impacto, en vez de desaparecer; lanzar una ficha ya BROKEN (nivel constru
 
 ### Tests for User Story 2 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T012 [P] [US2] `tests/unit/engine/fragility.test.ts`: los 3 escenarios de la Historia 2
+- [X] T012 [P] [US2] `tests/unit/engine/fragility.test.ts`: los 3 escenarios de la Historia 2
       del spec — ficha NEW lanzada se asienta conservando su estado; ficha ya BROKEN en mano
       (construida directamente como `Hand`/`Level`, sin pasar por `createLevel` — no depende de
       US4) se elimina tras su impacto sin asentarse; un missclick no cambia el estado de la
@@ -143,18 +147,24 @@ primer impacto, en vez de desaparecer; lanzar una ficha ya BROKEN (nivel constru
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] `src/engine/pieces/push.ts`, `applyImpact` — tras resolver el impacto inicial
+- [X] T013 [US2] `src/engine/pieces/push.ts`, `applyImpact` — tras resolver el impacto inicial
       con `resolveStrike` (sin cambiar su firma ni su comportamiento interno), asentar
       `site.piece` en `site.to` salvo que el resultado haya sido una aniquilación por mismo
       color o que `site.piece.fragility === 'broken'` — mismo patrón exacto que T008 aplica
       dentro de `resolveStrike`, aplicado aquí una vez más (research.md). Depende de T011. Hace
-      pasar T012.
-- [ ] T014 [US2] Revisar los tests existentes que comprobaban implícitamente que la celda de
+      pasar T012. Descubrimiento no anticipado: rojo también se asienta en su propia casilla de
+      división tras causar un split (ya lo hacía cualquier rojo golpeado en mitad de una cadena
+      antes de esta feature — `resolveSplit` siempre devuelve `annihilated:false`; FR-007 solo
+      extendía ese mismo patrón, ya existente, al lanzamiento de nivel superior).
+- [X] T014 [US2] Revisar los tests existentes que comprobaban implícitamente que la celda de
       origen de un lanzamiento queda vacía tras el impacto (buscar aserciones sobre esa celda
       concreta en `launch.test.ts`, `chain.test.ts` y cualquier otro fichero que lance una
       ficha NEW/CRACKED contra un objetivo distinto) y actualizarlas para reflejar que ahora esa
       celda puede quedar ocupada por la ficha lanzada, cuando sobrevive. Depende de T013.
-- [ ] T015 [US2] Ejecutar `npm test && npm run typecheck`. Depende de T013, T014.
+      17 aserciones revisadas en brown/orange/red/same-color/session/wrap-around/launch.test.ts
+      (`chain.test.ts` no necesitó cambios -- no comprueba esa celda).
+- [X] T015 [US2] Ejecutar `npm test && npm run typecheck`. Depende de T013, T014. **98/98 tests,
+      typecheck limpio.**
 
 **Checkpoint**: el mecanismo de motor está completo de extremo a extremo (Historias 1 y 2) —
 todo lo que falta a partir de aquí es visibilidad para el jugador y autoría de niveles.
@@ -172,15 +182,24 @@ cuál está más desgastada (SC-001).
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] `src/renderer/board-view.ts`, `drawBoard` — añadir una variación visual por
+- [X] T016 [US3] `src/renderer/board-view.ts`, `drawBoard` — añadir una variación visual por
       `piece.fragility` (opacidad, borde o anillo superpuesto sobre el relleno de color ya
       existente — decisión de tratamiento concreto en esta misma tarea) sin introducir ninguna
-      lógica de reglas (Principio I). Depende de T015.
-- [ ] T017 [US3] Validación manual (`quickstart.md`, "Validación visual"): `npm run dev`,
+      lógica de reglas (Principio I). Depende de T015. Tratamiento elegido (revisado tras
+      feedback del usuario): una grieta dibujada sobre el relleno de color habitual -- una
+      línea en zigzag fija y determinista de esquina a esquina de la ficha, en vez de opacidad
+      reducida + borde. BROKEN (nunca debería llegar a dibujarse -- se elimina en el motor antes
+      de asentarse, FR-004) añade una segunda grieta cruzada, para no dejar el caso sin definir.
+      `npm run typecheck`/`npm run build` limpios.
+- [~] T017 [US3] Validación manual (`quickstart.md`, "Validación visual"): `npm run dev`,
       confirmar que dos fichas del mismo color en distinto estado se distinguen sin acción
       adicional, y que una ficha desaparece del tablero justo en el instante en que le toca
       asentarse rota, no antes ni en una limpieza aparte. Depende de T016. Sin cobertura Vitest
       propia (mismo criterio ya establecido para `drawBoard`, comentario en el propio fichero).
+      **Parcial**: confirmado que el servidor de desarrollo arranca y sirve la página sin
+      errores (`npm run dev`, HTTP 200), pero esta sesión no tiene acceso a un navegador para
+      confirmar visualmente el resultado en el canvas de Phaser -- pendiente de que el usuario
+      lo confirme a simple vista.
 
 **Checkpoint**: la fragilidad es visible para el jugador — Historias 1, 2 y 3 completas.
 
@@ -199,7 +218,7 @@ aparece en el tablero resultante.
 
 ### Tests for User Story 4 ⚠️ escribir primero, deben fallar antes de implementar
 
-- [ ] T018 [P] [US4] `tests/unit/engine/level.test.ts` (nuevo fichero): los 2 escenarios de la
+- [X] T018 [P] [US4] `tests/unit/engine/level.test.ts` (nuevo fichero): los 2 escenarios de la
       Historia 4 del spec (ficha de tablero declarada CRACKED se respeta; nivel sin declarar
       nada usa NEW en todas sus fichas, de tablero y de mano) más FR-016 (ficha de tablero
       declarada BROKEN nunca aparece en el tablero resultante) y un caso de mano BROKEN
@@ -207,14 +226,15 @@ aparece en el tablero resultante.
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] `src/engine/level.ts`, `createLevel` — `PiecePlacement` gana
+- [X] T019 [US4] `src/engine/level.ts`, `createLevel` — `PiecePlacement` gana
       `fragility?: Fragility`; nuevo tipo `HandPieceInput = PieceColor | { color: PieceColor;
       fragility?: Fragility }` y `hand: HandPieceInput[]` (data-model.md). La construcción del
       tablero omite cualquier entrada de `pieces` con `fragility: 'broken'` (FR-016); cualquier
       otra entrada, de tablero o de mano, usa `fragility ?? 'new'`. Depende de T005 (Foundational
       ya deja `createLevel` compilando con el shape mínimo; esta tarea añade la capacidad real
       sin depender de US1/US2/US3). Hace pasar T018.
-- [ ] T020 [US4] Ejecutar `npm test && npm run typecheck`. Depende de T019.
+- [X] T020 [US4] Ejecutar `npm test && npm run typecheck`. Depende de T019. **102/102 tests,
+      typecheck y build limpios.**
 
 **Checkpoint**: las 4 historias completas — el mecanismo de motor, su persistencia visual, y la
 capacidad de autoría de niveles, todos probados de forma independiente.
@@ -223,13 +243,15 @@ capacidad de autoría de niveles, todos probados de forma independiente.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Ejecutar `npm run build`: confirmar que el build del cliente sigue limpio, sin
+- [X] T021 [P] Ejecutar `npm run build`: confirmar que el build del cliente sigue limpio, sin
       ningún rastro de `tools/generator/` (no tocado por esta feature, mismo criterio que
       features anteriores de esta sesión). Depende de T020 (o de que todas las historias que se
-      vayan a incluir estén cerradas).
-- [ ] T022 Ejecutar la validación completa de `quickstart.md` de principio a fin (motor headless
+      vayan a incluir estén cerradas). Confirmado: build limpio, sin rastro de `tools/generator/`
+      en `dist/`, `src/renderer/` no importa nada de `tools/`.
+- [X] T022 Ejecutar la validación completa de `quickstart.md` de principio a fin (motor headless
       + visual manual + build) y confirmar el recuento final de tests de toda la suite. Depende
-      de T011, T015, T017, T020, T021.
+      de T011, T015, T017, T020, T021. **102/102 tests, typecheck y build limpios.** Validación
+      visual (T017) sigue parcial -- pendiente de confirmación humana en navegador.
 
 ---
 

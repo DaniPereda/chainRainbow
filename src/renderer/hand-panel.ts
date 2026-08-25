@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { Hand } from '../engine/index.js';
-import { PIECE_COLOR } from './board-view.js';
+import { PIECE_COLOR, drawPieceFragility } from './board-view.js';
 
 export const PIECE_RADIUS = 14;
 const SLOT_WIDTH = 40;
@@ -9,7 +9,10 @@ const HAND_SELECTION_RING_COLOR = 0xffee58;
 /**
  * Draws the full queue of pieces left in a Hand as a row of colored circles, in
  * order -- the first piece drawn is the next one that will be launched by default
- * (010-hand-piece-selection, FR-005). The piece at `selectedIndex` (if not `null`)
+ * (010-hand-piece-selection, FR-005). Each piece also gets its fragility marking
+ * (012-piece-fragility, FR-014) -- unlike the board, a hand piece CAN genuinely be
+ * BROKEN (a level can deal one that way, FR-008/FR-011), so this isn't just for
+ * completeness here. The piece at `selectedIndex` (if not `null`)
  * gets a highlight ring -- same stroke weight as the board's goal ring, but a fixed
  * accent color rather than the piece's own: a same-color ring on a same-color fill
  * would have no contrast (research.md). Never decides which piece fires next on its
@@ -36,6 +39,7 @@ export function drawHand(
 
     graphics.fillStyle(PIECE_COLOR[piece.color], 1);
     graphics.fillCircle(x, 0, PIECE_RADIUS);
+    drawPieceFragility(graphics, x, 0, PIECE_RADIUS, piece.fragility);
 
     if (index === selectedIndex) {
       graphics.lineStyle(3, HAND_SELECTION_RING_COLOR, 1);

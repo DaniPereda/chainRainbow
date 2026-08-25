@@ -46,9 +46,9 @@ describe('resolveLaunch: pieceIndex selects which hand piece is used (FR-003)', 
   it('uses hand.pieces[pieceIndex], not hand.pieces[0] -- orange pushes 2, not green\'s 1', () => {
     const outcome = resolveLaunch(level, launch, 1);
 
-    expect(outcome.board.cells[3][3]).toBeNull();
-    expect(outcome.board.cells[3][5]).toEqual({ color: 'brown' });
-    expect(outcome.hand.pieces).toEqual([{ color: 'green' }]);
+    expect(outcome.board.cells[3][3]).toEqual({ color: 'orange', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[3][5]).toEqual({ color: 'brown', fragility: 'cracked' });
+    expect(outcome.hand.pieces).toEqual([{ color: 'green', fragility: 'new' }]);
   });
 
   it('is deterministic for a non-zero pieceIndex, same as the default-index path', () => {
