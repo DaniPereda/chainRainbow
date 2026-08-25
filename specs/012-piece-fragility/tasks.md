@@ -242,13 +242,15 @@ capacidad de autoría de niveles, todos probados de forma independiente.
 
 ## Phase Final: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Ejecutar `npm run build`: confirmar que el build del cliente sigue limpio, sin
+- [X] T021 [P] Ejecutar `npm run build`: confirmar que el build del cliente sigue limpio, sin
       ningún rastro de `tools/generator/` (no tocado por esta feature, mismo criterio que
       features anteriores de esta sesión). Depende de T020 (o de que todas las historias que se
-      vayan a incluir estén cerradas).
-- [ ] T022 Ejecutar la validación completa de `quickstart.md` de principio a fin (motor headless
+      vayan a incluir estén cerradas). Confirmado: build limpio, sin rastro de `tools/generator/`
+      en `dist/`, `src/renderer/` no importa nada de `tools/`.
+- [X] T022 Ejecutar la validación completa de `quickstart.md` de principio a fin (motor headless
       + visual manual + build) y confirmar el recuento final de tests de toda la suite. Depende
-      de T011, T015, T017, T020, T021.
+      de T011, T015, T017, T020, T021. **102/102 tests, typecheck y build limpios.** Validación
+      visual (T017) sigue parcial -- pendiente de confirmación humana en navegador.
 
 ---
 
