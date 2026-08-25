@@ -13,6 +13,7 @@
 ### Session 2026-08-25
 
 - Q: Cuando rojo golpea a una ficha, dividiéndola en dos ramas en vez de empujarla, ¿cómo se determina el estado de fragilidad de cada rama resultante? → A: la defensora avanza su estado una vez, como cualquier golpe (la división no es un caso especial), y ambas ramas heredan ese nuevo estado.
+- Q: ¿Qué ocurre cuando una ficha ya ROTA, colocada así por el diseño del nivel en el tablero, es golpeada por otra ficha? → A: no llega a ocurrir — una ficha de tablero declarada ROTA se normaliza a "casilla vacía" antes de que el nivel llegue a jugarse (cribado al guardar/finalizar el nivel), así que nunca existe como ficha golpeable. El estado ROTA solo tiene efecto real en fichas de mano (FR-008).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -85,6 +86,7 @@ Al diseñar un nivel, además del color de cada ficha (de tablero o de mano inic
 - ¿Qué ocurre si, tras eliminarse todas las fichas ROTA de un lanzamiento, el tablero queda sin ninguna ficha del color del objetivo? Se evalúa con las reglas de victoria/derrota ya existentes, sin ninguna regla adicional específica de fragilidad.
 - ¿Qué ocurre cuando una ficha roja golpea a otra, produciendo una división en dos ramas en vez de un empuje? La ficha defensora avanza su estado un escalón, como cualquier otro golpe (la división no es un caso especial), y las dos ramas resultantes heredan ese mismo estado ya avanzado — no nacen en NUEVA.
 - ¿Qué ocurre si una misma ficha física es golpeada más de una vez dentro de la misma cadena (no en lanzamientos distintos)? No puede ocurrir: cada celda de origen de una cadena se vacía de forma permanente en cuanto esa ficha empieza a moverse (motor ya corregido en la rama `012-fix-brown-cascade-loop`), así que ninguna ficha puede ser golpeada dos veces dentro del mismo lanzamiento — su estado avanza como máximo un escalón por lanzamiento.
+- ¿Qué ocurre cuando una ficha ya ROTA, colocada así por el diseño del nivel en el tablero, es golpeada por otra ficha? Esta situación no llega a darse: una ficha de tablero declarada ROTA se normaliza a "casilla vacía" antes de que el nivel sea jugable (cribado de autoría al guardar/finalizar el nivel), así que nunca existe como ficha presente y golpeable. El estado ROTA solo es significativo para fichas de mano.
 
 ## Requirements *(mandatory)*
 
@@ -102,6 +104,7 @@ Al diseñar un nivel, además del color de cada ficha (de tablero o de mano inic
 - **FR-010**: Los impactos entre fichas del mismo color DEBEN seguir aniquilando a ambas de forma instantánea, sin que el estado de fragilidad de ninguna de las dos influya en ese resultado ni se vea alterado por él.
 - **FR-011**: La definición de un nivel DEBE permitir especificar un estado de fragilidad inicial para cada ficha individual, tanto las colocadas en el tablero como las incluidas en la mano inicial.
 - **FR-012**: Cuando una ficha de un nivel no especifica estado de fragilidad inicial, el sistema DEBE asumir NUEVA por defecto.
+- **FR-016**: Una ficha de TABLERO declarada con estado ROTA en la definición de un nivel DEBE normalizarse a "casilla vacía" antes de que el nivel sea jugable — nunca DEBE llegar a existir como una ficha presente y golpeable en el tablero. Esta normalización ocurre en el momento de guardar/finalizar el nivel (cribado de autoría), no como una regla que el motor deba aplicar durante una partida en curso. Esta restricción NO aplica a fichas de MANO, donde el estado ROTA sí es significativo (FR-008).
 - **FR-013**: El estado de fragilidad de una ficha NO DEBE influir en si esa ficha satisface el color requerido por un objetivo — únicamente su presencia o ausencia en el tablero es relevante (una ficha eliminada por ROTA no puede satisfacer ningún objetivo).
 - **FR-014**: El sistema DEBE dar feedback visual distinguible del estado de fragilidad de cada ficha del tablero, visible sin necesidad de ninguna acción adicional del jugador.
 - **FR-015**: Cuando una ficha roja golpea a una ficha defensora, produciendo una división en dos ramas, el sistema DEBE avanzar el estado de fragilidad de la defensora exactamente un escalón (la división cuenta como un golpe más, sin caso especial), y ambas ramas resultantes DEBEN heredar ese nuevo estado.
@@ -109,7 +112,7 @@ Al diseñar un nivel, además del color de cada ficha (de tablero o de mano inic
 ### Key Entities
 
 - **Ficha (Piece)**: entidad ya existente en el motor, definida hasta ahora solo por su color. Esta feature le añade un estado de fragilidad (NUEVA/TOCADA/ROTA) que evoluciona durante la partida según los impactos que recibe, independiente de su color y de su comportamiento de movimiento.
-- **Definición de nivel (pieces / hand)**: las entradas declarativas que describen las fichas iniciales de un nivel (tanto en el tablero como en la mano) pasan a incluir, además del color, un estado de fragilidad inicial opcional por ficha (NUEVA por defecto si no se especifica).
+- **Definición de nivel (pieces / hand)**: las entradas declarativas que describen las fichas iniciales de un nivel (tanto en el tablero como en la mano) pasan a incluir, además del color, un estado de fragilidad inicial opcional por ficha (NUEVA por defecto si no se especifica). El rango de estados iniciales con efecto real difiere entre ambas: una ficha de mano puede empezar en cualquiera de los 3 estados; una ficha de tablero solo tiene efecto real en NUEVA o TOCADA — ROTA se normaliza a "casilla vacía" antes de que el nivel sea jugable (FR-016).
 
 ## Success Criteria *(mandatory)*
 
@@ -118,7 +121,7 @@ Al diseñar un nivel, además del color de cada ficha (de tablero o de mano inic
 - **SC-001**: Un jugador puede distinguir, con solo mirar el tablero y sin realizar ninguna acción, si una ficha ya ha recibido al menos un golpe, para el 100% de las fichas visibles en pantalla.
 - **SC-002**: El 0% de las evaluaciones de objetivo cuentan erróneamente una ficha que se ha roto (ROTA) durante ese mismo lanzamiento como si hubiera cumplido el objetivo.
 - **SC-003**: El 100% de los lanzamientos en los que la ficha lanzada sobrevive a su propio impacto dejan esa ficha presente e interactuable en el tablero al finalizar el lanzamiento, verificable mediante el estado final devuelto por el motor.
-- **SC-004**: Un autor de niveles puede fijar el estado inicial de cualquier ficha individual (de tablero o de mano) entre los 3 estados posibles, para el 100% de las fichas de una definición de nivel.
+- **SC-004**: Un autor de niveles puede fijar el estado inicial de cualquier ficha individual, para el 100% de las fichas de una definición de nivel — entre los 3 estados posibles si es una ficha de mano, o entre NUEVA/TOCADA si es una ficha de tablero (ROTA se normaliza a casilla vacía, FR-016).
 
 ## Assumptions
 

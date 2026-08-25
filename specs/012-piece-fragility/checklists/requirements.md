@@ -32,4 +32,4 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
-- Todos los items pasan. El marcador [NEEDS CLARIFICATION] de FR-015 (herencia de estado en la división de rojo) se resolvió en la sesión de clarificación del 2026-08-25 (ver spec.md, sección Clarifications).
+- Todos los items pasan. Dos rondas de clarificación en la sesión del 2026-08-25 (ver spec.md, sección Clarifications): (1) herencia de estado en la división de rojo (FR-015); (2) qué ocurre al golpear una ficha de tablero ya ROTA por diseño de nivel — se normaliza a casilla vacía antes de que el nivel sea jugable (FR-016).
