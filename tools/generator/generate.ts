@@ -88,16 +88,14 @@ export function validatesForward(level: Level, solution: SolutionStep[]): boolea
       }
     }
   } catch {
-    // El motor real puede entrar en una cascada sin fin ante ciertas
-    // adyacencias con marrón en un carril por lo demás vacío (bug de motor
-    // real, no del generador -- ver hallazgo de esta sesión: marrón, al
-    // convertirse en el "golpeador" de una cadena, excluye por identidad solo
-    // la ficha que transporta, y su propio paseo puede dar una vuelta
-    // completa al carril y volver a topar con la ficha que lo golpeó,
-    // repitiendo la misma colisión indefinidamente porque el tablero no se
-    // muta hasta que la recursión empieza a deshacerse). Se trata como
-    // cualquier otra discrepancia de reproducción (FR-007): el intento
-    // entero se descarta, sin tocar `src/engine/`.
+    // Red de seguridad defensiva: un fallo real del motor (encontrado y ya
+    // corregido esta misma sesión en resolveStrike, src/engine/pieces/push.ts
+    // -- una cascada con marrón podía dar la vuelta completa a un carril vacío
+    // y repetir la misma colisión para siempre) se trata como cualquier otra
+    // discrepancia de reproducción (FR-007): el intento entero se descarta.
+    // Se mantiene aunque el bug conocido ya esté arreglado, para no volver a
+    // tumbar todo el lote si el motor lanzara una excepción por cualquier otra
+    // razón en el futuro.
     return false;
   }
   return false; // solution vacía -- no debería ocurrir con launchCount >= 1
