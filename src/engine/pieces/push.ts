@@ -118,6 +118,22 @@ function resolveSplit(
  * empty either way -- the striker was either the originally launched piece, which
  * never persists on the board (applyImpact), or an earlier defender in the same
  * cascade, whose own resting place is `to` of ITS OWN strike, resolved one level up.
+ *
+ * `position` is vacated EAGERLY, before computing `to` and before recursing --
+ * not deferred to when the recursion unwinds. Brown's own displacement (the only
+ * strategy that actually reads `board`) walks forward excluding just the piece it
+ * is currently carrying, by identity; if earlier links of the same cascade were
+ * still shown as occupied (the pre-fix behaviour), that walk could wrap a full lap
+ * of an otherwise-clear lane and land back on a piece from earlier in the SAME
+ * cascade -- which then replays the exact same collision again, forever. Vacating
+ * eagerly means every recursive call sees an accurate, live view of what is still
+ * really on the board, so a walk that circles back to an already-vacated link
+ * correctly reads it as empty and keeps going, instead of colliding with a piece
+ * that is, physically, still mid-flight (found via manual play-testing of
+ * generated 6-launch levels, tools/generator/ -- confirmed with a 2-piece repro
+ * fully outside the generator, then generalized: any number of links apart, as
+ * long as brown ends up carrying a strike whose forward lane is otherwise clear
+ * back to an earlier link).
  */
 function resolveStrike(
   board: Board,
@@ -144,12 +160,12 @@ function resolveStrike(
     return resolveSplit(board, defender.color, position, direction);
   }
 
-  const to = PUSH_STRATEGY[strikerColor](board, defender, position, direction);
-
-  const occupant = getPieceAt(board, to);
+  const vacated = setPieceAt(board, position, null);
+  const to = PUSH_STRATEGY[strikerColor](vacated, defender, position, direction);
+  const occupant = getPieceAt(vacated, to);
 
   if (occupant === null) {
-    const boardAfter = setPieceAt(setPieceAt(board, position, null), to, defender);
+    const boardAfter = setPieceAt(vacated, to, defender);
     return {
       board: boardAfter,
       events: [{ type: 'MOVE_STEP', piece: defender, from: position, to, hasCollision: false }],
@@ -157,14 +173,11 @@ function resolveStrike(
     };
   }
 
-  // `to` is occupied: `defender` is now the striker for that next collision. Whatever
-  // happens there (push or annihilation), `position` is vacated either way -- but
-  // `defender` only ends up settled at `to` if IT wasn't itself annihilated there.
-  const next = resolveStrike(board, defender.color, to, direction);
-  const clearedPosition = setPieceAt(next.board, position, null);
-  const boardAfter = next.annihilated
-    ? clearedPosition
-    : setPieceAt(clearedPosition, to, defender);
+  // `to` is occupied: `defender` is now the striker for that next collision.
+  // `position` is already vacated on `vacated`, above -- `next` only needs to
+  // settle `defender` at `to` if it wasn't itself annihilated there.
+  const next = resolveStrike(vacated, defender.color, to, direction);
+  const boardAfter = next.annihilated ? next.board : setPieceAt(next.board, to, defender);
 
   return {
     board: boardAfter,

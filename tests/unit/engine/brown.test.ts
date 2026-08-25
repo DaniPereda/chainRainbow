@@ -107,6 +107,60 @@ describe('brown: never travels more than one full lap of the board (FR-004, spec
   });
 });
 
+describe('brown: a chain link handed off to brown never loops back onto an earlier link (regression)', () => {
+  // Found by manual play-testing of generated 6-launch levels (tools/generator/):
+  // resolveStrike used to pass the SAME unmutated board down through every level
+  // of a cascade, only clearing vacated cells once the recursion unwound. Once
+  // brown became the "carrier" of a collision (the piece just displaced, now
+  // acting as striker for the next one), its own walk -- which excludes only the
+  // exact piece it is carrying, by identity -- could wrap a full lap of an
+  // otherwise-clear lane and land back on a piece from an EARLIER link of the
+  // very same cascade, which was still shown as occupied. That replayed the
+  // exact same collision again, forever, overflowing the call stack. Fixed by
+  // vacating a piece's origin cell eagerly, before computing where it lands and
+  // before recursing, so every link sees an accurate view of the board.
+  it('resolves a 2-piece cascade (brown carrying a green hand-launch) instead of looping forever', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 5, col: 3 }, color: 'brown' },
+        { at: { row: 6, col: 3 }, color: 'green' },
+      ],
+      hand: ['green'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
+
+    expect(outcome.missclick).toBe(false);
+    expect(outcome.board.cells[5][3]).toBeNull();
+    expect(outcome.board.cells[6][3]).toEqual({ color: 'brown' });
+    expect(outcome.board.cells[7][3]).toEqual({ color: 'green' });
+  });
+
+  // Same failure mode, but with two links between the launch and where brown
+  // takes over -- proves the loop isn't limited to brown sitting immediately
+  // next to the piece that struck it.
+  it('resolves a longer cascade (green, empty, brown, orange) instead of looping forever', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 0 }, color: 'green' },
+        { at: { row: 4, col: 2 }, color: 'brown' },
+        { at: { row: 4, col: 3 }, color: 'orange' },
+      ],
+      hand: ['orange'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.missclick).toBe(false);
+    expect(outcome.board.cells[4][0]).toBeNull();
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'green' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown' });
+    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange' });
+  });
+});
+
 describe('brown: launches from hand exactly like green and orange (FR-006, spec.md 008)', () => {
   // data-model.md fixture 6: a missclick works identically for a brown-handed launch
   // -- the launch mechanism itself is already color-agnostic, no adjustment needed.
