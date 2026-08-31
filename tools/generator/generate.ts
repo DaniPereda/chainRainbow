@@ -5,27 +5,54 @@ import { evaluateGoal } from '../../src/engine/goal.js';
 import { createLevel, resolveLaunch, type HandPieceInput, type Level } from '../../src/engine/index.js';
 import { resolveObligations, type Obligation } from './obligations.js';
 import { assignGroupFragility, type FragilityProfile } from './fragility.js';
+import { loadComplexityConfig, resolveComplexity, type ComplexityFactorName } from './complexity.js';
 import { createRng } from './rng.js';
 
 export type SolutionStep = { direction: Direction; lane: number; pieceIndex: number };
 
 export type GenerationParams = {
-  launchCount: number; // FR-008
-  availableColors: PieceColor[]; // subconjunto de green/orange/brown
-  chainOriginProbability: number; // FR-005
-  decoyCount: number; // FR-008 -- cantidad FIJA de señuelo en mano
-  seed: number; // FR-008/FR-009
-  defenderContinuationProbability?: number; // por defecto 0.4 (research.md)
-  maxChainDepth?: number; // por defecto 4 (research.md)
+  // 014-generation-complexity, FR-006: opcionales -- pueden venir directos, o
+  // derivarse de complexityScore (ver generateLevelWithRng). Si ninguno de los
+  // dos los cubre, generateLevelWithRng lanza un error explícito.
+  launchCount?: number; // FR-008 (011)
+  availableColors?: PieceColor[]; // subconjunto de green/orange/brown
+  chainOriginProbability?: number; // FR-005 (011)
+  decoyCount?: number; // FR-008 (011) -- cantidad FIJA de señuelo en mano
+  seed: number; // FR-008/FR-009 (011) -- nunca gobernado por complexityScore
+  defenderContinuationProbability?: number; // por defecto 0.4 (research.md), o de complexityScore
+  maxChainDepth?: number; // por defecto 4 (research.md) -- NUNCA un factor de complejidad (FR-015)
   maxGenerationAttempts?: number; // por defecto 200 (research.md)
   // Probabilidad de señuelo en el TABLERO, sorteada de nuevo en cada paso de
   // construcción -- la cantidad resultante es aleatoria (0 a N), a diferencia
-  // de decoyCount. Por defecto 0 (ninguna).
+  // de decoyCount. Por defecto 0 (ninguna), o de complexityScore.
   boardDecoyProbability?: number;
   // 013-generator-fragility-difficulty, FR-004: perfil opcional de heterogeneidad
   // de fragilidad para señuelos y fichas lanzadas. Ausente = comportamiento actual
   // (todo 'new', cero llamadas nuevas a rng()).
-  difficultyProfile?: FragilityProfile;
+  fragilityProfile?: FragilityProfile;
+  // 014-generation-complexity, FR-003: presupuesto único que se reparte entre los
+  // 7 factores de complejidad conocidos (research.md Decisión 4). Cualquier factor
+  // ya dado explícitamente arriba queda excluido del reparto y del rango válido.
+  complexityScore?: number;
+};
+
+const COMPLEXITY_FACTOR_NAMES: readonly ComplexityFactorName[] = [
+  'launchCount',
+  'chainOriginProbability',
+  'defenderContinuationProbability',
+  'decoyCount',
+  'boardDecoyProbability',
+  'availableColors',
+  'fragilityProfile',
+];
+
+// El resultado de resolveGenerationParams -- attemptOnce/resolveObligations
+// exigen estos cuatro campos concretos, ya vengan directos o de complexityScore.
+type ResolvedGenerationParams = GenerationParams & {
+  launchCount: number;
+  availableColors: PieceColor[];
+  chainOriginProbability: number;
+  decoyCount: number;
 };
 
 export type GeneratedLevel = {
@@ -115,7 +142,7 @@ export function validatesForward(level: Level, solution: SolutionStep[]): boolea
   return false; // solution vacía -- no debería ocurrir con launchCount >= 1
 }
 
-function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLevel | null {
+function attemptOnce(params: ResolvedGenerationParams, rng: () => number): GeneratedLevel | null {
   const defenderContinuationProbability =
     params.defenderContinuationProbability ?? DEFAULT_DEFENDER_CONTINUATION_PROBABILITY;
   const maxChainDepth = params.maxChainDepth ?? DEFAULT_MAX_CHAIN_DEPTH;
@@ -149,7 +176,7 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
   // FR-005/FR-010: la construcción nunca vuelve a golpear una ficha lanzada, así
   // que NEW/CRACKED son siempre seguras para ella -- nunca BROKEN (señal exclusiva
   // de señuelo de mano, FR-009/FR-010).
-  const launchedFragility = assignGroupFragility(params.difficultyProfile, playOrder.length, ['new', 'cracked'], rng);
+  const launchedFragility = assignGroupFragility(params.fragilityProfile, playOrder.length, ['new', 'cracked'], rng);
   const hand: HandPieceInput[] = playOrder.map((launch, i) => toHandPieceInput(launch.color, launchedFragility[i]));
   // pieceIndex es siempre 0: cada lanzamiento consume la PRIMERA ficha de la mano
   // restante en ese momento (takePieceAt la retira, desplazando el resto), y las
@@ -177,7 +204,7 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
     decoyColors.push(params.availableColors[Math.floor(rng() * params.availableColors.length)]);
   }
   // FR-009: los señuelos de mano SÍ pueden llegar a BROKEN -- rango completo.
-  const decoyFragility = assignGroupFragility(params.difficultyProfile, params.decoyCount, ['new', 'cracked', 'broken'], rng);
+  const decoyFragility = assignGroupFragility(params.fragilityProfile, params.decoyCount, ['new', 'cracked', 'broken'], rng);
   const decoyHand: HandPieceInput[] = hand.concat(
     decoyColors.map((color, i) => toHandPieceInput(color, decoyFragility[i])),
   );
@@ -191,19 +218,69 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
   };
 }
 
+const REQUIRED_FIELDS_ERROR =
+  'GenerationParams debe especificar launchCount, availableColors, chainOriginProbability y decoyCount directamente, o proporcionar complexityScore (014-generation-complexity)';
+
+/**
+ * Resuelve `complexityScore` (si está presente) en un `GenerationParams` totalmente
+ * concreto, ANTES de empezar ningún intento de construcción (research.md, Decisión 5):
+ * un factor con valor explícito nunca participa en el reparto ni cuenta en el rango
+ * válido de `complexityScore` para esta llamada (Decisión 4) -- el valor explícito
+ * siempre gana (FR-013). Sin `complexityScore`, esta función no llama a `rng()` ni una
+ * sola vez (FR-012, misma disciplina que el resto del generador).
+ */
+function resolveGenerationParams(params: GenerationParams, rng: () => number): ResolvedGenerationParams {
+  const merged: GenerationParams = { ...params };
+
+  if (params.complexityScore !== undefined) {
+    const config = loadComplexityConfig();
+    const excluded = new Set<ComplexityFactorName>(
+      COMPLEXITY_FACTOR_NAMES.filter((name) => params[name] !== undefined),
+    );
+    const derived = resolveComplexity(params.complexityScore, config, excluded, rng);
+
+    if (derived.launchCount !== undefined) merged.launchCount = derived.launchCount as number;
+    if (derived.chainOriginProbability !== undefined) {
+      merged.chainOriginProbability = derived.chainOriginProbability as number;
+    }
+    if (derived.defenderContinuationProbability !== undefined) {
+      merged.defenderContinuationProbability = derived.defenderContinuationProbability as number;
+    }
+    if (derived.decoyCount !== undefined) merged.decoyCount = derived.decoyCount as number;
+    if (derived.boardDecoyProbability !== undefined) {
+      merged.boardDecoyProbability = derived.boardDecoyProbability as number;
+    }
+    if (derived.availableColors !== undefined) merged.availableColors = derived.availableColors as PieceColor[];
+    if (derived.fragilityProfile !== undefined) merged.fragilityProfile = derived.fragilityProfile as FragilityProfile;
+  }
+
+  if (
+    merged.launchCount === undefined ||
+    merged.availableColors === undefined ||
+    merged.chainOriginProbability === undefined ||
+    merged.decoyCount === undefined
+  ) {
+    throw new Error(REQUIRED_FIELDS_ERROR);
+  }
+
+  return merged as ResolvedGenerationParams;
+}
+
 /**
  * Núcleo probable de forma determinista: recibe el `rng` inyectado en vez de crear
  * el suyo propio (research.md, "la fuente de aleatoriedad se inyecta"). `generateLevel`
  * es el envoltorio que conecta el PRNG real con semilla.
  */
 export function generateLevelWithRng(params: GenerationParams, rng: () => number): GenerationResult {
-  if (params.launchCount < 1) {
+  const resolved = resolveGenerationParams(params, rng);
+
+  if (resolved.launchCount < 1) {
     throw new Error('launchCount debe ser al menos 1 -- 0 lanzamientos no es un nivel válido (spec.md, edge case)');
   }
 
-  const maxAttempts = params.maxGenerationAttempts ?? DEFAULT_MAX_GENERATION_ATTEMPTS;
+  const maxAttempts = resolved.maxGenerationAttempts ?? DEFAULT_MAX_GENERATION_ATTEMPTS;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const level = attemptOnce(params, rng);
+    const level = attemptOnce(resolved, rng);
     if (level !== null) return { ok: true, level };
   }
   return { ok: false, attemptsUsed: maxAttempts };

@@ -33,7 +33,7 @@ export type ResolutionContext = {
   // 013-generator-fragility-difficulty: gobierna la fragilidad de los señuelos
   // de tablero (nunca la de fichas de tablero golpeadas por la solución, que
   // siempre parten de 'new' -- FR-001/FR-002).
-  difficultyProfile?: FragilityProfile;
+  fragilityProfile?: FragilityProfile;
 };
 
 export type ResolutionOutcome = {
@@ -145,14 +145,14 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
   const BOARD_DECOY_ALLOWED_STATES: readonly Fragility[] = ['new', 'cracked']; // FR-008: nunca BROKEN
 
   function pickBoardDecoyFragility(): Fragility {
-    if (ctx.difficultyProfile === undefined) return 'new'; // cero rng() nuevas cuando no se pide
-    if (ctx.difficultyProfile === 'easy') {
+    if (ctx.fragilityProfile === undefined) return 'new'; // cero rng() nuevas cuando no se pide
+    if (ctx.fragilityProfile === 'easy') {
       if (cachedEasyBoardDecoyFragility === undefined) {
         cachedEasyBoardDecoyFragility = assignGroupFragility('easy', 1, BOARD_DECOY_ALLOWED_STATES, ctx.rng)[0];
       }
       return cachedEasyBoardDecoyFragility;
     }
-    return assignGroupFragility(ctx.difficultyProfile, 1, BOARD_DECOY_ALLOWED_STATES, ctx.rng)[0];
+    return assignGroupFragility(ctx.fragilityProfile, 1, BOARD_DECOY_ALLOWED_STATES, ctx.rng)[0];
   }
 
   while (queue.length > 0) {

@@ -33,17 +33,43 @@ function parseArgs(argv: string[]): Map<string, string> {
 
 const flags = parseArgs(process.argv.slice(2));
 const count = Number(flags.get('count') ?? '1');
-const launchCount = Number(flags.get('launches') ?? '1');
-const availableColors = (flags.get('colors') ?? 'green,orange,brown')
-  .split(',')
-  .map((c) => c.trim()) as PieceColor[];
-const chainOriginProbability = Number(flags.get('chain-origin-probability') ?? '0.5');
-const decoyCount = Number(flags.get('decoys') ?? '0');
-const boardDecoyProbability = Number(flags.get('board-decoy-probability') ?? '0');
+
+// 014-generation-complexity: si se pide --complexity-score, un flag ausente se
+// deja `undefined` (para que complexityScore lo resuelva) en vez de aplicar el
+// valor por defecto de siempre -- un flag SÍ dado sigue ganando (FR-013). Sin
+// --complexity-score, el comportamiento es exactamente el de antes de esta feature.
+const complexityScoreRaw = flags.get('complexity-score');
+const complexityScore = complexityScoreRaw === undefined ? undefined : Number(complexityScoreRaw);
+
+const launchesRaw = flags.get('launches');
+const launchCount = launchesRaw !== undefined ? Number(launchesRaw) : complexityScore !== undefined ? undefined : 1;
+const colorsRaw = flags.get('colors');
+const availableColors =
+  colorsRaw !== undefined
+    ? (colorsRaw.split(',').map((c) => c.trim()) as PieceColor[])
+    : complexityScore !== undefined
+      ? undefined
+      : (['green', 'orange', 'brown'] as PieceColor[]);
+const chainOriginProbabilityRaw = flags.get('chain-origin-probability');
+const chainOriginProbability =
+  chainOriginProbabilityRaw !== undefined
+    ? Number(chainOriginProbabilityRaw)
+    : complexityScore !== undefined
+      ? undefined
+      : 0.5;
+const decoysRaw = flags.get('decoys');
+const decoyCount = decoysRaw !== undefined ? Number(decoysRaw) : complexityScore !== undefined ? undefined : 0;
+const boardDecoyProbabilityRaw = flags.get('board-decoy-probability');
+const boardDecoyProbability =
+  boardDecoyProbabilityRaw !== undefined
+    ? Number(boardDecoyProbabilityRaw)
+    : complexityScore !== undefined
+      ? undefined
+      : 0;
 const maxGenerationAttemptsRaw = flags.get('max-attempts');
 const maxGenerationAttempts =
   maxGenerationAttemptsRaw === undefined ? undefined : Number(maxGenerationAttemptsRaw);
-const difficultyProfile = flags.get('difficulty-profile') as FragilityProfile | undefined;
+const fragilityProfile = flags.get('fragility-profile') as FragilityProfile | undefined;
 
 if (!existsSync(LEVELS_DIR)) mkdirSync(LEVELS_DIR, { recursive: true });
 
@@ -61,7 +87,8 @@ for (let i = 0; i < count; i++) {
     decoyCount,
     boardDecoyProbability,
     maxGenerationAttempts,
-    difficultyProfile,
+    fragilityProfile,
+    complexityScore,
     seed: id,
   });
 
