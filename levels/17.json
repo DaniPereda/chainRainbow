@@ -1,0 +1,55 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 1,
+        "col": 4
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    }
+  ],
+  "goal": {
+    "color": "green",
+    "cell": {
+      "row": 4,
+      "col": 2
+    }
+  },
+  "solution": [
+    {
+      "direction": "O",
+      "lane": 4,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "seed": 17,
+    "complexityScore": 8,
+    "maxGenerationAttempts": 20000,
+    "launchCount": 1,
+    "chainOriginProbability": 0.15941517194733024,
+    "defenderContinuationProbability": 0.04964169440791011,
+    "decoyCount": 0,
+    "boardDecoyProbability": 0.252164549799636,
+    "availableColors": [
+      "green",
+      "orange"
+    ],
+    "fragilityProfile": "easy"
+  }
+}

@@ -25,12 +25,17 @@ import {
  * prototipo, sin que BoardScene necesite saber nada de esa fuente -- calcular
  * los vecinos y cargar el nivel correspondiente es responsabilidad de quien
  * llama (la propia escena selectora), no de BoardScene.
+ *
+ * `currentId` es igualmente opcional y puramente informativo -- solo alimenta
+ * el indicador "Nivel N" junto al botón de volver; si se omite (una fuente sin
+ * id numérico propio), el indicador simplemente no se muestra.
  */
 type BoardSceneData =
   | { levelId: number }
   | {
       level: Level;
       backSceneKey: string;
+      currentId?: number;
       previousId?: number;
       nextId?: number;
       onNavigate?: (id: number) => void;
@@ -91,6 +96,7 @@ export class BoardScene extends Phaser.Scene {
   private levelId: number | null = null;
   private customLevel: Level | null = null;
   private backSceneKey = 'LevelSelectScene';
+  private customCurrentId: number | null = null;
   private customPreviousId: number | null = null;
   private customNextId: number | null = null;
   private onNavigate: ((id: number) => void) | null = null;
@@ -99,7 +105,7 @@ export class BoardScene extends Phaser.Scene {
   private handGraphics!: Phaser.GameObjects.Graphics;
   private handHitZones: Phaser.GameObjects.Zone[] = [];
   private boardOriginX = 0;
-  private boardOriginY = 60;
+  private boardOriginY = 100;
   private resultOverlay?: Phaser.GameObjects.Container;
 
   constructor() {
@@ -111,6 +117,7 @@ export class BoardScene extends Phaser.Scene {
       this.levelId = null;
       this.customLevel = data.level;
       this.backSceneKey = data.backSceneKey;
+      this.customCurrentId = data.currentId ?? null;
       this.customPreviousId = data.previousId ?? null;
       this.customNextId = data.nextId ?? null;
       this.onNavigate = data.onNavigate ?? null;
@@ -118,6 +125,7 @@ export class BoardScene extends Phaser.Scene {
       this.levelId = data.levelId;
       this.customLevel = null;
       this.backSceneKey = 'LevelSelectScene';
+      this.customCurrentId = null;
       this.customPreviousId = null;
       this.customNextId = null;
       this.onNavigate = null;
@@ -159,7 +167,10 @@ export class BoardScene extends Phaser.Scene {
     });
 
     // FR-014: volver al selector desde el tablero, en cualquier momento -- no solo
-    // desde la ventana de resultado (esa se añade en US3, T018-T020).
+    // desde la ventana de resultado (esa se añade en US3, T018-T020). Separado del
+    // tablero (y de sus marcadores de lanzamiento del borde norte) por el propio
+    // hueco entre y=16 y boardOriginY, en vez de pegado a la primera fila de
+    // marcadores como antes.
     const backButton = this.add
       .text(16, 16, '< Niveles', {
         fontSize: '18px',
@@ -172,6 +183,19 @@ export class BoardScene extends Phaser.Scene {
     backButton.on('pointerdown', () => {
       this.scene.start(this.backSceneKey);
     });
+
+    // Nivel actual, junto al botón de volver -- por id de PROTOTYPE_LEVELS, o por
+    // el id que la escena selectora haya pasado como `currentId` (research.md:
+    // BoardScene no sabe nada de la fuente, solo muestra el número que le dieron).
+    const displayLevelId = this.customLevel !== null ? this.customCurrentId : this.levelId;
+    if (displayLevelId !== null) {
+      this.add
+        .text(backButton.x + backButton.width + 12, backButton.y + backButton.height / 2, `Nivel ${displayLevelId}`, {
+          fontSize: '18px',
+          color: '#ffffff',
+        })
+        .setOrigin(0, 0.5);
+    }
   }
 
   private launch(direction: Direction, lane: number): void {
