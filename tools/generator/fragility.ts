@@ -19,7 +19,7 @@ function sample(allowedStates: readonly Fragility[], rng: () => number): Fragili
  * from another -- see data-model.md.
  *
  * `profile === undefined` never calls `rng()`, to preserve every scripted-rng
- * sequence of callers that don't opt into a difficulty profile.
+ * sequence of callers that don't opt into a fragility profile.
  */
 export function assignGroupFragility(
   profile: FragilityProfile | undefined,

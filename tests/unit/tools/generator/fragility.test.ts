@@ -112,7 +112,7 @@ describe('Historia 1 (spec.md): la fragilidad asignada nunca rompe la propia sol
         chainOriginProbability: 0.5,
         decoyCount: 2,
         boardDecoyProbability: 0.3,
-        difficultyProfile: 'hard',
+        fragilityProfile: 'hard',
         maxGenerationAttempts: 500,
         seed,
       };
@@ -140,7 +140,7 @@ describe('Historia 1 (spec.md): la fragilidad asignada nunca rompe la propia sol
         decoyCount: 0,
         // No boardDecoyProbability: every board piece present is solution-critical
         // (either a defender's furniture, or a struck-once origin) -- FR-002.
-        difficultyProfile: 'hard',
+        fragilityProfile: 'hard',
         maxGenerationAttempts: 500,
         seed,
       };
@@ -169,7 +169,7 @@ describe('Historia 2 (spec.md): board-decoy group, "easy" vs "hard" (via resolve
   // per construction step when boardDecoyProbability is 1" -- (2,0) is the one
   // solution-critical piece, (0,0)/(0,1)/(0,2) are the three board decoys, in
   // that placement order. Only the fragility-roll values are new here.
-  function baseRootAndCtx(rng: () => number, difficultyProfile: FragilityProfile): { root: Obligation; ctx: ResolutionContext } {
+  function baseRootAndCtx(rng: () => number, fragilityProfile: FragilityProfile): { root: Obligation; ctx: ResolutionContext } {
     const root: Obligation = {
       cell: { row: 2, col: 2 },
       color: 'green',
@@ -187,7 +187,7 @@ describe('Historia 2 (spec.md): board-decoy group, "easy" vs "hard" (via resolve
       chainOriginProbability: 0,
       maxChainDepth: 4,
       boardDecoyProbability: 1,
-      difficultyProfile,
+      fragilityProfile,
     };
     return { root, ctx };
   }
@@ -248,7 +248,7 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
         chainOriginProbability: 0.6,
         defenderContinuationProbability: 0.5,
         decoyCount: 3,
-        difficultyProfile: 'easy',
+        fragilityProfile: 'easy',
         maxGenerationAttempts: 500,
         seed,
       };
@@ -276,7 +276,7 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
           chainOriginProbability: 0.6,
           defenderContinuationProbability: 0.5,
           decoyCount: 3,
-          difficultyProfile: profile,
+          fragilityProfile: profile,
           maxGenerationAttempts: 500,
           seed,
         };
@@ -312,7 +312,7 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
           chainOriginProbability: 0.5,
           decoyCount: 2,
           boardDecoyProbability: 0.3,
-          difficultyProfile: profile,
+          fragilityProfile: profile,
           maxGenerationAttempts: 500,
           seed,
         };
@@ -338,7 +338,7 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
       chainOriginProbability: 0.5,
       decoyCount: 2,
       boardDecoyProbability: 0.3,
-      difficultyProfile: 'hard',
+      fragilityProfile: 'hard',
       maxGenerationAttempts: 500,
       seed: 7,
     };
@@ -349,13 +349,13 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
     expect(first).toEqual(second);
   });
 
-  it('omitting difficultyProfile leaves the existing scripted-rng-verified fixtures untouched (research.md, disciplina de determinismo)', () => {
+  it('omitting fragilityProfile leaves the existing scripted-rng-verified fixtures untouched (research.md, disciplina de determinismo)', () => {
     // generate.test.ts's fixtures 1-3 and the launchCount:2/decoy fixtures already
-    // exercise this without any difficultyProfile -- this is a direct, minimal
+    // exercise this without any fragilityProfile -- this is a direct, minimal
     // confirmation that assignGroupFragility itself never touches rng() when the
     // profile is omitted, regardless of how many pieces are involved.
     const rng = () => {
-      throw new Error('rng() must not be called when difficultyProfile is omitted');
+      throw new Error('rng() must not be called when fragilityProfile is omitted');
     };
     expect(assignGroupFragility(undefined, 5, ['new', 'cracked', 'broken'], rng)).toEqual([
       'new',
@@ -387,7 +387,7 @@ describe('Historia 3 (spec.md): ningún señuelo de tablero desaparece por queda
         chainOriginProbability: 0.5,
         decoyCount: 2,
         boardDecoyProbability: 0.5, // alto, para maximizar señuelos de tablero
-        difficultyProfile: 'hard', // el que más heterogeneidad introduce
+        fragilityProfile: 'hard', // el que más heterogeneidad introduce
         maxGenerationAttempts: 500,
         seed,
       };
@@ -420,7 +420,7 @@ describe('Historia 3 (spec.md): ningún señuelo de tablero desaparece por queda
         availableColors: ['green', 'orange', 'brown'],
         chainOriginProbability: 0.5,
         decoyCount: 4,
-        difficultyProfile: 'hard',
+        fragilityProfile: 'hard',
         maxGenerationAttempts: 500,
         seed,
       };
