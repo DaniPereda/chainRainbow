@@ -1,0 +1,71 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 2,
+        "col": 2
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    "orange",
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    "orange"
+  ],
+  "goal": {
+    "color": "orange",
+    "cell": {
+      "row": 1,
+      "col": 2
+    }
+  },
+  "solution": [
+    {
+      "direction": "E",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 2,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "seed": 70,
+    "complexityScore": 12,
+    "maxGenerationAttempts": 20000,
+    "launchCount": 2,
+    "chainOriginProbability": 0.6149972696788609,
+    "defenderContinuationProbability": 0.2104181625880301,
+    "decoyCount": 3,
+    "boardDecoyProbability": 0.09765264913439752,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown"
+    ],
+    "fragilityProfile": "medium"
+  }
+}

@@ -3,106 +3,53 @@
     {
       "at": {
         "row": 1,
-        "col": 3
-      },
-      "color": "green"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 3
-      },
-      "color": "orange"
-    },
-    {
-      "at": {
-        "row": 4,
         "col": 0
       },
-      "color": "orange"
+      "color": "orange",
+      "fragility": "new"
     },
     {
       "at": {
-        "row": 4,
-        "col": 1
-      },
-      "color": "green"
-    },
-    {
-      "at": {
-        "row": 4,
-        "col": 3
-      },
-      "color": "green"
-    },
-    {
-      "at": {
-        "row": 4,
+        "row": 5,
         "col": 6
       },
-      "color": "green"
+      "color": "green",
+      "fragility": "new"
     }
   ],
   "hand": [
-    "orange",
-    "brown",
-    "green",
-    "green",
-    "orange",
-    "orange",
-    "green",
-    "orange"
+    {
+      "color": "green",
+      "fragility": "cracked"
+    }
   ],
   "goal": {
-    "color": "green",
+    "color": "orange",
     "cell": {
       "row": 2,
-      "col": 1
+      "col": 0
     }
   },
   "solution": [
     {
       "direction": "S",
-      "lane": 3,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "E",
-      "lane": 4,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "S",
-      "lane": 3,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "N",
-      "lane": 3,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "O",
-      "lane": 4,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "N",
-      "lane": 1,
+      "lane": 0,
       "pieceIndex": 0
     }
   ],
   "params": {
-    "launchCount": 6,
+    "seed": 15,
+    "complexityScore": 8,
+    "maxGenerationAttempts": 20000,
+    "launchCount": 1,
+    "chainOriginProbability": 0.4208385398145765,
+    "defenderContinuationProbability": 0.13385042713489384,
+    "decoyCount": 0,
+    "boardDecoyProbability": 0.06610605223104359,
     "availableColors": [
       "green",
-      "orange",
-      "brown"
+      "orange"
     ],
-    "chainOriginProbability": 0.5,
-    "decoyCount": 2,
-    "boardDecoyProbability": 0,
-    "maxGenerationAttempts": 5000,
-    "seed": 15
+    "fragilityProfile": "easy"
   }
 }

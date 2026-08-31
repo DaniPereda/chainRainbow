@@ -1,0 +1,124 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 0,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 2
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 2
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 4
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 4
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 2
+      },
+      "color": "orange",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    "orange",
+    "green",
+    "orange",
+    "orange",
+    "orange"
+  ],
+  "goal": {
+    "color": "green",
+    "cell": {
+      "row": 5,
+      "col": 2
+    }
+  },
+  "solution": [
+    {
+      "direction": "E",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 2,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 5,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 5,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "seed": 87,
+    "complexityScore": 13,
+    "maxGenerationAttempts": 20000,
+    "launchCount": 5,
+    "chainOriginProbability": 0.13444514300208538,
+    "defenderContinuationProbability": 0.6073444304056466,
+    "decoyCount": 0,
+    "boardDecoyProbability": 0.362387565523386,
+    "availableColors": [
+      "green",
+      "orange"
+    ],
+    "fragilityProfile": "easy"
+  }
+}
