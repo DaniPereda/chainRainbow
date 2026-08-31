@@ -3,137 +3,89 @@
     {
       "at": {
         "row": 0,
-        "col": 0
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 0,
         "col": 1
       },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 3
+      },
       "color": "green",
       "fragility": "new"
     },
     {
       "at": {
         "row": 0,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 6
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 7
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 0
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 4
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 6
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 4
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
         "col": 5
       },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 6
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
-        "col": 3
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
-        "col": 6
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 5,
-        "col": 6
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 3
-      },
       "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 6,
-        "col": 6
+        "row": 0,
+        "col": 7
       },
       "color": "brown",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 7,
+        "row": 1,
         "col": 0
       },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 6
+      },
       "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 1
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 6
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 6
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 6
+      },
+      "color": "green",
       "fragility": "new"
     }
   ],
@@ -143,6 +95,22 @@
       "fragility": "cracked"
     },
     {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
       "color": "orange",
       "fragility": "cracked"
     },
@@ -152,46 +120,30 @@
     },
     {
       "color": "brown",
-      "fragility": "broken"
-    },
-    {
-      "color": "green",
-      "fragility": "broken"
-    },
-    {
-      "color": "orange",
-      "fragility": "broken"
-    },
-    {
-      "color": "green",
-      "fragility": "broken"
-    },
-    {
-      "color": "orange",
-      "fragility": "broken"
+      "fragility": "cracked"
     }
   ],
   "goal": {
     "color": "green",
     "cell": {
       "row": 0,
-      "col": 3
+      "col": 6
     }
   },
   "solution": [
     {
-      "direction": "S",
-      "lane": 6,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "S",
-      "lane": 6,
+      "direction": "O",
+      "lane": 0,
       "pieceIndex": 0
     },
     {
       "direction": "E",
       "lane": 0,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 6,
       "pieceIndex": 0
     }
   ],

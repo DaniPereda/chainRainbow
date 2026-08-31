@@ -5,36 +5,28 @@
         "row": 0,
         "col": 1
       },
-      "color": "brown",
+      "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 0,
-        "col": 3
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 0,
-        "col": 4
+        "row": 1,
+        "col": 1
       },
       "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 0,
-        "col": 5
+        "row": 2,
+        "col": 1
       },
-      "color": "green",
+      "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 0,
+        "row": 3,
         "col": 6
       },
       "color": "orange",
@@ -42,137 +34,83 @@
     },
     {
       "at": {
-        "row": 0,
-        "col": 7
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 0
+        "row": 4,
+        "col": 1
       },
       "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 1,
-        "col": 2
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 2
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 3
+        "row": 5,
+        "col": 1
       },
       "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 3,
+        "row": 6,
+        "col": 1
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 3
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
         "col": 5
       },
-      "color": "green",
+      "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 4,
-        "col": 0
+        "row": 7,
+        "col": 3
       },
       "color": "brown",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 4,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
-        "col": 3
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
+        "row": 7,
         "col": 4
       },
       "color": "orange",
       "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
-        "col": 5
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 0
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 2
-      },
-      "color": "green",
-      "fragility": "new"
     }
   ],
   "hand": [
+    "green",
     "orange",
     "green",
-    {
-      "color": "brown",
-      "fragility": "broken"
-    },
-    {
-      "color": "brown",
-      "fragility": "broken"
-    }
+    "orange"
   ],
   "goal": {
-    "color": "brown",
+    "color": "green",
     "cell": {
-      "row": 0,
-      "col": 0
+      "row": 7,
+      "col": 1
     }
   },
   "solution": [
     {
-      "direction": "S",
-      "lane": 2,
+      "direction": "O",
+      "lane": 7,
       "pieceIndex": 0
     },
     {
-      "direction": "O",
-      "lane": 0,
+      "direction": "N",
+      "lane": 1,
       "pieceIndex": 0
     }
   ],

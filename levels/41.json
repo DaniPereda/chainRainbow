@@ -2,77 +2,65 @@
   "pieces": [
     {
       "at": {
-        "row": 1,
-        "col": 2
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 3
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
+        "row": 5,
         "col": 6
       },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 7
-      },
       "color": "brown",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 3,
-        "col": 3
+        "row": 7,
+        "col": 4
       },
-      "color": "orange",
+      "color": "green",
       "fragility": "new"
     }
   ],
   "hand": [
+    "orange",
+    "orange",
     {
       "color": "green",
-      "fragility": "cracked"
+      "fragility": "broken"
+    },
+    {
+      "color": "brown",
+      "fragility": "broken"
     },
     {
       "color": "green",
-      "fragility": "cracked"
+      "fragility": "broken"
     },
-    "green",
-    "green",
-    "orange",
-    "orange",
-    "green",
-    "brown"
+    {
+      "color": "green",
+      "fragility": "broken"
+    },
+    {
+      "color": "orange",
+      "fragility": "broken"
+    },
+    {
+      "color": "green",
+      "fragility": "broken"
+    }
   ],
   "goal": {
-    "color": "green",
+    "color": "brown",
     "cell": {
-      "row": 0,
-      "col": 2
+      "row": 4,
+      "col": 6
     }
   },
   "solution": [
     {
-      "direction": "O",
-      "lane": 2,
+      "direction": "E",
+      "lane": 7,
       "pieceIndex": 0
     },
     {
       "direction": "N",
-      "lane": 2,
+      "lane": 6,
       "pieceIndex": 0
     }
   ],

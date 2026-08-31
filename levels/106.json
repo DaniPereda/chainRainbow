@@ -3,38 +3,6 @@
     {
       "at": {
         "row": 0,
-        "col": 1
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 0,
-        "col": 2
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 0,
-        "col": 5
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 4
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
         "col": 0
       },
       "color": "green",
@@ -42,10 +10,34 @@
     },
     {
       "at": {
-        "row": 2,
-        "col": 2
+        "row": 0,
+        "col": 6
       },
       "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 0
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 1
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 2
+      },
+      "color": "brown",
       "fragility": "new"
     },
     {
@@ -53,56 +45,43 @@
         "row": 3,
         "col": 2
       },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 2
+      },
       "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 5,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 5,
-        "col": 5
-      },
-      "color": "orange",
       "fragility": "new"
     }
   ],
   "hand": [
-    {
-      "color": "green",
-      "fragility": "cracked"
-    },
+    "orange",
     {
       "color": "orange",
       "fragility": "cracked"
     },
-    "orange",
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
     {
       "color": "green",
       "fragility": "broken"
     },
-    "brown",
-    "brown"
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    "green"
   ],
   "goal": {
-    "color": "orange",
+    "color": "brown",
     "cell": {
-      "row": 6,
-      "col": 2
+      "row": 1,
+      "col": 7
     }
   },
   "solution": [
@@ -117,8 +96,8 @@
       "pieceIndex": 0
     },
     {
-      "direction": "S",
-      "lane": 2,
+      "direction": "O",
+      "lane": 1,
       "pieceIndex": 0
     }
   ],

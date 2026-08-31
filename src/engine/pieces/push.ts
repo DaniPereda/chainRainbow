@@ -1,7 +1,8 @@
 import type { Board, Coordinate, Piece, PieceColor } from '../board.js';
 import { getPieceAt, setPieceAt } from '../board.js';
 import { stepBy, stepUntilBlocked, type Direction } from '../move-step.js';
-import type { AnnihilationEvent, ChainEvent, ImpactSite } from '../events.js';
+import type { ChainEvent, ImpactSite } from '../events.js';
+import { resolveChain } from '../events.js';
 
 /**
  * Advances a piece's fragility exactly one step (FR-002). Typed to exclude `'broken'`
@@ -21,7 +22,7 @@ function advance(fragility: 'new' | 'cracked'): 'cracked' | 'broken' {
  * which piece it is and where it currently is. Green and orange are fixed-distance
  * jumps (never look at `board`/`piece`); brown walks one cell at a time, checking
  * occupancy at every step, until blocked or capped (spec.md 008) -- three
- * interchangeable strategies, none of them a special case `resolveStrike` needs to
+ * interchangeable strategies, none of them a special case `applyImpact` needs to
  * know about (Principle V).
  */
 type DisplacementStrategy = (
@@ -54,190 +55,132 @@ const PERPENDICULAR_DIRECTIONS: Record<Direction, [Direction, Direction]> = {
   O: ['N', 'S'],
 };
 
-/**
- * Resolves one branch of a split: `piece` (already carrying whatever fragility the
- * split defender advanced to -- FR-015, both branches share the SAME state) travels
- * one cell in `direction` from `from`. If that cell is empty, it settles there
- * unless it's `'broken'` (FR-004), in which case it simply vanishes -- the split
- * still happened, this branch just never materializes. If the destination is
- * occupied, this branch becomes the striker for a normal `resolveStrike` -- reusing
- * the exact same push/annihilate/fragility rule any other piece composes with, no
- * special case.
- *
- * `resolveStrike` never places the striker itself at the vacated position -- that has
- * always been the caller's job (see its own comment). `resolveBranch` acts as that
- * caller for its own branch, so it replicates the same settle-or-omit step that
- * every other collision in the chain already goes through.
+/** The settle-or-vanish pattern every impact ends with: a piece occupies its
+ * destination unless it's `'broken'` (FR-004), in which case it simply disappears
+ * without an event -- unified here (016-immediate-chain-placement) instead of
+ * being repeated at every call site that used to defer this decision.
  */
-function resolveBranch(
+function settleOrVanish(
   board: Board,
   piece: Piece,
   from: Coordinate,
-  direction: Direction,
+  to: Coordinate,
+  hasCollision: boolean,
 ): { board: Board; events: ChainEvent[] } {
-  const to = stepBy(from, direction, 1);
-  const occupant = getPieceAt(board, to);
-
-  if (occupant === null) {
-    const boardAfter = piece.fragility === 'broken' ? board : setPieceAt(board, to, piece);
-    return {
-      board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece, from, to, hasCollision: false }],
-    };
-  }
-
-  const next = resolveStrike(board, piece.color, to, direction);
-  const shouldSettle = !next.annihilated && piece.fragility !== 'broken';
-  const boardAfter = shouldSettle ? setPieceAt(next.board, to, piece) : next.board;
+  const boardAfter = piece.fragility === 'broken' ? board : setPieceAt(board, to, piece);
   return {
     board: boardAfter,
-    events: [
-      { type: 'MOVE_STEP', piece, from, to, hasCollision: true },
-      ...next.events,
-    ],
+    events: [{ type: 'MOVE_STEP', piece, from, to, hasCollision }],
   };
 }
 
 /**
- * Red's own primitive (Principle V, plan.md): the struck `defender` piece (already
- * carrying its own advanced fragility -- see `resolveStrike`, FR-015) is replaced by
- * two independent branches, one per perpendicular direction, resolved strictly
- * sequentially -- the first branch's full cascade completes before the second one
- * starts (spec.md: deliberate scope limitation, no interleaving). Both branches
- * inherit the SAME advanced state: the split counts as one hit on the defender, not
- * two. The split cell itself (`position`) is left empty; whoever called
- * `resolveStrike` with `'red'` places the red piece there, exactly like any other
- * defender that wasn't annihilated (see the "settles for free" finding in
- * research.md).
+ * Red's own primitive (Principle V, plan.md): the struck defender (already
+ * carrying its own advanced fragility -- FR-015, both branches share the SAME
+ * state) is replaced by two independent branches, one per perpendicular
+ * direction. Each branch's entire cascade is drained by reusing `resolveChain`
+ * (`../events.js`) -- the same generic queue `resolveLaunch` itself uses as the
+ * outer driver -- once per branch, strictly sequentially: the second branch's
+ * `resolveChain` call only starts from the board the first one's already fully
+ * resolved to (spec.md 009, FR-005: no interleaving). This is what makes the
+ * "colocación inmediata" fix (016-immediate-chain-placement, research.md
+ * Decisión 4) apply to red without any special case: `applyImpact` is reused
+ * as-is for each branch's own impact, exactly like any linear chain.
  */
-function resolveSplit(
+function resolveRedSplit(
   board: Board,
-  defender: Piece,
+  hitDefender: Piece,
   position: Coordinate,
   direction: Direction,
-): { board: Board; events: ChainEvent[]; annihilated: boolean } {
-  const boardAfterSplit = setPieceAt(board, position, null);
+): { board: Board; events: ChainEvent[] } {
   const [first, second] = PERPENDICULAR_DIRECTIONS[direction];
 
-  const firstBranch = resolveBranch(boardAfterSplit, defender, position, first);
-  const secondBranch = resolveBranch(firstBranch.board, defender, position, second);
+  const firstBranch = resolveChain(
+    board,
+    { piece: hitDefender, direction: first, from: position, to: stepBy(position, first, 1) },
+    applyImpact,
+  );
+  const secondBranch = resolveChain(
+    firstBranch.board,
+    { piece: hitDefender, direction: second, from: position, to: stepBy(position, second, 1) },
+    applyImpact,
+  );
 
   return {
     board: secondBranch.board,
     events: [...firstBranch.events, ...secondBranch.events],
-    annihilated: false,
   };
 }
 
 /**
- * Resolves a single strike: a piece of `strikerColor` hitting whatever occupies
- * `position`. Same color -> both vanish (`annihilated: true`). Different color ->
- * the defender is pushed by the striker's own distance, recursing if that lands on
- * a third piece. `position` (where the striker itself came from) is always left
- * empty either way -- the striker was either the originally launched piece, which
- * never persists on the board (applyImpact), or an earlier defender in the same
- * cascade, whose own resting place is `to` of ITS OWN strike, resolved one level up.
- *
- * `position` is vacated EAGERLY, before computing `to` and before recursing --
- * not deferred to when the recursion unwinds. Brown's own displacement (the only
- * strategy that actually reads `board`) walks forward excluding just the piece it
- * is currently carrying, by identity; if earlier links of the same cascade were
- * still shown as occupied (the pre-fix behaviour), that walk could wrap a full lap
- * of an otherwise-clear lane and land back on a piece from earlier in the SAME
- * cascade -- which then replays the exact same collision again, forever. Vacating
- * eagerly means every recursive call sees an accurate, live view of what is still
- * really on the board, so a walk that circles back to an already-vacated link
- * correctly reads it as empty and keeps going, instead of colliding with a piece
- * that is, physically, still mid-flight (found via manual play-testing of
- * generated 6-launch levels, tools/generator/ -- confirmed with a 2-piece repro
- * fully outside the generator, then generalized: any number of links apart, as
- * long as brown ends up carrying a strike whose forward lane is otherwise clear
- * back to an earlier link).
+ * Resolves exactly ONE impact -- `site.piece` arriving at `site.to` -- and returns
+ * at most one `nextSites` entry for whatever it displaces, letting `resolveChain`
+ * (the caller, either `resolveLaunch`'s own outer queue or `resolveRedSplit`'s
+ * inner one) process the rest (016-immediate-chain-placement, research.md
+ * Decisión 3). Never recurses to resolve a whole cascade itself -- that's exactly
+ * what used to make an in-flight piece invisible to the rest of its own cascade
+ * until the recursion unwound. Whether `site.piece` itself settles was always a
+ * LOCAL decision (only whether its own immediate strike was an annihilation, never
+ * anything deeper) -- so writing it immediately, before even knowing what happens
+ * to the piece it displaced, changes no decision from the previous implementation,
+ * only when the write happens.
  */
-function resolveStrike(
-  board: Board,
-  strikerColor: PieceColor,
-  position: Coordinate,
-  direction: Direction,
-): { board: Board; events: ChainEvent[]; annihilated: boolean } {
-  const defender = getPieceAt(board, position);
-  if (defender === null) {
-    return { board, events: [], annihilated: false };
-  }
-
-  if (defender.color === strikerColor) {
-    const boardAfter = setPieceAt(board, position, null);
-    const event: AnnihilationEvent = {
-      type: 'ANNIHILATION',
-      at: position,
-      color: strikerColor, // === defender.color by definition of this branch
-    };
-    return { board: boardAfter, events: [event], annihilated: true };
-  }
-
-  // The defender is about to be displaced by a different-color strike -- that's
-  // exactly "being hit" (FR-002). A defender read off a real board can never already
-  // be `'broken'`: a broken piece is removed the instant it would settle (FR-004)
-  // and so never gets placed to begin with -- see `advance`'s own comment. The throw
-  // both documents and enforces that invariant, and narrows the type for `advance`.
-  if (defender.fragility === 'broken') {
-    throw new Error('invariant violated: a broken piece was found on the board');
-  }
-  const hitDefender: Piece = { color: defender.color, fragility: advance(defender.fragility) };
-
-  if (strikerColor === 'red') {
-    return resolveSplit(board, hitDefender, position, direction);
-  }
-
-  const vacated = setPieceAt(board, position, null);
-  const to = PUSH_STRATEGY[strikerColor](vacated, hitDefender, position, direction);
-  const occupant = getPieceAt(vacated, to);
-
-  if (occupant === null) {
-    const boardAfter =
-      hitDefender.fragility === 'broken' ? vacated : setPieceAt(vacated, to, hitDefender);
-    return {
-      board: boardAfter,
-      events: [{ type: 'MOVE_STEP', piece: hitDefender, from: position, to, hasCollision: false }],
-      annihilated: false,
-    };
-  }
-
-  // `to` is occupied: `hitDefender` is now the striker for that next collision.
-  // `position` is already vacated on `vacated`, above -- `next` only needs to
-  // settle `hitDefender` at `to` if it wasn't itself annihilated there AND it
-  // isn't `'broken'` (FR-004) -- two independent reasons a piece can fail to settle.
-  const next = resolveStrike(vacated, hitDefender.color, to, direction);
-  const shouldSettle = !next.annihilated && hitDefender.fragility !== 'broken';
-  const boardAfter = shouldSettle ? setPieceAt(next.board, to, hitDefender) : next.board;
-
-  return {
-    board: boardAfter,
-    events: [
-      { type: 'MOVE_STEP', piece: hitDefender, from: position, to, hasCollision: true },
-      ...next.events,
-    ],
-    annihilated: false,
-  };
-}
-
 export function applyImpact(
   board: Board,
   site: ImpactSite,
 ): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
-  // The launched piece is the agent that triggers this impact -- resolveStrike
-  // resolves what happens to whatever it hits, exactly as for any other link of a
-  // cascade. Once that settles, site.piece itself settles at site.to (the cell its
-  // own defender just vacated), unless it annihilated there by same color or its
-  // own fragility is 'broken' (FR-007/FR-008) -- the exact same settle-or-omit
-  // pattern resolveStrike already applies at every deeper link, applied here once
-  // more for the piece that started the chain. This replaces the old rule that a
-  // launched piece could never persist on the board (spec.md 006, feature 008).
-  const result = resolveStrike(board, site.piece.color, site.to, site.direction);
-  const shouldSettle = !result.annihilated && site.piece.fragility !== 'broken';
-  const boardAfter = shouldSettle ? setPieceAt(result.board, site.to, site.piece) : result.board;
-  const events: ChainEvent[] = shouldSettle
-    ? [{ type: 'MOVE_STEP', piece: site.piece, from: site.from, to: site.to, hasCollision: true }, ...result.events]
-    : result.events;
-  return { board: boardAfter, events, nextSites: [] };
+  const defender = getPieceAt(board, site.to);
+
+  if (defender === null) {
+    const { board: boardAfter, events } = settleOrVanish(board, site.piece, site.from, site.to, false);
+    return { board: boardAfter, events, nextSites: [] };
+  }
+
+  if (defender.color === site.piece.color) {
+    const boardAfter = setPieceAt(board, site.to, null);
+    return {
+      board: boardAfter,
+      events: [{ type: 'ANNIHILATION', at: site.to, color: site.piece.color }],
+      nextSites: [],
+    };
+  }
+
+  // The defender is about to be displaced by a different-color strike -- that's
+  // exactly "being hit" (FR-002). A defender read off a real board can never
+  // already be `'broken'`: a broken piece is removed the instant it would settle
+  // (FR-004) and so never gets placed to begin with -- see `advance`'s own
+  // comment. The throw both documents and enforces that invariant.
+  if (defender.fragility === 'broken') {
+    throw new Error('invariant violated: a broken piece was found on the board');
+  }
+  const hitDefender: Piece = { color: defender.color, fragility: advance(defender.fragility) };
+  const vacated = setPieceAt(board, site.to, null);
+
+  // site.piece settles immediately -- never depended on the defender's own onward
+  // fate (see this function's own comment above).
+  const { board: boardWithStriker, events: strikerEvents } = settleOrVanish(
+    vacated,
+    site.piece,
+    site.from,
+    site.to,
+    true,
+  );
+
+  if (site.piece.color === 'red') {
+    const { board: finalBoard, events: splitEvents } = resolveRedSplit(
+      boardWithStriker,
+      hitDefender,
+      site.to,
+      site.direction,
+    );
+    return { board: finalBoard, events: [...strikerEvents, ...splitEvents], nextSites: [] };
+  }
+
+  // hitDefender still exerts its own strike on whatever it lands on, even when
+  // BROKEN -- brokenness only ever decides whether IT settles once ITS OWN
+  // resolution finishes (`settleOrVanish`, applied when this nextSites entry is
+  // processed), never whether it strikes something in the first place.
+  const to = PUSH_STRATEGY[site.piece.color](vacated, hitDefender, site.to, site.direction);
+  const nextSite: ImpactSite = { piece: hitDefender, direction: site.direction, from: site.to, to };
+  return { board: boardWithStriker, events: strikerEvents, nextSites: [nextSite] };
 }

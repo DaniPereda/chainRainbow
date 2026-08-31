@@ -52,11 +52,13 @@ export function stepBy(coord: Coordinate, direction: Direction, distance: number
  *
  * `piece` -- the specific piece being displaced -- is excluded from the occupancy
  * check by identity, not by coordinate: the board passed in is always the same
- * unmutated snapshot resolveStrike works from throughout a chain, so it still
- * shows `piece` sitting wherever it started. That's a stale self-reference, not a
- * real obstacle, and it isn't a rare case: on an 8-wide board, any unblocked walk
- * revisits its own starting cell at step 8, strictly before the final crossing
- * can ever happen (research.md 008) -- excluding it is what makes the crossing cap
+ * unmutated snapshot `applyImpact` (`pieces/push.ts`, `resolveStrike` before
+ * 016-immediate-chain-placement renamed it) works from for this one impact, so
+ * it still shows `piece` sitting wherever it started. That's a stale
+ * self-reference, not a real obstacle, and it isn't a rare case: on an 8-wide
+ * board, any unblocked walk revisits its own starting cell at step 8, strictly
+ * before the final crossing can ever happen (research.md 008) -- excluding it
+ * is what makes the crossing cap
  * reachable at all on a clear lane. Checking by identity (this exact piece) rather
  * than by the coordinate it happened to start at keeps that intact even if a future
  * primitive ever needs to walk a piece whose recorded start position isn't where
