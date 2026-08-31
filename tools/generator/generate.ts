@@ -1,9 +1,10 @@
-import type { Board, Coordinate, PieceColor } from '../../src/engine/board.js';
+import type { Board, Coordinate, Fragility, PieceColor } from '../../src/engine/board.js';
 import { createBoard } from '../../src/engine/board.js';
 import type { Direction } from '../../src/engine/move-step.js';
 import { evaluateGoal } from '../../src/engine/goal.js';
-import { createLevel, resolveLaunch, type Level } from '../../src/engine/index.js';
+import { createLevel, resolveLaunch, type HandPieceInput, type Level } from '../../src/engine/index.js';
 import { resolveObligations, type Obligation } from './obligations.js';
+import { assignGroupFragility, type FragilityProfile } from './fragility.js';
 import { createRng } from './rng.js';
 
 export type SolutionStep = { direction: Direction; lane: number; pieceIndex: number };
@@ -21,11 +22,15 @@ export type GenerationParams = {
   // construcción -- la cantidad resultante es aleatoria (0 a N), a diferencia
   // de decoyCount. Por defecto 0 (ninguna).
   boardDecoyProbability?: number;
+  // 013-generator-fragility-difficulty, FR-004: perfil opcional de heterogeneidad
+  // de fragilidad para señuelos y fichas lanzadas. Ausente = comportamiento actual
+  // (todo 'new', cero llamadas nuevas a rng()).
+  difficultyProfile?: FragilityProfile;
 };
 
 export type GeneratedLevel = {
-  pieces: { at: Coordinate; color: PieceColor }[];
-  hand: PieceColor[];
+  pieces: { at: Coordinate; color: PieceColor; fragility: Fragility }[];
+  hand: HandPieceInput[];
   goal: { color: PieceColor; cell: Coordinate };
   solution: SolutionStep[]; // en orden de juego real (FR-010)
   params: GenerationParams;
@@ -39,12 +44,21 @@ const DEFAULT_DEFENDER_CONTINUATION_PROBABILITY = 0.4;
 const DEFAULT_MAX_CHAIN_DEPTH = 4;
 const DEFAULT_MAX_GENERATION_ATTEMPTS = 200;
 
-function boardPieces(board: Board): { at: Coordinate; color: PieceColor }[] {
-  const pieces: { at: Coordinate; color: PieceColor }[] = [];
+// 013-generator-fragility-difficulty: 'new' es el valor por defecto de
+// HandPieceInput, así que se representa con la variante corta (solo color)
+// para no cambiar el valor exacto de las 130 fixtures existentes que asumían
+// hand: PieceColor[] -- solo una ficha con fragilidad real (CRACKED/BROKEN)
+// necesita la forma extendida.
+function toHandPieceInput(color: PieceColor, fragility: Fragility): HandPieceInput {
+  return fragility === 'new' ? color : { color, fragility };
+}
+
+function boardPieces(board: Board): { at: Coordinate; color: PieceColor; fragility: Fragility }[] {
+  const pieces: { at: Coordinate; color: PieceColor; fragility: Fragility }[] = [];
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const piece = board.cells[row][col];
-      if (piece !== null) pieces.push({ at: { row, col }, color: piece.color });
+      if (piece !== null) pieces.push({ at: { row, col }, color: piece.color, fragility: piece.fragility });
     }
   }
   return pieces;
@@ -132,7 +146,11 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
 
   // Los lanzamientos se descubren en orden inverso al de juego real (data-model.md).
   const playOrder = outcome.rawLaunches.slice().reverse();
-  const hand: PieceColor[] = playOrder.map((launch) => launch.color);
+  // FR-005/FR-010: la construcción nunca vuelve a golpear una ficha lanzada, así
+  // que NEW/CRACKED son siempre seguras para ella -- nunca BROKEN (señal exclusiva
+  // de señuelo de mano, FR-009/FR-010).
+  const launchedFragility = assignGroupFragility(params.difficultyProfile, playOrder.length, ['new', 'cracked'], rng);
+  const hand: HandPieceInput[] = playOrder.map((launch, i) => toHandPieceInput(launch.color, launchedFragility[i]));
   // pieceIndex es siempre 0: cada lanzamiento consume la PRIMERA ficha de la mano
   // restante en ese momento (takePieceAt la retira, desplazando el resto), y las
   // fichas de la solución siempre ocupan el frente de la mano -- las señuelo se
@@ -145,7 +163,7 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
 
   const pieces = boardPieces(outcome.board);
   const level = createLevel({
-    pieces: pieces.map(({ at, color }) => ({ at, color })),
+    pieces,
     hand,
     goal: { at: goalCell, color: goalColor },
   });
@@ -154,10 +172,15 @@ function attemptOnce(params: GenerationParams, rng: () => number): GeneratedLeve
 
   // Fichas señuelo, añadidas al final -- no recalculan ningún pieceIndex ya
   // asignado a la solución (research.md).
-  const decoyHand = hand.slice();
+  const decoyColors: PieceColor[] = [];
   for (let i = 0; i < params.decoyCount; i++) {
-    decoyHand.push(params.availableColors[Math.floor(rng() * params.availableColors.length)]);
+    decoyColors.push(params.availableColors[Math.floor(rng() * params.availableColors.length)]);
   }
+  // FR-009: los señuelos de mano SÍ pueden llegar a BROKEN -- rango completo.
+  const decoyFragility = assignGroupFragility(params.difficultyProfile, params.decoyCount, ['new', 'cracked', 'broken'], rng);
+  const decoyHand: HandPieceInput[] = hand.concat(
+    decoyColors.map((color, i) => toHandPieceInput(color, decoyFragility[i])),
+  );
 
   return {
     pieces,

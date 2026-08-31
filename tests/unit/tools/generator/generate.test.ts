@@ -33,7 +33,7 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.level.pieces).toEqual([{ at: { row: 4, col: 3 }, color: 'orange' }]);
+    expect(result.level.pieces).toEqual([{ at: { row: 4, col: 3 }, color: 'orange', fragility: 'new' }]);
     expect(result.level.hand).toEqual(['green']);
     expect(result.level.goal).toEqual({ color: 'orange', cell: { row: 4, col: 4 } });
     expect(result.level.solution).toEqual([{ direction: 'E', lane: 4, pieceIndex: 0 }]);
@@ -49,7 +49,7 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.level.pieces).toEqual([{ at: { row: 2, col: 3 }, color: 'orange' }]);
+    expect(result.level.pieces).toEqual([{ at: { row: 2, col: 3 }, color: 'orange', fragility: 'new' }]);
     expect(result.level.hand).toEqual(['brown']);
     expect(result.level.goal).toEqual({ color: 'orange', cell: { row: 2, col: 7 } });
     expect(result.level.solution).toEqual([{ direction: 'E', lane: 2, pieceIndex: 0 }]);
@@ -64,8 +64,8 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.level.pieces).toEqual([
-      { at: { row: 6, col: 1 }, color: 'orange' },
-      { at: { row: 6, col: 2 }, color: 'green' },
+      { at: { row: 6, col: 1 }, color: 'orange', fragility: 'new' },
+      { at: { row: 6, col: 2 }, color: 'green', fragility: 'new' },
     ]);
     expect(result.level.hand).toEqual(['green']);
     expect(result.level.goal).toEqual({ color: 'green', cell: { row: 6, col: 4 } });

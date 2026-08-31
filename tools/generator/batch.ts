@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PieceColor } from '../../src/engine/board.js';
+import type { FragilityProfile } from './fragility.js';
 import { generateLevel } from './generate.js';
 
 const LEVELS_DIR = join(process.cwd(), 'levels');
@@ -42,6 +43,7 @@ const boardDecoyProbability = Number(flags.get('board-decoy-probability') ?? '0'
 const maxGenerationAttemptsRaw = flags.get('max-attempts');
 const maxGenerationAttempts =
   maxGenerationAttemptsRaw === undefined ? undefined : Number(maxGenerationAttemptsRaw);
+const difficultyProfile = flags.get('difficulty-profile') as FragilityProfile | undefined;
 
 if (!existsSync(LEVELS_DIR)) mkdirSync(LEVELS_DIR, { recursive: true });
 
@@ -59,6 +61,7 @@ for (let i = 0; i < count; i++) {
     decoyCount,
     boardDecoyProbability,
     maxGenerationAttempts,
+    difficultyProfile,
     seed: id,
   });
 
