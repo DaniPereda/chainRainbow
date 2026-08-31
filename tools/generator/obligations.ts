@@ -1,7 +1,8 @@
-import type { Board, Coordinate, PieceColor } from '../../src/engine/board.js';
+import type { Board, Coordinate, Fragility, PieceColor } from '../../src/engine/board.js';
 import { getPieceAt, setPieceAt } from '../../src/engine/board.js';
 import { step, type Direction } from '../../src/engine/move-step.js';
 import { inverseCandidates, type InverseContext } from './inverses.js';
+import { assignGroupFragility, type FragilityProfile } from './fragility.js';
 
 export type ObligationKind = 'defender' | 'striker-origin';
 
@@ -29,6 +30,10 @@ export type ResolutionContext = {
   // cuya cantidad es fija -- ver research.md). Opcional y con valor por defecto
   // 0 para no alterar ninguna secuencia de `rng` ya existente cuando no se pide.
   boardDecoyProbability?: number;
+  // 013-generator-fragility-difficulty: gobierna la fragilidad de los señuelos
+  // de tablero (nunca la de fichas de tablero golpeadas por la solución, que
+  // siempre parten de 'new' -- FR-001/FR-002).
+  difficultyProfile?: FragilityProfile;
 };
 
 export type ResolutionOutcome = {
@@ -132,6 +137,24 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
   const rawLaunches: RawLaunch[] = [];
   const queue: Obligation[] = [initial];
 
+  // 013-generator-fragility-difficulty: el estado compartido de 'easy' se
+  // sortea una sola vez, la primera vez que se coloca un señuelo de tablero
+  // dentro de ESTE intento, y se reutiliza para el resto (research.md,
+  // Decisión 3) -- nunca escapa de esta llamada a resolveObligations.
+  let cachedEasyBoardDecoyFragility: Fragility | undefined;
+  const BOARD_DECOY_ALLOWED_STATES: readonly Fragility[] = ['new', 'cracked']; // FR-008: nunca BROKEN
+
+  function pickBoardDecoyFragility(): Fragility {
+    if (ctx.difficultyProfile === undefined) return 'new'; // cero rng() nuevas cuando no se pide
+    if (ctx.difficultyProfile === 'easy') {
+      if (cachedEasyBoardDecoyFragility === undefined) {
+        cachedEasyBoardDecoyFragility = assignGroupFragility('easy', 1, BOARD_DECOY_ALLOWED_STATES, ctx.rng)[0];
+      }
+      return cachedEasyBoardDecoyFragility;
+    }
+    return assignGroupFragility(ctx.difficultyProfile, 1, BOARD_DECOY_ALLOWED_STATES, ctx.rng)[0];
+  }
+
   while (queue.length > 0) {
     const obligation = queue.shift()!;
 
@@ -147,7 +170,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
       const cell = pickRandomEmptyCell(board, ctx.rng);
       if (cell !== null) {
         const color = ctx.availableColors[Math.floor(ctx.rng() * ctx.availableColors.length)];
-        board = setPieceAt(board, cell, { color, fragility: 'new' });
+        board = setPieceAt(board, cell, { color, fragility: pickBoardDecoyFragility() });
       }
     }
 

@@ -1,4 +1,5 @@
 import type { PieceColor } from '../../src/engine/board.js';
+import type { FragilityProfile } from './fragility.js';
 import { generateLevel, type GenerationParams } from './generate.js';
 
 function parseArgs(argv: string[]): GenerationParams {
@@ -23,6 +24,7 @@ function parseArgs(argv: string[]): GenerationParams {
   const maxGenerationAttemptsRaw = flags.get('max-attempts');
   const maxGenerationAttempts =
     maxGenerationAttemptsRaw === undefined ? undefined : Number(maxGenerationAttemptsRaw);
+  const difficultyProfile = flags.get('difficulty-profile') as FragilityProfile | undefined;
 
   return {
     launchCount,
@@ -32,6 +34,7 @@ function parseArgs(argv: string[]): GenerationParams {
     decoyCount,
     boardDecoyProbability,
     maxGenerationAttempts,
+    difficultyProfile,
   };
 }
 
