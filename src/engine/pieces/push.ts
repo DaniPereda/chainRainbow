@@ -1,4 +1,4 @@
-import type { Board, Coordinate, Piece, PieceColor } from '../board.js';
+import type { Board, Coordinate, Fragility, Piece, PieceColor } from '../board.js';
 import { getPieceAt, setPieceAt } from '../board.js';
 import { stepBy, stepUntilBlocked, type Direction } from '../move-step.js';
 import type { ChainEvent, ImpactSite } from '../events.js';
@@ -15,6 +15,34 @@ import { resolveChain } from '../events.js';
  */
 function advance(fragility: 'new' | 'cracked'): 'cracked' | 'broken' {
   return fragility === 'new' ? 'cracked' : 'broken';
+}
+
+/**
+ * One side of a mutual collision (019-synchronous-tick-resolution): given a
+ * trajectory's fragility BEFORE this specific collision, decides whether it
+ * advances and gets one more onward trajectory (per `pushOnward`), or --
+ * already `'broken'` coming in -- simply vanishes here instead (`null`),
+ * producing no further site. This is the exact same rule `settleOrVanish`
+ * already applies to a single striker ("brokenness decides whether it settles,
+ * never whether it strikes first") generalized to two trajectories striking
+ * each other at once: a piece can only ever advance through `new -> cracked ->
+ * broken` once each, a strictly finite, cycle-free progression -- so no pair of
+ * trajectories can keep re-colliding with each other forever (research.md,
+ * Decisión 3: the bug this fixes was letting an already-broken piece stay
+ * "broken" and keep bouncing indefinitely instead of finally vanishing).
+ */
+function resolveMutualSide(
+  fragilityBefore: Fragility,
+  color: PieceColor,
+  from: Coordinate,
+  pushOnward: (hit: Piece) => { direction: Direction; to: Coordinate },
+): ImpactSite | null {
+  if (fragilityBefore === 'broken') {
+    return null; // already used up its one further hop earlier -- vanishes now
+  }
+  const hit: Piece = { color, fragility: advance(fragilityBefore) };
+  const { direction, to } = pushOnward(hit);
+  return { piece: hit, direction, from, to };
 }
 
 /**
@@ -75,17 +103,64 @@ function settleOrVanish(
 }
 
 /**
+ * Resolves a collision between two trajectories that are BOTH still in flight --
+ * neither is a real, already-settled board piece (019-synchronous-tick-resolution).
+ * Distinct from, and never a replacement for, `applyImpact`'s existing asymmetric
+ * rule (a moving piece meeting whatever, if anything, is already settled on the
+ * real board -- unchanged, FR-004 of spec.md). Reuses the SAME rules `applyImpact`
+ * already has, applied symmetrically: same color still annihilates both; distinct
+ * color still advances fragility and still hands the struck piece off to the
+ * striker's own color/direction -- just done for BOTH sites at once, each acting
+ * as the other's striker. Confirmed with the user before implementing (research.md,
+ * Decisión 3): this makes each trajectory continue in the OTHER's direction, using
+ * the OTHER's push mechanism -- a direction swap, not a bounce back the way it came.
+ */
+export function applyMutualImpact(
+  board: Board,
+  siteA: ImpactSite,
+  siteB: ImpactSite,
+): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
+  if (siteA.piece.color === siteB.piece.color) {
+    return {
+      board,
+      events: [{ type: 'ANNIHILATION', at: siteA.to, color: siteA.piece.color }],
+      nextSites: [],
+    };
+  }
+
+  // Neither trajectory can genuinely be red here: the red piece that triggered a
+  // split always settles immediately at the split point (FR-007 of 009-red-piece)
+  // and never travels onward as a branch itself -- only the struck defender's two
+  // branches do, and a branch's own color is always whatever it was before being
+  // hit, never red (PUSH_STRATEGY has no 'red' entry, verified by this cast).
+  const nextA = resolveMutualSide(siteA.piece.fragility, siteA.piece.color, siteA.to, (hit) => ({
+    direction: siteB.direction,
+    to: PUSH_STRATEGY[siteB.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteA.to, siteB.direction),
+  }));
+  const nextB = resolveMutualSide(siteB.piece.fragility, siteB.piece.color, siteB.to, (hit) => ({
+    direction: siteA.direction,
+    to: PUSH_STRATEGY[siteA.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteB.to, siteA.direction),
+  }));
+
+  return {
+    board,
+    events: [],
+    nextSites: [nextA, nextB].filter((site): site is ImpactSite => site !== null),
+  };
+}
+
+/**
  * Red's own primitive (Principle V, plan.md): the struck defender (already
  * carrying its own advanced fragility -- FR-015, both branches share the SAME
  * state) is replaced by two independent branches, one per perpendicular
- * direction. Each branch's entire cascade is drained by reusing `resolveChain`
- * (`../events.js`) -- the same generic queue `resolveLaunch` itself uses as the
- * outer driver -- once per branch, strictly sequentially: the second branch's
- * `resolveChain` call only starts from the board the first one's already fully
- * resolved to (spec.md 009, FR-005: no interleaving). This is what makes the
- * "colocación inmediata" fix (016-immediate-chain-placement, research.md
- * Decisión 4) apply to red without any special case: `applyImpact` is reused
- * as-is for each branch's own impact, exactly like any linear chain.
+ * direction. Both branches are seeded into the SAME `resolveChain` call
+ * (019-synchronous-tick-resolution, research.md Decisión 1/2) -- the queue
+ * interleaves them hop by hop rather than draining branch 1's entire cascade
+ * before branch 2 gets a turn (superseding FR-005 of 009-red-piece's own
+ * "no interleaving" simplification), and `applyMutualImpact` resolves any point
+ * where their real paths coincide, instead of one silently passing through the
+ * other. `applyImpact` is still reused as-is for each branch's own ordinary
+ * impacts -- no special case for red beyond seeding two sites instead of one.
  */
 function resolveRedSplit(
   board: Board,
@@ -95,21 +170,15 @@ function resolveRedSplit(
 ): { board: Board; events: ChainEvent[] } {
   const [first, second] = PERPENDICULAR_DIRECTIONS[direction];
 
-  const firstBranch = resolveChain(
+  return resolveChain(
     board,
-    { piece: hitDefender, direction: first, from: position, to: stepBy(position, first, 1) },
+    [
+      { piece: hitDefender, direction: first, from: position, to: stepBy(position, first, 1) },
+      { piece: hitDefender, direction: second, from: position, to: stepBy(position, second, 1) },
+    ],
     applyImpact,
+    applyMutualImpact,
   );
-  const secondBranch = resolveChain(
-    firstBranch.board,
-    { piece: hitDefender, direction: second, from: position, to: stepBy(position, second, 1) },
-    applyImpact,
-  );
-
-  return {
-    board: secondBranch.board,
-    events: [...firstBranch.events, ...secondBranch.events],
-  };
 }
 
 /**

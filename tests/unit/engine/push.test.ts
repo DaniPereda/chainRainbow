@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, setPieceAt, type Piece } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
-import { resolveChain } from '../../../src/engine/events.js';
-import { applyImpact } from '../../../src/engine/pieces/push.js';
+import { resolveChain, type ImpactSite } from '../../../src/engine/events.js';
+import { applyImpact, applyMutualImpact } from '../../../src/engine/pieces/push.js';
 
 describe('applyImpact: the four branches of a single impact (016-immediate-chain-placement)', () => {
   it('empty destination: the striker settles, hasCollision: false, no nextSites', () => {
@@ -60,8 +60,9 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     // job confirms the FULL cascade still ends up exactly where expected.
     const drained = resolveChain(
       board,
-      { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } },
+      [{ piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }],
       applyImpact,
+      applyMutualImpact,
     );
     expect(drained.board.cells[0][1]).toEqual(striker);
     expect(drained.board.cells[0][3]).toEqual({ color: 'green', fragility: 'cracked' });
@@ -104,8 +105,129 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
   });
 });
 
-describe('applyImpact: red split resolves branch 1 completely before branch 2 starts (FR-004/FR-005 of 009-red-piece)', () => {
-  it('the full first-branch cascade (including its own further push) appears in order before the second branch', () => {
+describe('applyMutualImpact: two in-flight trajectories colliding with each other (019-synchronous-tick-resolution)', () => {
+  it('same color: mutual annihilation, no nextSites -- same rule as applyImpact\'s own same-color case', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'green', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'green', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.events).toEqual([{ type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green' }]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('different color, neither already broken: both advance fragility once and swap direction/push-mechanism (research.md, Decisión 3 -- confirmed with the user)', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'green', fragility: 'new' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.events).toEqual([]);
+    expect(result.nextSites).toEqual([
+      // A: hit once (new -> cracked), continues using B's color (orange, distance 2)
+      // and B's own direction (N) -- not its own original direction (E).
+      {
+        piece: { color: 'green', fragility: 'cracked' },
+        direction: 'N',
+        from: { row: 2, col: 4 },
+        to: { row: 0, col: 4 },
+      },
+      // B: hit once (new -> cracked), continues using A's color (green, distance 1)
+      // and A's own direction (E).
+      {
+        piece: { color: 'orange', fragility: 'cracked' },
+        direction: 'E',
+        from: { row: 2, col: 4 },
+        to: { row: 2, col: 5 },
+      },
+    ]);
+  });
+
+  it('a trajectory already BROKEN before this collision vanishes instead of advancing again -- this is what guarantees the collision can never loop forever (research.md, Decisión 3: bug found and fixed during implementation)', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'green', fragility: 'broken' }, // already used up its one further hop earlier
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'cracked' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    // A vanishes -- no nextSite for it, regardless of it still "hitting" B.
+    // B was still only cracked (not yet broken), so it advances once more and
+    // continues, using A's color (green, distance 1) and A's direction (E).
+    expect(result.nextSites).toEqual([
+      {
+        piece: { color: 'orange', fragility: 'broken' },
+        direction: 'E',
+        from: { row: 2, col: 4 },
+        to: { row: 2, col: 5 },
+      },
+    ]);
+  });
+
+  it('both trajectories already BROKEN before this collision: both vanish, zero nextSites', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'green', fragility: 'broken' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'broken' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.nextSites).toEqual([]);
+  });
+});
+
+describe('applyImpact: red split interleaves both branches hop by hop (019-synchronous-tick-resolution)', () => {
+  // 019-synchronous-tick-resolution: both branches are now seeded into the SAME
+  // resolveChain queue (research.md, Decisión 1/2) instead of two sequential
+  // resolveChain calls -- so a branch's OWN further chain (E branch pushing
+  // orange onward here) no longer fully drains before the OTHER branch (O) gets
+  // its own turn. The FINAL BOARD is identical either way (neither branch's path
+  // coincides with the other's here, so no symmetric collision fires); only the
+  // EVENT ORDER changes, reflecting genuine hop-by-hop interleaving: this test
+  // used to assert strict branch-1-then-branch-2 sequencing (FR-005 of
+  // 009-red-piece, now superseded) -- it was rewritten, not just re-valued,
+  // because that sequencing guarantee is exactly what this feature replaces.
+  it('branch 2 settles between branch 1\'s own two hops, not after both of them', () => {
     let board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'green', fragility: 'new' });
     board = setPieceAt(board, { row: 4, col: 5 }, { color: 'orange', fragility: 'new' }); // occupies the E branch's destination
     // (4,6) empty -- where orange gets pushed onward by the E branch's own strike
@@ -117,14 +239,18 @@ describe('applyImpact: red split resolves branch 1 completely before branch 2 st
     // Final board: red settled at the split point; E branch (green, cracked) settled
     // at (4,5) after pushing orange (also cracked) onward to (4,6); O branch (green,
     // cracked -- same shared advanced state, FR-015) settled directly at (4,3).
+    // Unchanged from before this feature -- neither branch's path ever coincides
+    // with the other's in this fixture, so the final state doesn't move at all.
     expect(result.board.cells[4][4]).toEqual(striker);
     expect(result.board.cells[4][5]).toEqual({ color: 'green', fragility: 'cracked' });
     expect(result.board.cells[4][6]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(result.board.cells[4][3]).toEqual({ color: 'green', fragility: 'cracked' });
 
-    // Event order is the direct proof of sequencing: branch 1's two events (its own
-    // settle AND the onward push it triggered) both appear before branch 2's single
-    // event -- only possible if branch 1's entire sub-cascade drained first.
+    // Event order: striker settles, then E branch's own first hop (settling at
+    // (4,5) and producing orange's onward push as a queued nextSite) -- but O
+    // branch, seeded in the SAME queue, gets its turn NEXT (it was queued before
+    // orange's push was), settling at (4,3) BEFORE orange's onward push is
+    // finally processed. Verified directly against the real engine, not assumed.
     expect(result.events).toEqual([
       { type: 'MOVE_STEP', piece: striker, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, hasCollision: true },
       {
@@ -136,16 +262,16 @@ describe('applyImpact: red split resolves branch 1 completely before branch 2 st
       },
       {
         type: 'MOVE_STEP',
-        piece: { color: 'orange', fragility: 'cracked' },
-        from: { row: 4, col: 5 },
-        to: { row: 4, col: 6 },
+        piece: { color: 'green', fragility: 'cracked' },
+        from: { row: 4, col: 4 },
+        to: { row: 4, col: 3 },
         hasCollision: false,
       },
       {
         type: 'MOVE_STEP',
-        piece: { color: 'green', fragility: 'cracked' },
-        from: { row: 4, col: 4 },
-        to: { row: 4, col: 3 },
+        piece: { color: 'orange', fragility: 'cracked' },
+        from: { row: 4, col: 5 },
+        to: { row: 4, col: 6 },
         hasCollision: false,
       },
     ]);

@@ -69,6 +69,14 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
   // engine rewrite (016-immediate-chain-placement) is expected to leave both
   // byte-for-byte identical. Captured from the real engine before that rewrite
   // (SC-004) -- not just `result === 'won'`, which the test above already covers.
+  //
+  // 019-synchronous-tick-resolution UPDATE: level 14's trace is still untouched
+  // (both branches settle directly, one hop each -- nothing to interleave
+  // differently). Level 15's trace changes ORDER only (its final board is
+  // identical): the two branches are now seeded into ONE queue and interleaved
+  // hop by hop instead of resolved one fully before the other, so the O branch's
+  // single settle now lands between the E branch's own two hops -- verified
+  // directly against the real engine, not assumed (research.md/data-model.md).
   it('level 14: red splits green into two branches, each settling on an empty cell directly', () => {
     const level14 = PROTOTYPE_LEVELS.find((entry) => entry.id === 14)!.level;
 
@@ -123,16 +131,16 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
       },
       {
         type: 'MOVE_STEP',
-        piece: { color: 'orange', fragility: 'cracked' },
-        from: { row: 4, col: 4 },
-        to: { row: 4, col: 5 },
+        piece: { color: 'green', fragility: 'cracked' },
+        from: { row: 4, col: 3 },
+        to: { row: 4, col: 2 },
         hasCollision: false,
       },
       {
         type: 'MOVE_STEP',
-        piece: { color: 'green', fragility: 'cracked' },
-        from: { row: 4, col: 3 },
-        to: { row: 4, col: 2 },
+        piece: { color: 'orange', fragility: 'cracked' },
+        from: { row: 4, col: 4 },
+        to: { row: 4, col: 5 },
         hasCollision: false,
       },
     ]);

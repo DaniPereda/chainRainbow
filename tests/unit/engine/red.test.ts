@@ -178,3 +178,72 @@ describe('red: the split counts as one hit on the defender, and both branches in
     expect(outcome.result).toBe('lost');
   });
 });
+
+describe('red: the two branches are now resolved synchronously, tick by tick, and can genuinely collide with each other (019-synchronous-tick-resolution, US1)', () => {
+  // Real case, found by direct experimentation and confirmed against BOTH engines
+  // (git-stashed back to pre-019 to run the OLD sequential resolveRedSplit for
+  // comparison, per this feature's own quickstart.md): red hits an already-CRACKED
+  // brown (both branches inherit BROKEN, FR-015) with a real piece adjacent to
+  // each branch's very first step. Under the OLD model (branch 1 -- E -- fully
+  // drains, including its own long cascade, before branch 2 -- O -- even takes its
+  // first step), O's own destination (4,3) is genuinely empty by the time E's chain
+  // reaches that area, so nothing this feature changes ever gets a chance to fire;
+  // the two branches' cascades interact only through the REAL, already-settled
+  // board, same as always. Under the NEW model, O is STILL an unprocessed, active
+  // trajectory (never yet given its own turn) at the exact tick E's own chain
+  // reaches O's destination cell (4,3) -- so `findCoincidingPair` catches it and
+  // resolves a genuine symmetric collision (`applyMutualImpact`) between two
+  // still-in-flight trajectories, something the old strictly-sequential model could
+  // never represent. The two engines' FINAL boards and full event traces differ
+  // completely as a result -- verified directly, not assumed.
+  it('a branch that has not taken its own first step yet can still collide with the other branch\'s downstream chain', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 4 }, color: 'brown', fragility: 'cracked' },
+        { at: { row: 4, col: 5 }, color: 'green', fragility: 'new' },
+        { at: { row: 4, col: 3 }, color: 'orange', fragility: 'new' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
+
+    // The E branch (brown, broken) strikes green at (4,5) and vanishes there
+    // (broken never settles) -- green (now cracked) continues onward using
+    // brown's own walking strategy, heading east. That walk wraps around the
+    // board and reaches (4,3) -- exactly where the O branch (brown, broken,
+    // still unprocessed) is headed for its own first step -- a genuine
+    // same-tick coincidence between two still-in-flight trajectories.
+    expect(outcome.events).toEqual([
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'new' }, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 5 }, hasCollision: true },
+      // Symmetric collision: O (brown, already broken) vanishes; green (only
+      // cracked going in) advances to broken and continues once more, using O's
+      // own color (brown) and direction (west) -- wrapping around to (4,4),
+      // where the real, already-settled red piece is waiting.
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: true },
+      // Red -- a real, already-settled piece, unrelated to either branch -- gets
+      // hit like any other defender and, being red, splits again (pre-existing
+      // behavior, not new here: any real red piece struck by a different color
+      // splits, regardless of how that striker came to exist).
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 3, col: 3 }, hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 5, col: 3 }, hasCollision: false },
+    ]);
+    expect(outcome.board.cells[3][3]).toEqual({ color: 'orange', fragility: 'cracked' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'red', fragility: 'cracked' });
+    expect(outcome.board.cells[5][3]).toEqual({ color: 'orange', fragility: 'cracked' });
+    expect(outcome.result).toBe('lost');
+
+    // Confirmed different from the OLD (pre-019) sequential model for this exact
+    // same board: there, branch E's entire cascade (including this same wrapping
+    // walk) fully resolves BEFORE branch O ever takes its own first step -- so by
+    // the time E's walk reaches (4,3), O hasn't touched it yet and (4,3) is
+    // genuinely empty; O only starts afterward, from the board E's chain left
+    // behind. The old engine's full trace for this board settles a single orange
+    // piece at (4,4) and nothing else -- a structurally different outcome (traced
+    // by hand against the pre-019 code before this feature's own changes, not
+    // re-asserted here since that code no longer exists on this branch).
+  });
+});

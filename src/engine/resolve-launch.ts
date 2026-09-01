@@ -2,7 +2,7 @@ import type { Board } from './board.js';
 import { opposite, step } from './move-step.js';
 import { takePieceAt, travelLaunch, type Hand, type Launch } from './launch.js';
 import { resolveChain, type EventLog, type ImpactSite } from './events.js';
-import { applyImpact } from './pieces/push.js';
+import { applyImpact, applyMutualImpact } from './pieces/push.js';
 import { evaluateGoal, type LevelResult } from './goal.js';
 import type { Level } from './level.js';
 
@@ -39,7 +39,7 @@ export function resolveLaunch(
     to: travel.hitAt,
   };
 
-  const { board: finalBoard, events } = resolveChain(level.board, initialSite, applyImpact);
+  const { board: finalBoard, events } = resolveChain(level.board, [initialSite], applyImpact, applyMutualImpact);
   const { hand: finalHand } = takePieceAt(level.hand, pieceIndex);
 
   return {
