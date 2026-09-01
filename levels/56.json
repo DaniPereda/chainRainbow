@@ -2,56 +2,51 @@
   "pieces": [
     {
       "at": {
-        "row": 0,
-        "col": 4
+        "row": 5,
+        "col": 0
       },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 2
-      },
-      "color": "brown",
+      "color": "green",
       "fragility": "new"
     },
     {
       "at": {
         "row": 5,
-        "col": 2
+        "col": 5
       },
-      "color": "green",
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 7
+      },
+      "color": "brown",
       "fragility": "new"
     }
   ],
   "hand": [
+    "orange",
+    {
+      "color": "brown",
+      "fragility": "broken"
+    },
     {
       "color": "orange",
-      "fragility": "cracked"
-    },
-    "brown",
-    "brown"
+      "fragility": "broken"
+    }
   ],
   "goal": {
-    "color": "orange",
+    "color": "green",
     "cell": {
-      "row": 0,
-      "col": 2
+      "row": 5,
+      "col": 6
     }
   },
   "solution": [
     {
-      "direction": "N",
-      "lane": 2,
+      "direction": "O",
+      "lane": 5,
       "pieceIndex": 0
     }
   ],

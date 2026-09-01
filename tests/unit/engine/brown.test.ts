@@ -118,10 +118,21 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
   // exact piece it is carrying, by identity -- could wrap a full lap of an
   // otherwise-clear lane and land back on a piece from an EARLIER link of the
   // very same cascade, which was still shown as occupied. That replayed the
-  // exact same collision again, forever, overflowing the call stack. Fixed by
-  // vacating a piece's origin cell eagerly, before computing where it lands and
-  // before recursing, so every link sees an accurate view of the board.
-  it('resolves a 2-piece cascade (brown carrying a green hand-launch) instead of looping forever', () => {
+  // exact same collision again, forever, overflowing the call stack. Fixed
+  // (008-brown-piece) by vacating a piece's origin cell eagerly, before
+  // computing where it lands and before recursing.
+  //
+  // 016-immediate-chain-placement went one step further: eager vacating stopped
+  // the infinite loop, but an earlier link's own DESTINATION (where it settles)
+  // was still written only once the whole recursion it triggered had unwound --
+  // so a brown walk that wrapped back around to that link's destination found it
+  // genuinely empty and passed straight through, "invisible" to the rest of its
+  // own cascade. Both fixtures below were written to lock in that pass-through
+  // as correct; they now do the opposite on purpose -- the launched piece is a
+  // real, settled board occupant by the time brown's wrap-around walk reaches
+  // it, so it collides for real (same color here -> annihilation) instead of
+  // being walked through.
+  it('a brown-driven wrap-around now collides with the launched piece instead of passing through it (2-piece cascade)', () => {
     const level = createLevel({
       pieces: [
         { at: { row: 5, col: 3 }, color: 'brown' },
@@ -134,15 +145,20 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
     const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
 
     expect(outcome.missclick).toBe(false);
-    expect(outcome.board.cells[5][3]).toEqual({ color: 'green', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    // The launcher settles at (5,3) first (FR-007) -- but it's still there, for
+    // real, when brown's own wrap-around walk (triggered by pushing the green at
+    // (6,3)) comes back around and finds it: same color -> mutual annihilation.
+    expect(outcome.board.cells[5][3]).toBeNull();
     expect(outcome.board.cells[6][3]).toEqual({ color: 'brown', fragility: 'cracked' });
-    expect(outcome.board.cells[7][3]).toEqual({ color: 'green', fragility: 'cracked' });
+    expect(outcome.board.cells[7][3]).toBeNull(); // never reached -- the walk stopped at (5,3)
+    expect(outcome.events).toContainEqual({ type: 'ANNIHILATION', at: { row: 5, col: 3 }, color: 'green' });
+    expect(outcome.result).toBe('lost');
   });
 
-  // Same failure mode, but with two links between the launch and where brown
-  // takes over -- proves the loop isn't limited to brown sitting immediately
-  // next to the piece that struck it.
-  it('resolves a longer cascade (green, empty, brown, orange) instead of looping forever', () => {
+  // Same shape, but with two links between the launch and where brown takes
+  // over -- proves the self-collision isn't limited to brown sitting
+  // immediately next to the piece that struck it.
+  it('a brown-driven wrap-around now collides with the launched piece instead of passing through it (longer cascade)', () => {
     const level = createLevel({
       pieces: [
         { at: { row: 4, col: 0 }, color: 'green' },
@@ -156,10 +172,15 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
     expect(outcome.missclick).toBe(false);
-    expect(outcome.board.cells[4][0]).toEqual({ color: 'orange', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    // The launcher settles at (4,0) first (FR-007) -- but it's still there, for
+    // real, when brown's own wrap-around walk (triggered by pushing the orange
+    // at (4,3)) comes back around and finds it: same color -> annihilation.
+    expect(outcome.board.cells[4][0]).toBeNull();
     expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' });
     expect(outcome.board.cells[4][3]).toEqual({ color: 'brown', fragility: 'cracked' });
-    expect(outcome.board.cells[4][7]).toEqual({ color: 'orange', fragility: 'cracked' });
+    expect(outcome.board.cells[4][7]).toBeNull(); // never reached -- the walk stopped at (4,0)
+    expect(outcome.events).toContainEqual({ type: 'ANNIHILATION', at: { row: 4, col: 0 }, color: 'orange' });
+    expect(outcome.result).toBe('lost');
   });
 });
 

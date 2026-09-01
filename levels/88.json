@@ -2,48 +2,24 @@
   "pieces": [
     {
       "at": {
-        "row": 0,
-        "col": 0
+        "row": 3,
+        "col": 6
       },
       "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 0,
-        "col": 4
+        "row": 4,
+        "col": 1
       },
       "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 1,
-        "col": 3
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 5
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 1
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 3,
-        "col": 5
+        "row": 4,
+        "col": 2
       },
       "color": "brown",
       "fragility": "new"
@@ -51,7 +27,7 @@
     {
       "at": {
         "row": 4,
-        "col": 0
+        "col": 3
       },
       "color": "brown",
       "fragility": "new"
@@ -59,39 +35,59 @@
     {
       "at": {
         "row": 5,
-        "col": 0
+        "col": 7
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 7
       },
       "color": "orange",
       "fragility": "new"
     }
   ],
   "hand": [
-    "green",
-    "orange",
-    "green",
-    "brown"
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    }
   ],
   "goal": {
-    "color": "green",
+    "color": "brown",
     "cell": {
-      "row": 3,
+      "row": 6,
       "col": 3
     }
   },
   "solution": [
     {
-      "direction": "O",
-      "lane": 0,
+      "direction": "E",
+      "lane": 4,
       "pieceIndex": 0
     },
     {
       "direction": "E",
-      "lane": 0,
+      "lane": 4,
       "pieceIndex": 0
     },
     {
       "direction": "O",
-      "lane": 0,
+      "lane": 4,
       "pieceIndex": 0
     },
     {

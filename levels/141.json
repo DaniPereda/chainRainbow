@@ -2,31 +2,23 @@
   "pieces": [
     {
       "at": {
-        "row": 1,
-        "col": 6
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 2
+        "row": 0,
+        "col": 4
       },
       "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 2,
+        "row": 0,
         "col": 5
       },
-      "color": "green",
+      "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 2,
+        "row": 1,
         "col": 6
       },
       "color": "green",
@@ -35,74 +27,29 @@
     {
       "at": {
         "row": 4,
-        "col": 3
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 5,
-        "col": 7
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 1
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 4
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 5
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 7,
-        "col": 4
+        "col": 6
       },
       "color": "orange",
       "fragility": "new"
     }
   ],
   "hand": [
-    {
-      "color": "brown",
-      "fragility": "cracked"
-    },
     "green",
-    "orange",
     {
-      "color": "brown",
+      "color": "green",
       "fragility": "cracked"
     },
     "brown",
     {
-      "color": "orange",
+      "color": "green",
+      "fragility": "broken"
+    },
+    {
+      "color": "brown",
+      "fragility": "broken"
+    },
+    {
+      "color": "green",
       "fragility": "broken"
     },
     {
@@ -113,19 +60,19 @@
   "goal": {
     "color": "green",
     "cell": {
-      "row": 0,
-      "col": 7
+      "row": 1,
+      "col": 0
     }
   },
   "solution": [
     {
-      "direction": "O",
-      "lane": 6,
+      "direction": "S",
+      "lane": 5,
       "pieceIndex": 0
     },
     {
-      "direction": "N",
-      "lane": 7,
+      "direction": "E",
+      "lane": 1,
       "pieceIndex": 0
     }
   ],

@@ -60,3 +60,81 @@ describe('PROTOTYPE_LEVELS: 11-15 bring brown and red into the frontend (spec.md
     expect(resolveLaunch(level15, { direction: 'S', lane: 3 }).result).toBe('won');
   });
 });
+
+describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace after 016-immediate-chain-placement', () => {
+  // Neither level involves a self-collision within its own cascade (level 14's two
+  // branches each settle on an empty cell directly; level 15's one branch that
+  // cascades further only ever hits a piece from a DIFFERENT, still-untouched
+  // original placement, never one the same cascade already settled) -- so the
+  // engine rewrite (016-immediate-chain-placement) is expected to leave both
+  // byte-for-byte identical. Captured from the real engine before that rewrite
+  // (SC-004) -- not just `result === 'won'`, which the test above already covers.
+  it('level 14: red splits green into two branches, each settling on an empty cell directly', () => {
+    const level14 = PROTOTYPE_LEVELS.find((entry) => entry.id === 14)!.level;
+
+    const outcome = resolveLaunch(level14, { direction: 'S', lane: 3 });
+
+    expect(outcome.result).toBe('won');
+    expect(outcome.events).toEqual([
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'red', fragility: 'new' },
+        from: { row: 2, col: 3 },
+        to: { row: 3, col: 3 },
+        hasCollision: true,
+      },
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'green', fragility: 'cracked' },
+        from: { row: 3, col: 3 },
+        to: { row: 3, col: 4 },
+        hasCollision: false,
+      },
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'green', fragility: 'cracked' },
+        from: { row: 3, col: 3 },
+        to: { row: 3, col: 2 },
+        hasCollision: false,
+      },
+    ]);
+  });
+
+  it('level 15: one branch of the split cascades into a further push on orange, the other settles directly', () => {
+    const level15 = PROTOTYPE_LEVELS.find((entry) => entry.id === 15)!.level;
+
+    const outcome = resolveLaunch(level15, { direction: 'S', lane: 3 });
+
+    expect(outcome.result).toBe('won');
+    expect(outcome.events).toEqual([
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'red', fragility: 'new' },
+        from: { row: 3, col: 3 },
+        to: { row: 4, col: 3 },
+        hasCollision: true,
+      },
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'green', fragility: 'cracked' },
+        from: { row: 4, col: 3 },
+        to: { row: 4, col: 4 },
+        hasCollision: true,
+      },
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'orange', fragility: 'cracked' },
+        from: { row: 4, col: 4 },
+        to: { row: 4, col: 5 },
+        hasCollision: false,
+      },
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'green', fragility: 'cracked' },
+        from: { row: 4, col: 3 },
+        to: { row: 4, col: 2 },
+        hasCollision: false,
+      },
+    ]);
+  });
+});

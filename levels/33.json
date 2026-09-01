@@ -2,18 +2,18 @@
   "pieces": [
     {
       "at": {
-        "row": 6,
-        "col": 3
+        "row": 5,
+        "col": 5
       },
-      "color": "green",
+      "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 6,
-        "col": 4
+        "row": 7,
+        "col": 2
       },
-      "color": "brown",
+      "color": "green",
       "fragility": "new"
     }
   ],
@@ -26,35 +26,26 @@
       "color": "brown",
       "fragility": "cracked"
     },
-    {
-      "color": "orange",
-      "fragility": "cracked"
-    },
-    {
-      "color": "brown",
-      "fragility": "cracked"
-    },
-    {
-      "color": "brown",
-      "fragility": "cracked"
-    }
+    "brown",
+    "orange",
+    "orange"
   ],
   "goal": {
-    "color": "brown",
+    "color": "orange",
     "cell": {
-      "row": 6,
-      "col": 3
+      "row": 5,
+      "col": 6
     }
   },
   "solution": [
     {
-      "direction": "E",
-      "lane": 6,
+      "direction": "N",
+      "lane": 2,
       "pieceIndex": 0
     },
     {
-      "direction": "O",
-      "lane": 6,
+      "direction": "E",
+      "lane": 5,
       "pieceIndex": 0
     }
   ],

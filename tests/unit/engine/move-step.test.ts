@@ -3,8 +3,9 @@ import { createBoard, setPieceAt, type Piece } from '../../../src/engine/board.j
 import { stepBy, stepUntilBlocked } from '../../../src/engine/move-step.js';
 
 // Wrap-around (FR-001, spec.md 004) is a property of movement itself, not of any
-// particular collision outcome -- resolveStrike just asks "where does a piece end
-// up after moving N cells in this direction" and gets a board-aware answer. That
+// particular collision outcome -- applyImpact (formerly resolveStrike, renamed by
+// 016-immediate-chain-placement) just asks "where does a piece end up after moving
+// N cells in this direction" and gets a board-aware answer. That
 // makes `stepBy` worth testing directly as its own concept, in isolation from
 // collisions: what happens once a piece lands on an occupied wrapped cell is
 // already proven by the existing push/annihilation suites (orange.test.ts,
@@ -34,7 +35,7 @@ describe('stepBy: multi-cell movement wraps around the board edges (FR-001)', ()
 // stepUntilBlocked (spec.md 008, marrón): steps one cell at a time, checking occupancy at
 // EVERY step -- unlike stepBy, which never looks at the board -- stopping at the first
 // occupied cell, or once it has crossed the board edge `maxEdgeCrossings` times, whichever
-// comes first. What resolveStrike does once it lands on an occupied cell is already proven
+// comes first. What applyImpact does once it lands on an occupied cell is already proven
 // for any destination by the existing push/annihilation suites; this only needs to prove the
 // destination itself is computed correctly.
 describe('stepUntilBlocked: walks until blocked or capped by edge crossings (spec.md 008)', () => {
@@ -56,8 +57,9 @@ describe('stepUntilBlocked: walks until blocked or capped by edge crossings (spe
 
   it('does not block against its own starting cell, and stops right before the second edge crossing', () => {
     // The board still shows `mover` itself sitting at `position` -- the same stale
-    // snapshot resolveStrike always passes down (it hasn't been erased from the board
-    // yet). Without excluding it BY IDENTITY, this would incorrectly stop at step 8 (see
+    // snapshot applyImpact (formerly resolveStrike) always passes down (it hasn't
+    // been erased from the board yet). Without excluding it BY IDENTITY, this would
+    // incorrectly stop at step 8 (see
     // research.md 008: every unblocked walk revisits its own start at step 8, since the
     // board is an 8-wide cycle -- this is the normal case, not a rare one).
     //

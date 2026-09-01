@@ -124,8 +124,9 @@ describe('red: launches from hand exactly like green/orange/brown (FR-007)', () 
 });
 
 describe('red hitting red: same-color annihilation has priority, the split never happens (edge case)', () => {
-  // data-model.md fixture 5: red against red -- the same-color check in resolveStrike
-  // runs before any split logic, so no MOVE_STEP/branch event is ever produced.
+  // data-model.md fixture 5: red against red -- the same-color check in applyImpact
+  // (formerly resolveStrike) runs before any split logic, so no MOVE_STEP/branch
+  // event is ever produced.
   it('annihilates immediately when a launched red hits another red, with no split', () => {
     const level = createLevel({
       pieces: [{ at: { row: 0, col: 1 }, color: 'red' }],

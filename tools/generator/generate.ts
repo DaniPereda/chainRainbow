@@ -130,7 +130,8 @@ export function validatesForward(level: Level, solution: SolutionStep[]): boolea
     }
   } catch {
     // Red de seguridad defensiva: un fallo real del motor (encontrado y ya
-    // corregido esta misma sesión en resolveStrike, src/engine/pieces/push.ts
+    // corregido esta misma sesión en applyImpact -- entonces resolveStrike,
+    // renombrada en 016-immediate-chain-placement -- src/engine/pieces/push.ts
     // -- una cascada con marrón podía dar la vuelta completa a un carril vacío
     // y repetir la misma colisión para siempre) se trata como cualquier otra
     // discrepancia de reproducción (FR-007): el intento entero se descarta.
