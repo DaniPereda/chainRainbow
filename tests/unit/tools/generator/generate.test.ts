@@ -40,7 +40,12 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
   });
 
   // Fixture 2: brown's "settle" mode, only reachable on the far edge of the lane
-  // -- same shape as prototype level 12.
+  // -- same shape as prototype level 12. The launched brown is forced BROKEN
+  // (017-striker-visibility-gap, obligations.ts mustBeBroken): since
+  // 016-immediate-chain-placement, a real striker settles immediately at the
+  // impact cell, and the struck piece's own full-lap walk always revisits that
+  // exact cell first -- so a genuinely clear lane (needed for this "settle"
+  // shape) is only reachable when the striker itself never settles.
   it('fixture 2: brown settling directly on the far edge of its lane', () => {
     const params: GenerationParams = { ...BASE_PARAMS, availableColors: ['brown', 'orange'] };
     const rng = scriptedRng([0.5, 0.25, 0.9, 0.5, 0.45, 0.9, 0.9]);
@@ -50,7 +55,7 @@ describe('generateLevelWithRng: data-model.md fixtures 1-3, hand-verified agains
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.level.pieces).toEqual([{ at: { row: 2, col: 3 }, color: 'orange', fragility: 'new' }]);
-    expect(result.level.hand).toEqual(['brown']);
+    expect(result.level.hand).toEqual([{ color: 'brown', fragility: 'broken' }]);
     expect(result.level.goal).toEqual({ color: 'orange', cell: { row: 2, col: 7 } });
     expect(result.level.solution).toEqual([{ direction: 'E', lane: 2, pieceIndex: 0 }]);
   });

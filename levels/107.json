@@ -52,16 +52,25 @@
   "hand": [
     {
       "color": "brown",
-      "fragility": "cracked"
+      "fragility": "broken"
     },
     "green",
-    "brown",
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "green",
+      "fragility": "broken"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
     {
       "color": "green",
       "fragility": "cracked"
-    },
-    "brown",
-    "orange"
+    }
   ],
   "goal": {
     "color": "brown",

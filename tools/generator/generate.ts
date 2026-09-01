@@ -176,9 +176,33 @@ function attemptOnce(params: ResolvedGenerationParams, rng: () => number): Gener
   const playOrder = outcome.rawLaunches.slice().reverse();
   // FR-005/FR-010: la construcción nunca vuelve a golpear una ficha lanzada, así
   // que NEW/CRACKED son siempre seguras para ella -- nunca BROKEN (señal exclusiva
-  // de señuelo de mano, FR-009/FR-010).
-  const launchedFragility = assignGroupFragility(params.fragilityProfile, playOrder.length, ['new', 'cracked'], rng);
-  const hand: HandPieceInput[] = playOrder.map((launch, i) => toHandPieceInput(launch.color, launchedFragility[i]));
+  // de señuelo de mano, FR-009/FR-010) -- EXCEPTO un lanzamiento con
+  // `forcedFragility` (017-striker-visibility-gap: un golpeador marrón usado para un
+  // asentamiento limpio en contexto 'settle' DEBE desaparecer al golpear, o el carril
+  // deja de estar realmente despejado -- ver obligations.ts, mustBeBroken). Un
+  // lanzamiento forzado queda EXCLUIDO del grupo de uniformidad de fragilityProfile
+  // (FR-006 de 013: 'easy' garantiza que TODAS las fichas lanzadas comparten un
+  // único estado -- una ficha forzosamente BROKEN es una excepción estructural
+  // ajena al perfil de dificultad, no un miembro de ese grupo). Para cualquier
+  // intento sin ningún lanzamiento forzado, esto es idéntico a antes -- mismo
+  // tamaño de grupo, mismo conteo de rng().
+  const nonForcedIndices = playOrder.reduce<number[]>((acc, launch, i) => {
+    if (launch.forcedFragility === undefined) acc.push(i);
+    return acc;
+  }, []);
+  const nonForcedFragility = assignGroupFragility(
+    params.fragilityProfile,
+    nonForcedIndices.length,
+    ['new', 'cracked'],
+    rng,
+  );
+  const launchedFragility = new Map<number, Fragility>();
+  nonForcedIndices.forEach((originalIndex, groupIndex) => {
+    launchedFragility.set(originalIndex, nonForcedFragility[groupIndex]);
+  });
+  const hand: HandPieceInput[] = playOrder.map((launch, i) =>
+    toHandPieceInput(launch.color, launch.forcedFragility ?? launchedFragility.get(i)!),
+  );
   // pieceIndex es siempre 0: cada lanzamiento consume la PRIMERA ficha de la mano
   // restante en ese momento (takePieceAt la retira, desplazando el resto), y las
   // fichas de la solución siempre ocupan el frente de la mano -- las señuelo se

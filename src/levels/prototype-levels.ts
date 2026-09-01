@@ -134,14 +134,21 @@ export const PROTOTYPE_LEVELS: PrototypeLevel[] = [
       goal: { at: { row: 0, col: 7 }, color: 'orange' },
     }),
   },
-  // 12: brown's edge-crossing cap -- an otherwise clear lane, so the push wraps
+  // 12: brown's edge-crossing cap -- a genuinely clear lane, so the push wraps
   // around the board and stops itself right before the second edge crossing, on the
-  // last in-bounds cell of that additional lap (spec.md 008 erratum).
+  // last in-bounds cell of that additional lap (spec.md 008 erratum). The launched
+  // brown is BROKEN: since 016-immediate-chain-placement, a real (non-broken)
+  // striker settles immediately at the impact cell, and that cell is exactly what a
+  // full lap of the struck piece's own walk revisits first -- always at 8 steps,
+  // well before this cap could ever matter (017-striker-visibility-gap). A broken
+  // striker still strikes normally but never settles, so the lane genuinely stays
+  // clear for the rest of the walk -- the only way this demonstration is still
+  // reachable.
   {
     id: 12,
     level: createLevel({
       pieces: [{ at: { row: 1, col: 3 }, color: 'orange' }],
-      hand: ['brown'],
+      hand: [{ color: 'brown', fragility: 'broken' }],
       goal: { at: { row: 1, col: 7 }, color: 'orange' },
     }),
   },

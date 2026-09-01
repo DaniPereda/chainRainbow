@@ -164,6 +164,18 @@ function uniqueStates(entries: HandPieceInput[]): Set<Fragility> {
   return new Set(entries.map(handFragility));
 }
 
+// 017-striker-visibility-gap: a launched (solution) piece is normally assigned
+// only NEW/CRACKED by fragilityProfile (never BROKEN -- FR-009/FR-010 of 013,
+// generate.ts's own comment). The ONLY way a launched piece can be BROKEN is
+// obligations.ts's mustBeBroken exception (a brown striker forced to vanish so a
+// 'settle'-context push stays reachable, unrelated to the difficulty profile) --
+// so any BROKEN entry in the launched group is unambiguously that structural
+// exception, not a profile choice, and is excluded before checking the group's
+// OWN uniformity guarantee (FR-006 of 013).
+function nonForcedLaunchedStates(launched: HandPieceInput[]): Set<Fragility> {
+  return uniqueStates(launched.filter((entry) => handFragility(entry) !== 'broken'));
+}
+
 describe('Historia 2 (spec.md): board-decoy group, "easy" vs "hard" (via resolveObligations, hand-traced)', () => {
   // Same deterministic construction as obligations.test.ts's "places one decoy
   // per construction step when boardDecoyProbability is 1" -- (2,0) is the one
@@ -258,7 +270,7 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
 
       const launched = result.level.hand.slice(0, result.level.solution.length);
       const decoys = result.level.hand.slice(result.level.solution.length);
-      expect(uniqueStates(launched).size).toBeLessThanOrEqual(1);
+      expect(nonForcedLaunchedStates(launched).size).toBeLessThanOrEqual(1);
       expect(uniqueStates(decoys).size).toBeLessThanOrEqual(1);
     }
     expect(delivered).toBeGreaterThan(0);
@@ -286,7 +298,7 @@ describe('Historia 2 (spec.md): hand-decoy and launched-piece groups (via genera
 
         const launched = result.level.hand.slice(0, result.level.solution.length);
         const decoys = result.level.hand.slice(result.level.solution.length);
-        if (uniqueStates(launched).size > 1) launchedHeterogeneous++;
+        if (nonForcedLaunchedStates(launched).size > 1) launchedHeterogeneous++;
         if (uniqueStates(decoys).size > 1) decoyHeterogeneous++;
       }
       expect(delivered).toBeGreaterThan(0);

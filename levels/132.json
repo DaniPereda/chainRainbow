@@ -3,15 +3,15 @@
     {
       "at": {
         "row": 0,
-        "col": 1
+        "col": 2
       },
-      "color": "green",
+      "color": "brown",
       "fragility": "new"
     },
     {
       "at": {
         "row": 1,
-        "col": 5
+        "col": 6
       },
       "color": "orange",
       "fragility": "new"
@@ -19,6 +19,14 @@
     {
       "at": {
         "row": 2,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
         "col": 4
       },
       "color": "green",
@@ -26,8 +34,24 @@
     },
     {
       "at": {
-        "row": 6,
+        "row": 4,
+        "col": 4
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
         "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 1
       },
       "color": "brown",
       "fragility": "new"
@@ -35,23 +59,25 @@
   ],
   "hand": [
     {
-      "color": "orange",
+      "color": "green",
       "fragility": "cracked"
     },
-    "orange",
     {
-      "color": "orange",
+      "color": "green",
       "fragility": "cracked"
     },
-    "brown",
+    "green",
+    {
+      "color": "brown",
+      "fragility": "broken"
+    },
     {
       "color": "brown",
       "fragility": "cracked"
     },
-    "orange",
     {
       "color": "green",
-      "fragility": "cracked"
+      "fragility": "broken"
     },
     "green",
     {
@@ -60,35 +86,39 @@
     },
     {
       "color": "green",
-      "fragility": "broken"
+      "fragility": "cracked"
+    },
+    {
+      "color": "brown",
+      "fragility": "cracked"
     }
   ],
   "goal": {
     "color": "orange",
     "cell": {
-      "row": 0,
-      "col": 5
+      "row": 1,
+      "col": 7
     }
   },
   "solution": [
     {
-      "direction": "O",
-      "lane": 0,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "S",
-      "lane": 7,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "O",
-      "lane": 2,
+      "direction": "N",
+      "lane": 4,
       "pieceIndex": 0
     },
     {
       "direction": "N",
-      "lane": 5,
+      "lane": 4,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 4,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 1,
       "pieceIndex": 0
     }
   ],

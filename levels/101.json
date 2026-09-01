@@ -2,16 +2,24 @@
   "pieces": [
     {
       "at": {
-        "row": 1,
-        "col": 2
+        "row": 0,
+        "col": 1
       },
-      "color": "orange",
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 7
+      },
+      "color": "brown",
       "fragility": "new"
     },
     {
       "at": {
         "row": 1,
-        "col": 4
+        "col": 3
       },
       "color": "green",
       "fragility": "new"
@@ -19,15 +27,15 @@
     {
       "at": {
         "row": 1,
-        "col": 6
+        "col": 7
       },
-      "color": "brown",
+      "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 3,
-        "col": 0
+        "row": 2,
+        "col": 3
       },
       "color": "orange",
       "fragility": "new"
@@ -35,80 +43,97 @@
     {
       "at": {
         "row": 4,
-        "col": 0
+        "col": 5
       },
-      "color": "orange",
+      "color": "brown",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 7,
-        "col": 0
+        "row": 4,
+        "col": 7
       },
       "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 7,
+        "row": 5,
         "col": 3
       },
       "color": "orange",
       "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 7
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 7
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
     }
   ],
   "hand": [
+    "green",
     "orange",
-    "orange",
+    "green",
+    "brown",
     "orange",
     "brown",
-    {
-      "color": "brown",
-      "fragility": "broken"
-    },
-    {
-      "color": "brown",
-      "fragility": "broken"
-    },
-    {
-      "color": "brown",
-      "fragility": "broken"
-    },
-    {
-      "color": "green",
-      "fragility": "broken"
-    },
-    {
-      "color": "green",
-      "fragility": "broken"
-    }
+    "brown",
+    "orange",
+    "green"
   ],
   "goal": {
-    "color": "orange",
+    "color": "green",
     "cell": {
-      "row": 0,
-      "col": 2
+      "row": 1,
+      "col": 7
     }
   },
   "solution": [
     {
-      "direction": "N",
-      "lane": 0,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "N",
-      "lane": 0,
+      "direction": "S",
+      "lane": 7,
       "pieceIndex": 0
     },
     {
       "direction": "E",
-      "lane": 3,
+      "lane": 6,
       "pieceIndex": 0
     },
     {
-      "direction": "N",
-      "lane": 2,
+      "direction": "O",
+      "lane": 6,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 7,
       "pieceIndex": 0
     }
   ],

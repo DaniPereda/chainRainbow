@@ -13,9 +13,26 @@ export type Obligation = {
   direction: Direction | null; // heredada si kind==='striker-origin'; null si 'defender'
   chainDepth: number; // solo relevante para 'striker-origin' (research.md, tope de profundidad)
   isRoot?: boolean; // la obligación del objetivo -- SIEMPRE se resuelve con un empuje
+  // 017-striker-visibility-gap: cierto solo para una obligación 'striker-origin' de
+  // marrón creada a partir de un contexto 'settle' -- un asentamiento limpio de
+  // marrón (sin obstáculo real de por medio) solo es alcanzable si ESTE golpeador
+  // concreto nunca llega a asentarse (research.md, Decisión 4: el hueco de
+  // visibilidad corregido hace que un golpeador real SIEMPRE choque consigo mismo
+  // tras una vuelta completa, para cualquier distancia). Cuando esta obligación se
+  // resuelve, se fuerza el lanzamiento directo desde mano (nunca una cadena) con
+  // fragilidad 'broken'.
+  mustBeBroken?: boolean;
 };
 
-export type RawLaunch = { direction: Direction; lane: number; color: PieceColor };
+export type RawLaunch = {
+  direction: Direction;
+  lane: number;
+  color: PieceColor;
+  // 017-striker-visibility-gap: presente solo cuando mustBeBroken forzó este
+  // lanzamiento -- generate.ts lo usa para anular la fragilidad normal (siempre
+  // NEW/CRACKED para fichas de la solución) únicamente en este caso.
+  forcedFragility?: 'broken';
+};
 
 export type ResolutionContext = {
   board: Board;
@@ -209,12 +226,23 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
         kind: 'striker-origin',
         direction,
         chainDepth: 0,
+        // 017-striker-visibility-gap: solo marrón, en contexto 'settle', necesita
+        // este mecanismo -- verde/naranja nunca miran el tablero (su distancia es
+        // fija), así que su asentamiento limpio ya era y sigue siendo alcanzable
+        // con un golpeador real.
+        mustBeBroken: resolved.striker === 'brown',
       });
       continue;
     }
 
     // kind === 'striker-origin': never furniture.
-    const forceHand = obligation.chainDepth >= ctx.maxChainDepth;
+    // 017-striker-visibility-gap: mustBeBroken siempre se resuelve por lanzamiento
+    // directo -- nunca por cadena (no hay forma de garantizar que una ficha a mitad
+    // de cadena llegue exactamente BROKEN a este golpe concreto) -- así que se
+    // comprueba ANTES del sorteo de chainOriginProbability, sin consumir su rng()
+    // (research.md, Decisión 4): ningún fixture existente puede activar esta rama,
+    // así que esto no cambia el conteo de llamadas a rng() de ningún caso ya cubierto.
+    const forceHand = obligation.mustBeBroken || obligation.chainDepth >= ctx.maxChainDepth;
     const chooseHand = forceHand || ctx.rng() >= ctx.chainOriginProbability;
 
     if (chooseHand) {
@@ -226,6 +254,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
         direction: obligation.direction!,
         lane: laneOf(obligation.cell, obligation.direction!),
         color: obligation.color,
+        forcedFragility: obligation.mustBeBroken ? 'broken' : undefined,
       });
       launchesUsed++;
       continue;

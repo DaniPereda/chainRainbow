@@ -89,23 +89,54 @@ describe('brown: whatever it reaches is resolved by the existing universal rule 
 });
 
 describe('brown: never travels more than one full lap of the board (FR-004, spec.md 008)', () => {
-  // data-model.md fixture 4: a completely clear lane -- nothing ever blocks the walk,
+  // data-model.md fixture 4: a genuinely clear lane -- nothing ever blocks the walk,
   // so it must stop by itself right before the second edge crossing (12 steps from
   // col 3, landing on the last in-bounds cell of that additional lap -- spec.md 008
   // erratum), never hang, and never falsely block against its own starting cell at
   // step 8 along the way (research.md 008).
-  it('stops right before the second edge crossing on an otherwise empty row', () => {
+  //
+  // 017-striker-visibility-gap: the launched brown is BROKEN. Since
+  // 016-immediate-chain-placement, a real striker settles immediately at the impact
+  // cell -- and a full lap of the struck piece's own walk always revisits exactly
+  // that cell first, at step 8, well before this cap (12-15 steps) could ever
+  // matter. So a genuinely clear lane (needed to demonstrate the cap itself, as
+  // opposed to colliding with the striker) is only reachable when the striker itself
+  // never settles -- see the next test for what a REAL striker now does instead.
+  it('stops right before the second edge crossing on a lane genuinely cleared by a broken striker', () => {
     const level = createLevel({
       pieces: [{ at: { row: 4, col: 3 }, color: 'orange' }],
-      hand: ['brown'],
+      hand: [{ color: 'brown', fragility: 'broken' }],
       goal: { at: { row: 4, col: 7 }, color: 'orange' },
     });
 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
-    expect(outcome.board.cells[4][3]).toEqual({ color: 'brown', fragility: 'new' }); // the launcher survives and settles here (FR-007)
+    expect(outcome.board.cells[4][3]).toBeNull(); // the broken launcher strikes, then never settles (FR-004)
     expect(outcome.board.cells[4][7]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(outcome.result).toBe('won');
+  });
+
+  // 017-striker-visibility-gap: the same shape, but with a REAL (non-broken)
+  // striker. Since the struck piece's own walk now sees the striker settled at the
+  // impact cell (boardWithStriker, not the stale vacated snapshot), a full,
+  // otherwise-clear lap always revisits that exact cell first -- so it collides
+  // with its own striker instead of ever reaching the far edge or the crossing cap.
+  it('a real striker on an otherwise clear row is found again by the struck piece after exactly one full lap', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'green' }],
+      hand: ['brown'],
+      goal: { at: { row: 4, col: 7 }, color: 'green' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    // The struck green never reaches the goal -- it loops all the way around and
+    // collides with brown (different colors: brown, now hit, advances to CRACKED
+    // and is pushed onward by green's own distance; green settles where brown was).
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'green', fragility: 'cracked' });
+    expect(outcome.board.cells[4][4]).toEqual({ color: 'brown', fragility: 'cracked' });
+    expect(outcome.board.cells[4][7]).toBeNull();
+    expect(outcome.result).toBe('lost');
   });
 });
 
