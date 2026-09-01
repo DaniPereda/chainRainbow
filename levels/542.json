@@ -1,0 +1,201 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 0,
+        "col": 1
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 2
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 1
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 2
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 5
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 0
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 2
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 5
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 6
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 5
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 7
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    "red",
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    "green",
+    {
+      "color": "brown",
+      "fragility": "broken"
+    },
+    "brown",
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "broken"
+    },
+    {
+      "color": "orange",
+      "fragility": "broken"
+    },
+    "orange",
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "red",
+      "fragility": "broken"
+    }
+  ],
+  "goal": {
+    "color": "orange",
+    "cell": {
+      "row": 7,
+      "col": 6
+    }
+  },
+  "solution": [
+    {
+      "direction": "N",
+      "lane": 7,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 0,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 7,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 6,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 7,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "complexityScore": 21,
+    "maxGenerationAttempts": 1000,
+    "seed": 542,
+    "launchCount": 5,
+    "chainOriginProbability": 0.6164746338967234,
+    "defenderContinuationProbability": 0.5241971883922816,
+    "decoyCount": 6,
+    "boardDecoyProbability": 0.3353763417806476,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown",
+      "red"
+    ],
+    "fragilityProfile": "hard"
+  }
+}

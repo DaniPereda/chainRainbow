@@ -256,3 +256,146 @@ describe('generateLevel: edge cases (spec.md)', () => {
     expect(result).toEqual({ ok: false, attemptsUsed: 5 });
   });
 });
+
+describe('generateLevelWithRng: red split resolution (020-generator-red-support)', () => {
+  it('fixture: a single red launch whose split resolves the goal directly, verified with the real engine', () => {
+    const params: GenerationParams = {
+      launchCount: 1,
+      availableColors: ['green', 'red'],
+      chainOriginProbability: 0,
+      decoyCount: 0,
+      seed: 0,
+      defenderContinuationProbability: 0,
+    };
+    const rng = scriptedRng([0.1, 0.5, 0.5, 0.5, 0.5, 0.1, 0.9]);
+
+    const result = generateLevelWithRng(params, rng);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // D (the pre-split defender) is always 'new' (FR-002); the secondary branch
+    // (forced to furniture here, since launchesUsed already reaches launchCount)
+    // shares the split's advanced 'cracked' fragility (FR-004), never the free
+    // 'new' any other furniture piece gets.
+    expect(result.level.pieces).toEqual([
+      { at: { row: 4, col: 2 }, color: 'green', fragility: 'cracked' },
+      { at: { row: 4, col: 3 }, color: 'green', fragility: 'new' },
+    ]);
+    expect(result.level.hand).toEqual(['red']);
+    expect(result.level.goal).toEqual({ color: 'green', cell: { row: 4, col: 4 } });
+    expect(result.level.solution).toEqual([{ direction: 'N', lane: 3, pieceIndex: 0 }]);
+
+    // Reproduced with the real engine (SC-001/SC-002): red strikes D, splitting
+    // it into a branch heading east (settling directly on the goal -- 'won')
+    // and a branch heading west (colliding with the secondary branch's own
+    // furniture piece, same color -- annihilation, no effect on the outcome).
+    const level = createLevel({
+      pieces: result.level.pieces,
+      hand: result.level.hand,
+      goal: { at: result.level.goal.cell, color: result.level.goal.color },
+    });
+    expect(validatesForward(level, result.level.solution)).toBe(true);
+  });
+
+  it('cero regresión: sin rojo en availableColors, el resultado es idéntico al de fixture 1 (FR-007/SC-005)', () => {
+    const rng = scriptedRng([0.5, 0.5, 0.5, 0.5, 0, 0.9, 0.9]);
+
+    const result = generateLevelWithRng(BASE_PARAMS, rng);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.level.pieces).toEqual([{ at: { row: 4, col: 3 }, color: 'orange', fragility: 'new' }]);
+    expect(result.level.hand).toEqual(['green']);
+    expect(result.level.goal).toEqual({ color: 'orange', cell: { row: 4, col: 4 } });
+    expect(result.level.solution).toEqual([{ direction: 'E', lane: 4, pieceIndex: 0 }]);
+  });
+
+  it('the secondary branch can resolve via its own chain instead of always being fixed furniture (US2, SC-004)', () => {
+    // Same split as the "cero regresión" fixture's sibling above, but launchCount=2
+    // and defenderContinuationProbability=0.5 so the secondary branch's OWN draw
+    // chooses to chain (a second, earlier launch -- orange -- explains its landing
+    // cell) instead of being placed directly. The observable difference from
+    // furniture is the extra launch this requires (2 hand pieces/solution steps
+    // instead of 1) -- research.md Decisión 10 records why the landing cell itself
+    // ends up empty either way (the branch and whatever explains its cell always
+    // share color+fragility by construction, so they annihilate on contact --
+    // not a bug, just not something this test can use as its evidence).
+    const params: GenerationParams = {
+      launchCount: 2,
+      availableColors: ['green', 'orange', 'red'],
+      chainOriginProbability: 0,
+      decoyCount: 0,
+      seed: 0,
+      defenderContinuationProbability: 0.5,
+    };
+    const rng = scriptedRng([
+      0.1, // goalColor pick ('green', of ['green','orange','red'] -- floor(0.1*3)=0)
+      0.5, 0.5, // goalCell row/col -> {4,4}
+      0.5, // root: direction='E'
+      0.1, // chooseStrikerAndOrigin shuffle: try 'red' first
+      0.5, // chooseStrikerAndOrigin origin pick -> origin {4,3}
+      0.1, // redStrikeDirection='N'
+      0.9, // red striker-origin: chooseHand=true
+      0.1, // secondary branch defender: chooseFurniture=false (chains instead)
+      0.5, // direction for the strike explaining the secondary branch's landing cell -> 'E'
+      0.9, // chooseStrikerAndOrigin shuffle: try 'orange' first
+      0.5, // chooseStrikerAndOrigin origin pick -> origin {4,0}
+      0.9, // the new defender (green, at {4,0}) resolves as furniture ('new')
+      0.9, // the new striker-origin (orange, at {4,0}) hand-launches
+    ]);
+
+    const result = generateLevelWithRng(params, rng);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Discovered in reverse order (orange's own strike is discovered AFTER red's,
+    // since it explains red's secondary branch) -- played in the opposite order.
+    expect(result.level.hand).toEqual(['orange', 'red']);
+    expect(result.level.solution).toEqual([
+      { direction: 'E', lane: 4, pieceIndex: 0 },
+      { direction: 'N', lane: 3, pieceIndex: 0 },
+    ]);
+
+    const level = createLevel({
+      pieces: result.level.pieces,
+      hand: result.level.hand,
+      goal: { at: result.level.goal.cell, color: result.level.goal.color },
+    });
+    expect(validatesForward(level, result.level.solution)).toBe(true);
+  });
+
+  // Corrects an earlier, incorrect design decision (research.md, Decisión 8):
+  // red is never a STRIKER's own goal-directed color (it always transforms
+  // into a split the instant IT strikes something), but it's perfectly valid
+  // as a goal color reached by pushing it with a DIFFERENT color -- red as the
+  // DEFENDER of a strike is not special-cased at all, it settles exactly like
+  // green/orange/brown would (verified against real motor behavior after the
+  // user pointed out the original exclusion was wrong).
+  it('red can be the goal color, reached by pushing it with another color -- no split involved', () => {
+    const params: GenerationParams = {
+      launchCount: 1,
+      availableColors: ['green', 'red'],
+      chainOriginProbability: 0.5,
+      decoyCount: 0,
+      seed: 0,
+      defenderContinuationProbability: 0,
+    };
+    const rng = scriptedRng([0.5, 0.5, 0.5, 0.5, 0.5, 0.9, 0.9]);
+
+    const result = generateLevelWithRng(params, rng);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.level.pieces).toEqual([{ at: { row: 4, col: 3 }, color: 'red', fragility: 'new' }]);
+    expect(result.level.hand).toEqual(['green']);
+    expect(result.level.goal).toEqual({ color: 'red', cell: { row: 4, col: 4 } });
+    expect(result.level.solution).toEqual([{ direction: 'E', lane: 4, pieceIndex: 0 }]);
+
+    const level = createLevel({
+      pieces: result.level.pieces,
+      hand: result.level.hand,
+      goal: { at: result.level.goal.cell, color: result.level.goal.color },
+    });
+    expect(validatesForward(level, result.level.solution)).toBe(true);
+  });
+});

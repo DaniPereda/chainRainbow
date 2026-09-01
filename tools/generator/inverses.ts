@@ -2,7 +2,7 @@ import type { Board, Coordinate } from '../../src/engine/board.js';
 import { getPieceAt, wrapCoordinate } from '../../src/engine/board.js';
 import { opposite, step, type Direction } from '../../src/engine/move-step.js';
 
-export type InverseColor = 'green' | 'orange' | 'brown';
+export type InverseColor = 'green' | 'orange' | 'brown' | 'red';
 export type InverseContext = 'settle' | 'occupied';
 
 function stepBackward(cell: Coordinate, direction: Direction, distance: number): Coordinate {
@@ -69,7 +69,15 @@ export function inverseCandidates(
   board: Board,
   context: InverseContext,
 ): Coordinate[] {
-  if (strikerColor === 'green') {
+  // Red shares green's exact formula -- a red split's first hop is always
+  // exactly 1 cell, regardless of the struck piece's own color
+  // (020-generator-red-support, research.md Decisión 1) -- but ONLY for
+  // context 'settle': red is never a valid candidate for explaining how an
+  // already-known striker itself started moving (context 'occupied', used
+  // only when resolving a 'striker-origin' obligation) -- deliberately out
+  // of scope (research.md Decisión 4).
+  if (strikerColor === 'green' || strikerColor === 'red') {
+    if (strikerColor === 'red' && context !== 'settle') return [];
     return [stepBackward(to, direction, 1)];
   }
   if (strikerColor === 'orange') {

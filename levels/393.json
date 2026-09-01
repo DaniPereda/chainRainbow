@@ -1,0 +1,257 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 0,
+        "col": 1
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 3
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 0
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 2
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 6
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 0
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 1
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 2
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 3
+      },
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 1
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 2
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 6
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 2
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 3
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 7
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 3
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    "orange",
+    "green",
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "red",
+      "fragility": "broken"
+    },
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    "brown",
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "red",
+      "fragility": "broken"
+    },
+    "brown"
+  ],
+  "goal": {
+    "color": "green",
+    "cell": {
+      "row": 3,
+      "col": 4
+    }
+  },
+  "solution": [
+    {
+      "direction": "S",
+      "lane": 2,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 4,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "complexityScore": 21,
+    "maxGenerationAttempts": 1000,
+    "seed": 393,
+    "launchCount": 5,
+    "chainOriginProbability": 0.6242130738683045,
+    "defenderContinuationProbability": 0.5434974523726851,
+    "decoyCount": 6,
+    "boardDecoyProbability": 0.4919898557011038,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown",
+      "red"
+    ],
+    "fragilityProfile": "hard"
+  }
+}

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
-import { playGoalSound, playImpactSound, playJumpSound } from './sound-effects.js';
+import { playGoalSound, playImpactSound, playJumpSound, playSplitSound } from './sound-effects.js';
 
 // 018-piece-movement-animation refinement: slowed down twice, per two rounds of
 // the user's own playtest (150ms -> 350ms -> 450ms, "todo un poco mas lento").
@@ -114,6 +114,22 @@ export function replayEvent(board: Board, event: ChainEvent): Board {
   return setCell(board, event.at, null); // ANNIHILATION
 }
 
+/**
+ * Whether `event` is red settling with a real collision -- the exact moment
+ * `applyImpact` (src/engine/pieces/push.ts) triggers `resolveRedSplit`
+ * (009-red-piece/020-generator-red-support): a MOVE_STEP for a red piece
+ * (`hasCollision: true`) is always immediately followed by the split's own
+ * branch events in the log. Red settling into empty space (`hasCollision:
+ * false`) never splits anything, so it's excluded here too -- checked ahead of
+ * `jumpMidpoint` in `playEventLog` since a split can coincidentally travel an
+ * orange-style 2-cell distance (jumpMidpoint is purely geometric, not
+ * color-aware), and this sound takes priority over both the generic impact and
+ * the jump sound either way.
+ */
+export function isRedSplitTrigger(event: ChainEvent): boolean {
+  return event.type === 'MOVE_STEP' && event.piece.color === 'red' && event.hasCollision;
+}
+
 export function pixelCenter(coord: Coordinate): { x: number; y: number } {
   return { x: coord.col * CELL_SIZE + CELL_SIZE / 2, y: coord.row * CELL_SIZE + CELL_SIZE / 2 };
 }
@@ -194,11 +210,14 @@ export function playEventLog(
         return;
       }
 
+      const isRedSplit = isRedSplitTrigger(event);
+
       const end = pixelCenter(event.to);
       const midpoint = jumpMidpoint(event.from, event.to, board.size);
 
       if (midpoint === null) {
-        if (event.hasCollision) playImpactSound();
+        if (isRedSplit) playSplitSound();
+        else if (event.hasCollision) playImpactSound();
         scene.tweens.add({
           targets: temp,
           x: boardGraphics.x + end.x,
@@ -217,7 +236,8 @@ export function playEventLog(
       // (moving along a column) bulges right (an `x` offset) -- offsetting `y`
       // for a vertical jump would just look like moving faster along the same
       // line, not an arc (second round of playtest refinement).
-      playJumpSound();
+      if (isRedSplit) playSplitSound();
+      else playJumpSound();
       const mid = pixelCenter(midpoint);
       const hopOffset = CELL_SIZE * 0.4;
       const isVerticalJump = event.from.col === event.to.col;

@@ -1,0 +1,156 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 1,
+        "col": 4
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 0
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 1
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 3
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 5
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 3
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 3
+      },
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 4
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    "brown",
+    "red",
+    {
+      "color": "brown",
+      "fragility": "broken"
+    },
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    "brown",
+    {
+      "color": "orange",
+      "fragility": "broken"
+    },
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    }
+  ],
+  "goal": {
+    "color": "orange",
+    "cell": {
+      "row": 1,
+      "col": 5
+    }
+  },
+  "solution": [
+    {
+      "direction": "E",
+      "lane": 2,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 4,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 4,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "complexityScore": 19,
+    "maxGenerationAttempts": 1000,
+    "seed": 243,
+    "launchCount": 5,
+    "chainOriginProbability": 0.6545895495917649,
+    "defenderContinuationProbability": 0.59310592408292,
+    "decoyCount": 4,
+    "boardDecoyProbability": 0.07456047076266259,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown",
+      "red"
+    ],
+    "fragilityProfile": "hard"
+  }
+}

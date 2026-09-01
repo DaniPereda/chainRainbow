@@ -2,23 +2,7 @@
   "pieces": [
     {
       "at": {
-        "row": 0,
-        "col": 2
-      },
-      "color": "brown",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 2
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 4,
+        "row": 2,
         "col": 2
       },
       "color": "green",
@@ -26,10 +10,10 @@
     },
     {
       "at": {
-        "row": 7,
+        "row": 2,
         "col": 4
       },
-      "color": "green",
+      "color": "orange",
       "fragility": "new"
     }
   ],
@@ -38,56 +22,41 @@
       "color": "orange",
       "fragility": "cracked"
     },
-    "orange",
-    "green",
-    "orange",
     "brown",
     {
-      "color": "orange",
+      "color": "green",
       "fragility": "broken"
     },
-    "brown",
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
     "green",
-    "green"
+    "brown"
   ],
   "goal": {
-    "color": "green",
+    "color": "orange",
     "cell": {
-      "row": 7,
-      "col": 2
+      "row": 2,
+      "col": 5
     }
   },
   "solution": [
     {
-      "direction": "N",
+      "direction": "E",
       "lane": 2,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "N",
-      "lane": 2,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "S",
-      "lane": 2,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "O",
-      "lane": 7,
       "pieceIndex": 0
     }
   ],
   "params": {
+    "complexityScore": 13,
+    "maxGenerationAttempts": 1000,
     "seed": 100,
-    "complexityScore": 14,
-    "maxGenerationAttempts": 20000,
-    "launchCount": 4,
-    "chainOriginProbability": 0.36884719419758766,
-    "defenderContinuationProbability": 0.4004985744599253,
+    "launchCount": 1,
+    "chainOriginProbability": 0.4562650984385982,
+    "defenderContinuationProbability": 0.34589812946505843,
     "decoyCount": 5,
-    "boardDecoyProbability": 0.019203863618895412,
+    "boardDecoyProbability": 0.06314118043519557,
     "availableColors": [
       "green",
       "orange",

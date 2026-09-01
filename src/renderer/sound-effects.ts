@@ -49,3 +49,16 @@ export function playGoalSound(): void {
   playTone(523.25, 0.18, 'sine');
   setTimeout(() => playTone(783.99, 0.22, 'sine'), 90);
 }
+
+/**
+ * Red striking a defender and splitting it into two branches
+ * (009-red-piece/020-generator-red-support) -- distinct from a generic impact:
+ * two tones fired at once, a fifth apart, evoking "one becomes two" rather than
+ * goal's sequential two-note rise. Plays once per split, at the moment red's own
+ * MOVE_STEP settles with a real collision (launch-animation.ts) -- not for a
+ * red piece simply settling into empty space, which never splits anything.
+ */
+export function playSplitSound(): void {
+  playTone(196, 0.16, 'sawtooth');
+  playTone(294, 0.16, 'sawtooth');
+}

@@ -1,0 +1,145 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 1,
+        "col": 1
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 3
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 2
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 5
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 3
+      },
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 3
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 2
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    "red",
+    "brown",
+    "red",
+    "brown",
+    {
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    "brown"
+  ],
+  "goal": {
+    "color": "green",
+    "cell": {
+      "row": 6,
+      "col": 5
+    }
+  },
+  "solution": [
+    {
+      "direction": "O",
+      "lane": 4,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 5,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 4,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "complexityScore": 17,
+    "maxGenerationAttempts": 1000,
+    "seed": 187,
+    "launchCount": 4,
+    "chainOriginProbability": 0.6921676471363754,
+    "defenderContinuationProbability": 0.6219503744039684,
+    "decoyCount": 3,
+    "boardDecoyProbability": 0.21308551374822854,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown",
+      "red"
+    ],
+    "fragilityProfile": "medium"
+  }
+}

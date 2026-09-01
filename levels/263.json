@@ -1,0 +1,130 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 2,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 2,
+        "col": 6
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 3,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 4
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 5
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    "brown",
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    "brown",
+    "red",
+    "green",
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "brown",
+      "fragility": "broken"
+    },
+    "red"
+  ],
+  "goal": {
+    "color": "green",
+    "cell": {
+      "row": 3,
+      "col": 7
+    }
+  },
+  "solution": [
+    {
+      "direction": "N",
+      "lane": 5,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 5,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 5,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "O",
+      "lane": 2,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 6,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "complexityScore": 19,
+    "maxGenerationAttempts": 1000,
+    "seed": 263,
+    "launchCount": 5,
+    "chainOriginProbability": 0.43970877514220774,
+    "defenderContinuationProbability": 0.6123442642856389,
+    "decoyCount": 5,
+    "boardDecoyProbability": 0.23337834244593977,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown",
+      "red"
+    ],
+    "fragilityProfile": "hard"
+  }
+}

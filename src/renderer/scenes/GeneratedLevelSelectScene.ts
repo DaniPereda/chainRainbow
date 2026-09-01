@@ -21,8 +21,8 @@ type GeneratedLevelFile = {
  * research.md 011). Solo alcanzable desde `dev-levels.html`, un punto de entrada
  * de Vite aparte de `index.html` -- nunca llega al build del jugador.
  *
- * Paginado (25 por página, 5x5) en vez de una única rejilla larga -- con 140
- * niveles generados, una rejilla sin paginar se saldría muy por debajo del
+ * Paginado (25 por página, 5x5) en vez de una única rejilla larga -- con más de
+ * un centenar de niveles generados, una rejilla sin paginar se saldría muy por debajo del
  * canvas (28 filas) sin ninguna forma de llegar a ellas. `currentPage` es un
  * campo de instancia normal: como Phaser reutiliza la misma instancia de
  * escena entre `scene.start()`, volver aquí desde el tablero conserva la

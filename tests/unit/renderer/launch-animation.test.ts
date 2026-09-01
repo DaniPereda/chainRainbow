@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, setPieceAt } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
-import { jumpMidpoint, replayEvent } from '../../../src/renderer/launch-animation.js';
+import { isRedSplitTrigger, jumpMidpoint, replayEvent } from '../../../src/renderer/launch-animation.js';
 
 describe('jumpMidpoint: detects a straight, exactly-2-cell displacement (orange\'s own push distance)', () => {
   it('returns the cell in between for a horizontal 2-cell push', () => {
@@ -105,5 +105,56 @@ describe('replayEvent: applies one ChainEvent to a Board with the same write sem
     const replayed = outcome.events.reduce(replayEvent, level.board);
 
     expect(replayed).toEqual(outcome.board);
+  });
+});
+
+describe('isRedSplitTrigger: identifies the exact MOVE_STEP that triggers a red split', () => {
+  it('is true for red settling with a real collision -- the event immediately followed by the split\'s own branches', () => {
+    // Real event log, verified against resolveLaunch: red hits green at
+    // {4,3}, splitting it into a branch heading north and one heading south.
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'green' }],
+      hand: ['red'],
+      goal: { at: { row: 4, col: 4 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.events[0]).toMatchObject({ type: 'MOVE_STEP', piece: { color: 'red' }, hasCollision: true });
+    expect(isRedSplitTrigger(outcome.events[0])).toBe(true);
+    // The branches themselves are never red -- never a split trigger either.
+    expect(isRedSplitTrigger(outcome.events[1])).toBe(false);
+    expect(isRedSplitTrigger(outcome.events[2])).toBe(false);
+  });
+
+  it('is false for red settling into empty space -- nothing there to split', () => {
+    // Not a hand-launched red here -- a red piece already on the board, pushed
+    // by green into an empty cell (hasCollision: false). A launch that finds
+    // truly nothing to strike anywhere produces no events at all, so this is
+    // the real shape "red settles without splitting" takes in an EventLog.
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'red' }],
+      hand: ['green'],
+      goal: { at: { row: 4, col: 4 }, color: 'red' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.events).toEqual([
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'new' }, from: { row: 4, col: 2 }, to: { row: 4, col: 3 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: false },
+    ]);
+    expect(isRedSplitTrigger(outcome.events[1])).toBe(false);
+  });
+
+  it('is false for a non-red MOVE_STEP with a real collision, and for an ANNIHILATION', () => {
+    expect(
+      isRedSplitTrigger({
+        type: 'MOVE_STEP',
+        piece: { color: 'green', fragility: 'new' },
+        from: { row: 0, col: 0 },
+        to: { row: 0, col: 1 },
+        hasCollision: true,
+      }),
+    ).toBe(false);
+    expect(isRedSplitTrigger({ type: 'ANNIHILATION', at: { row: 0, col: 0 }, color: 'red' })).toBe(false);
   });
 });

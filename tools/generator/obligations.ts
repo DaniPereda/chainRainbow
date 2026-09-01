@@ -1,6 +1,6 @@
 import type { Board, Coordinate, Fragility, PieceColor } from '../../src/engine/board.js';
 import { getPieceAt, setPieceAt } from '../../src/engine/board.js';
-import { step, type Direction } from '../../src/engine/move-step.js';
+import { opposite, step, stepBy, type Direction } from '../../src/engine/move-step.js';
 import { inverseCandidates, type InverseContext } from './inverses.js';
 import { assignGroupFragility, type FragilityProfile } from './fragility.js';
 
@@ -22,6 +22,20 @@ export type Obligation = {
   // resuelve, se fuerza el lanzamiento directo desde mano (nunca una cadena) con
   // fragilidad 'broken'.
   mustBeBroken?: boolean;
+  // 020-generator-red-support: forces this 'defender' obligation to resolve
+  // as furniture, skipping the defenderContinuationProbability draw entirely
+  // (checked BEFORE it, short-circuited, same discipline as mustBeBroken --
+  // zero new rng() calls for any case that doesn't use red). Its only use:
+  // the pre-split defender D, which FR-002 requires to always be 'new' --
+  // 'cracked' would make both resulting branches BROKEN (FR-015 of
+  // 009-red-piece), never settling.
+  forceFurniture?: boolean;
+  // 020-generator-red-support: overrides the 'new' default fragility used
+  // when a 'defender' obligation resolves as furniture. Its only use: a red
+  // split's secondary branch, which shares the split's already-advanced
+  // fragility ('cracked', since D is forced 'new' -- research.md Decisión 5)
+  // rather than the free 'new' any other furniture piece gets.
+  furnitureFragility?: Fragility;
 };
 
 export type RawLaunch = {
@@ -65,6 +79,24 @@ function pickDirection(rng: () => number): Direction {
   return DIRECTIONS[Math.floor(rng() * DIRECTIONS.length)];
 }
 
+/**
+ * 020-generator-red-support: the inverse of push.ts's own PERPENDICULAR_DIRECTIONS
+ * (which maps a red strike's own direction to its two branch directions) --
+ * given a KNOWN branch direction, which red strike directions could have
+ * produced it. Both entries for a given branch direction always yield the SAME
+ * branch pair (research.md Decisión 7), so which one gets picked doesn't affect
+ * the secondary branch's own direction (always `opposite(direction)`). Defined
+ * locally rather than imported/exported from the engine -- same established
+ * precedent as entryCoordinate below, a tiny stable mapping duplicated instead
+ * of touching src/engine/ (FR-008).
+ */
+const RED_STRIKE_DIRECTIONS_FOR_BRANCH: Record<Direction, [Direction, Direction]> = {
+  E: ['N', 'S'],
+  O: ['N', 'S'],
+  N: ['E', 'O'],
+  S: ['E', 'O'],
+};
+
 function pickRandomEmptyCell(board: Board, rng: () => number): Coordinate | null {
   const empty: Coordinate[] = [];
   for (let row = 0; row < 8; row++) {
@@ -104,9 +136,7 @@ export function chooseStrikerAndOrigin(
   const order = shuffle(candidates, rng);
 
   for (const striker of order) {
-    // This feature only models green/orange/brown (spec.md FR-013); a caller
-    // passing another color here is a programming error, not a runtime case.
-    const origins = inverseCandidates(striker as 'green' | 'orange' | 'brown', direction, to, board, context);
+    const origins = inverseCandidates(striker, direction, to, board, context);
     if (origins.length > 0) {
       const origin = origins[Math.floor(rng() * origins.length)];
       return { striker, origin };
@@ -193,10 +223,13 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
 
     if (obligation.kind === 'defender') {
       if (!obligation.isRoot) {
-        const mustFurniture = launchesUsed >= ctx.launchCount;
+        const mustFurniture = obligation.forceFurniture || launchesUsed >= ctx.launchCount;
         const chooseFurniture = mustFurniture || ctx.rng() >= ctx.defenderContinuationProbability;
         if (chooseFurniture) {
-          board = setPieceAt(board, obligation.cell, { color: obligation.color, fragility: 'new' });
+          board = setPieceAt(board, obligation.cell, {
+            color: obligation.color,
+            fragility: obligation.furnitureFragility ?? 'new',
+          });
           continue;
         }
       }
@@ -212,6 +245,41 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
         ctx.rng,
       );
       if (resolved === null) return { board, rawLaunches, ok: false };
+
+      // 020-generator-red-support: a red split explains obligation.cell
+      // completely differently -- three new obligations instead of the usual
+      // two (research.md, "Resumen del algoritmo de inversión").
+      if (resolved.striker === 'red') {
+        const [brA, brB] = RED_STRIKE_DIRECTIONS_FOR_BRANCH[direction];
+        const redStrikeDirection = ctx.rng() < 0.5 ? brA : brB;
+        const secondaryDirection = opposite(direction);
+        const landingCell = stepBy(resolved.origin, secondaryDirection, 1);
+
+        queue.push({
+          cell: resolved.origin,
+          color: obligation.color,
+          kind: 'defender',
+          direction: null,
+          chainDepth: 0,
+          forceFurniture: true,
+        });
+        queue.push({
+          cell: resolved.origin,
+          color: 'red',
+          kind: 'striker-origin',
+          direction: redStrikeDirection,
+          chainDepth: 0,
+        });
+        queue.push({
+          cell: landingCell,
+          color: obligation.color,
+          kind: 'defender',
+          direction: null,
+          chainDepth: 0,
+          furnitureFragility: 'cracked',
+        });
+        continue;
+      }
 
       queue.push({
         cell: resolved.origin,
@@ -260,12 +328,18 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
       continue;
     }
 
+    // 020-generator-red-support: red is never tried here -- explaining how an
+    // already-known striker itself started moving via a red split (a striker
+    // that is itself a split branch) is deliberately out of scope
+    // (research.md Decisión 4). inverseCandidates('red', ..., 'occupied')
+    // already returns [] too (belt and braces); filtering it out of the
+    // candidate list here documents the decision at the call site itself.
     const resolved = chooseStrikerAndOrigin(
       obligation.color,
       obligation.direction!,
       obligation.cell,
       board,
-      ctx.availableColors,
+      ctx.availableColors.filter((color) => color !== 'red'),
       'occupied',
       ctx.rng,
     );

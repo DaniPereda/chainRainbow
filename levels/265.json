@@ -1,0 +1,149 @@
+{
+  "pieces": [
+    {
+      "at": {
+        "row": 0,
+        "col": 2
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 4
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 1
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 2
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 2
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 7
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 6,
+        "col": 6
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    }
+  ],
+  "hand": [
+    "green",
+    {
+      "color": "orange",
+      "fragility": "cracked"
+    },
+    "red",
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    "brown",
+    {
+      "color": "brown",
+      "fragility": "cracked"
+    },
+    {
+      "color": "red",
+      "fragility": "cracked"
+    },
+    {
+      "color": "green",
+      "fragility": "broken"
+    },
+    "green"
+  ],
+  "goal": {
+    "color": "green",
+    "cell": {
+      "row": 5,
+      "col": 0
+    }
+  },
+  "solution": [
+    {
+      "direction": "E",
+      "lane": 1,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 0,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "S",
+      "lane": 5,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 6,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "N",
+      "lane": 7,
+      "pieceIndex": 0
+    }
+  ],
+  "params": {
+    "complexityScore": 19,
+    "maxGenerationAttempts": 1000,
+    "seed": 265,
+    "launchCount": 5,
+    "chainOriginProbability": 0.48649266748689113,
+    "defenderContinuationProbability": 0.4074734915047884,
+    "decoyCount": 5,
+    "boardDecoyProbability": 0.4484659099485725,
+    "availableColors": [
+      "green",
+      "orange",
+      "brown",
+      "red"
+    ],
+    "fragilityProfile": "hard"
+  }
+}

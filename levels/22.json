@@ -46,9 +46,9 @@
     }
   ],
   "params": {
-    "seed": 22,
     "complexityScore": 8,
-    "maxGenerationAttempts": 20000,
+    "maxGenerationAttempts": 1000,
+    "seed": 22,
     "launchCount": 1,
     "chainOriginProbability": 0.067553979344666,
     "defenderContinuationProbability": 0.06159527767449617,
