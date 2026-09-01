@@ -1,0 +1,109 @@
+import { describe, expect, it } from 'vitest';
+import { createBoard, setPieceAt } from '../../../src/engine/board.js';
+import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
+import { jumpMidpoint, replayEvent } from '../../../src/renderer/launch-animation.js';
+
+describe('jumpMidpoint: detects a straight, exactly-2-cell displacement (orange\'s own push distance)', () => {
+  it('returns the cell in between for a horizontal 2-cell push', () => {
+    expect(jumpMidpoint({ row: 2, col: 3 }, { row: 2, col: 5 }, 8)).toEqual({ row: 2, col: 4 });
+  });
+
+  it('returns the cell in between for a vertical 2-cell push', () => {
+    expect(jumpMidpoint({ row: 5, col: 1 }, { row: 3, col: 1 }, 8)).toEqual({ row: 4, col: 1 });
+  });
+
+  it('follows the short way around the wrap, not the long way', () => {
+    // col 7 -> col 1 is +2 through the wrap (7->0->1), not -6 the other way.
+    expect(jumpMidpoint({ row: 0, col: 7 }, { row: 0, col: 1 }, 8)).toEqual({ row: 0, col: 0 });
+  });
+
+  it('returns null for a 1-cell push (green) or any other distance', () => {
+    expect(jumpMidpoint({ row: 2, col: 3 }, { row: 2, col: 4 }, 8)).toBeNull();
+    expect(jumpMidpoint({ row: 2, col: 3 }, { row: 2, col: 6 }, 8)).toBeNull();
+  });
+
+  it('returns null when from/to are not aligned on a single row or column', () => {
+    expect(jumpMidpoint({ row: 2, col: 3 }, { row: 3, col: 5 }, 8)).toBeNull();
+  });
+});
+
+describe('replayEvent: applies one ChainEvent to a Board with the same write semantics as the engine', () => {
+  it('a normal MOVE_STEP places the piece at the destination, without touching `from`', () => {
+    // `from` is documentary (where this piece arrived from), never an
+    // instruction to vacate a cell -- settleOrVanish (src/engine/pieces/push.ts)
+    // never writes it either. A cell that genuinely needs to end up empty gets
+    // there via ANNIHILATION, or is simply never occupied to begin with.
+    const board = setPieceAt(createBoard(), { row: 0, col: 0 }, { color: 'green', fragility: 'new' });
+    const piece = { color: 'green' as const, fragility: 'cracked' as const };
+
+    const result = replayEvent(board, {
+      type: 'MOVE_STEP',
+      piece,
+      from: { row: 0, col: 0 },
+      to: { row: 0, col: 1 },
+      hasCollision: true,
+    });
+
+    expect(result.cells[0][0]).toEqual({ color: 'green', fragility: 'new' }); // untouched by this event
+    expect(result.cells[0][1]).toEqual(piece);
+  });
+
+  it('a MOVE_STEP whose piece is BROKEN never settles at the destination, and leaves everything else untouched', () => {
+    const board = setPieceAt(createBoard(), { row: 2, col: 2 }, { color: 'brown', fragility: 'broken' });
+
+    const result = replayEvent(board, {
+      type: 'MOVE_STEP',
+      piece: { color: 'brown', fragility: 'broken' },
+      from: { row: 2, col: 2 },
+      to: { row: 2, col: 5 },
+      hasCollision: false,
+    });
+
+    expect(result.cells[2][2]).toEqual({ color: 'brown', fragility: 'broken' }); // untouched by this event
+    expect(result.cells[2][5]).toBeNull();
+  });
+
+  it('an ANNIHILATION clears its cell', () => {
+    const board = setPieceAt(createBoard(), { row: 3, col: 3 }, { color: 'orange', fragility: 'cracked' });
+
+    const result = replayEvent(board, { type: 'ANNIHILATION', at: { row: 3, col: 3 }, color: 'orange' });
+
+    expect(result.cells[3][3]).toBeNull();
+  });
+
+  it('a MOVE_STEP whose `from` sits just outside the board (a launched piece entering play) still settles normally at `to`', () => {
+    // `from` is never read by replayEvent (see the first test's comment) -- an
+    // off-board value here (the cell just before a piece enters, per
+    // resolve-launch.ts) is exactly as irrelevant as any other `from`.
+    const board = createBoard();
+
+    const result = replayEvent(board, {
+      type: 'MOVE_STEP',
+      piece: { color: 'green', fragility: 'new' },
+      from: { row: -1, col: 4 },
+      to: { row: 0, col: 4 },
+      hasCollision: false,
+    });
+
+    expect(result.cells[0][4]).toEqual({ color: 'green', fragility: 'new' });
+  });
+
+  it('reducing a full real EventLog over the pre-launch board reproduces resolveLaunch\'s own final board exactly', () => {
+    // Same fixture as red.test.ts's "lets a branch push a further piece onward
+    // with its own color distance..." -- a real multi-event cascade (red splits,
+    // one branch pushes a further piece onward).
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 3 }, color: 'green' },
+        { at: { row: 4, col: 4 }, color: 'orange' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 4, col: 5 }, color: 'orange' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
+    const replayed = outcome.events.reduce(replayEvent, level.board);
+
+    expect(replayed).toEqual(outcome.board);
+  });
+});

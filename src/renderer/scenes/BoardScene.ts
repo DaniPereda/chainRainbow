@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { PROTOTYPE_LEVELS } from '../../levels/prototype-levels.js';
 import { drawBoard, BOARD_PIXELS, CELL_SIZE } from '../board-view.js';
 import { drawHand, PIECE_RADIUS } from '../hand-panel.js';
+import { playEventLog } from '../launch-animation.js';
+import { playGoalSound } from '../sound-effects.js';
 import {
   applySessionLaunch,
   restartSession,
@@ -101,6 +103,11 @@ export class BoardScene extends Phaser.Scene {
   private customNextId: number | null = null;
   private onNavigate: ((id: number) => void) | null = null;
   private session!: LevelSession;
+  // 018-piece-movement-animation: true while a launch's EventLog is still being
+  // played back visually -- blocks a new launch (US2) and hand-selection taps
+  // (US2) until it finishes; deliberately does NOT block the "< Niveles" button
+  // (research.md, Decisión 4 -- leaving the scene tears down any in-flight tween).
+  private animating = false;
   private boardGraphics!: Phaser.GameObjects.Graphics;
   private handGraphics!: Phaser.GameObjects.Graphics;
   private handHitZones: Phaser.GameObjects.Zone[] = [];
@@ -200,20 +207,43 @@ export class BoardScene extends Phaser.Scene {
 
   private launch(direction: Direction, lane: number): void {
     // US2 Acceptance Scenario 3: sin fichas en mano, no se puede iniciar un nuevo
-    // lanzamiento. También se detiene una vez el nivel ya se resolvió (US3).
-    if (this.session.current.hand.pieces.length === 0 || this.session.status !== 'undetermined') {
+    // lanzamiento. También se detiene una vez el nivel ya se resolvió (US3), y
+    // mientras una animación anterior sigue en curso (018, Historia 2).
+    if (
+      this.session.current.hand.pieces.length === 0 ||
+      this.session.status !== 'undetermined' ||
+      this.animating
+    ) {
       return;
     }
 
-    const { session: nextSession } = applySessionLaunch(this.session, { direction, lane });
+    const boardBeforeLaunch = this.session.current.board;
+    const { session: nextSession, outcome } = applySessionLaunch(this.session, { direction, lane });
     this.session = nextSession;
-    this.redraw();
 
-    // FR-007/FR-008/FR-009: solo se muestra una ventana cuando el motor decidió un
-    // resultado; 'undetermined' (incluye missclick) no muestra nada.
-    if (nextSession.status === 'won' || nextSession.status === 'lost') {
-      this.showResultOverlay(nextSession.status);
-    }
+    // 018-piece-movement-animation: se reproduce la traza de eventos antes de
+    // mostrar el estado final -- redraw() y la ventana de resultado (Historia 3)
+    // se disparan solo cuando la animación completa termina, nunca antes.
+    this.animating = true;
+    playEventLog(
+      this,
+      this.boardGraphics,
+      this.session.current.goal,
+      boardBeforeLaunch,
+      { direction, lane },
+      outcome.events,
+      () => {
+        this.animating = false;
+        this.redraw();
+
+        // FR-007/FR-008/FR-009: solo se muestra una ventana cuando el motor
+        // decidió un resultado; 'undetermined' (incluye missclick) no muestra nada.
+        if (nextSession.status === 'won' || nextSession.status === 'lost') {
+          if (nextSession.status === 'won') playGoalSound();
+          this.showResultOverlay(nextSession.status);
+        }
+      },
+    );
   }
 
   private redraw(): void {
@@ -240,6 +270,9 @@ export class BoardScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
 
       zone.on('pointerdown', () => {
+        // 018-piece-movement-animation, US2: la selección de mano tampoco cambia
+        // mientras una animación de lanzamiento sigue en curso.
+        if (this.animating) return;
         this.session = selectHandPiece(this.session, index);
         this.redraw();
       });
