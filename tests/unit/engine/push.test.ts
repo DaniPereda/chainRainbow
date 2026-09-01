@@ -153,6 +153,41 @@ describe('applyImpact: red split resolves branch 1 completely before branch 2 st
   });
 });
 
+describe('applyImpact: the struck defender\'s own displacement sees the striker that just settled at the same impact (017-striker-visibility-gap)', () => {
+  it('a brown striker\'s just-settled cell blocks the struck defender\'s own wrap-around walk, instead of being invisible to it', () => {
+    // An otherwise-empty board: the ONLY piece the struck defender's own walk could
+    // possibly collide with, on its way around the board, is the striker itself --
+    // which just settled at the impact cell a few lines earlier in this same
+    // applyImpact call. Before the fix, that walk was computed against `vacated`
+    // (the pre-settle snapshot), so it couldn't see the striker there and wrapped
+    // all the way around, landing past it. After the fix, it's computed against
+    // `boardWithStriker`, so the walk stops the instant it revisits that cell.
+    const board = setPieceAt(createBoard(), { row: 0, col: 0 }, { color: 'orange', fragility: 'new' });
+    const striker: Piece = { color: 'brown', fragility: 'new' };
+
+    const result = applyImpact(board, {
+      piece: striker,
+      direction: 'E',
+      from: { row: 0, col: 7 },
+      to: { row: 0, col: 0 },
+    });
+
+    expect(result.board.cells[0][0]).toEqual(striker); // the striker settled here first
+    expect(result.nextSites).toEqual([
+      {
+        piece: { color: 'orange', fragility: 'cracked' },
+        direction: 'E',
+        from: { row: 0, col: 0 },
+        // The struck defender's own walk revisits (0,0) after a full lap around an
+        // otherwise-empty board -- with the striker visible there, it collides and
+        // stops AT that cell, rather than crossing a second edge and landing at
+        // (0,7) (the bug: a full extra unobstructed lap past its own striker).
+        to: { row: 0, col: 0 },
+      },
+    ]);
+  });
+});
+
 describe('a self-collision within the same cascade is now a real collision, not passed through (SC-002/SC-005)', () => {
   it('a brown push whose wrap-around would revisit an earlier link of the same cascade collides with it for real', () => {
     // Exact fixture from the design conversation (originally generated level 56,

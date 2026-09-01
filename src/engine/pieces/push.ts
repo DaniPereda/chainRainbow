@@ -180,7 +180,7 @@ export function applyImpact(
   // BROKEN -- brokenness only ever decides whether IT settles once ITS OWN
   // resolution finishes (`settleOrVanish`, applied when this nextSites entry is
   // processed), never whether it strikes something in the first place.
-  const to = PUSH_STRATEGY[site.piece.color](vacated, hitDefender, site.to, site.direction);
+  const to = PUSH_STRATEGY[site.piece.color](boardWithStriker, hitDefender, site.to, site.direction);
   const nextSite: ImpactSite = { piece: hitDefender, direction: site.direction, from: site.to, to };
   return { board: boardWithStriker, events: strikerEvents, nextSites: [nextSite] };
 }
