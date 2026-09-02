@@ -3,6 +3,7 @@ import { createBoard, setPieceAt } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch, type ChainEvent, type MoveStepEvent } from '../../../src/engine/index.js';
 import {
   cellPath,
+  computeEventParents,
   isRedSplitTrigger,
   jumpMidpoint,
   orangeJumpMidpoint,
@@ -291,6 +292,61 @@ describe('orangeJumpMidpoint: the orange-jump visual only fires for orange\'s ow
 
     expect(orangeEvent).toMatchObject({ piece: { color: 'orange' }, pushedByColor: undefined });
     expect(orangeJumpMidpoint(orangeEvent, 8)).toBeNull();
+  });
+});
+
+describe('computeEventParents: finds where trajectories really fork, so they can be animated as concurrent siblings (022-parallel-branch-animation)', () => {
+  it('is null for the very first event -- nothing in the log arrived where the launch itself enters', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'green' }],
+      hand: ['green'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(computeEventParents(outcome.events)[0]).toBeNull();
+  });
+
+  it('chains a simple linear push: each event\'s parent is whoever just arrived where it starts', () => {
+    // Same fixture as isRedSplitTrigger's own "false for red settling into empty
+    // space" test -- green pushes a stationary red one cell onward.
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'red' }],
+      hand: ['green'],
+      goal: { at: { row: 4, col: 4 }, color: 'red' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.events).toHaveLength(2);
+    expect(computeEventParents(outcome.events)).toEqual([null, 0]);
+  });
+
+  it('gives both branches of a real red split the SAME parent -- they are siblings, born at the same instant', () => {
+    // Same fixture as the "reducing a full real EventLog..." test above: red
+    // splits a green at the launch's own impact cell into an east branch (which
+    // goes on to push a further orange onward) and a west branch (which settles,
+    // unaffected, on an empty cell). Verified against the real engine before
+    // being fixed as an expectation here.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 3 }, color: 'green' },
+        { at: { row: 4, col: 4 }, color: 'orange' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 4, col: 5 }, color: 'orange' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 3 });
+
+    expect(outcome.events).toHaveLength(4);
+    const parents = computeEventParents(outcome.events);
+    // [0] red settles at the split point (root, no parent).
+    // [1] east branch (green) settles at (4,4) -- child of the split itself.
+    // [2] west branch (green) settles at (4,2) -- ALSO a child of the split,
+    //     the true sibling of [1]: same parent, so playEventLog runs them as
+    //     two concurrent lanes instead of one after the other.
+    // [3] orange, pushed onward by the east branch's own green push -- a
+    //     child of [1] specifically, not of the split or of [2].
+    expect(parents).toEqual([null, 0, 0, 1]);
   });
 });
 

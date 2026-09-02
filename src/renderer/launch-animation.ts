@@ -198,23 +198,75 @@ export function pixelCenter(coord: Coordinate): { x: number; y: number } {
 }
 
 /**
- * Reproduces `events` visually, one at a time and strictly in order (research.md,
- * Decisión 3 -- `EventLog` has no notion of two events happening "at once" today).
- * Each event gets a temporary `Phaser.GameObjects.Arc` (never a persistent
- * per-piece GameObject -- research.md, Decisión 1): a `MOVE_STEP` walks it from
- * `from` to `to`, one cell at a time; an `ANNIHILATION` walks it the same way
- * from `from` to `at`, then fades it out there -- both are "a piece travels
- * somewhere," they only differ in what happens on arrival. Between events, the
- * static layer (`boardGraphics`) is redrawn via `drawBoard` against a board copy
- * advanced with `replayEvent` -- since that reducer only ever writes `to`/`at`
- * (never clears `from`, see its own comment), the static layer is already
- * accurate at every step with no extra bookkeeping here. The one accepted visual
- * simplification (research.md, Decisión 1): the temporary circle for a step
+ * For every event, the index of its causal predecessor -- the most recent
+ * EARLIER event whose arrival cell (`to` for a MOVE_STEP; an ANNIHILATION never
+ * has one, since annihilating ends a trajectory rather than handing it off) is
+ * exactly this event's own `from`. `null` means nothing in the log arrived
+ * where this event starts -- true only for the very first event (the launch's
+ * own entry).
+ *
+ * A `from` is a real board cell, occupied by exactly one physical piece at a
+ * time, so at most one earlier event can be "who's there right now" -- taking
+ * the NEAREST match (not just any) is what makes this correct even when a cell
+ * is visited more than once over the course of a cascade (e.g. a brown walk's
+ * own full-lap return to its striker's cell, `cellPath`'s own test fixture).
+ *
+ * Two (or more) events sharing the same parent are SIBLINGS -- born at the same
+ * instant. In practice the only way that happens is a red split (009-red-piece):
+ * both branches' fixed first hop starts from the very same split-point cell.
+ * Found as a real bug reported by the user: the two branches are computed and
+ * queued together (019-synchronous-tick-resolution) and can even genuinely
+ * collide with each other (021-cellwise-collision-resolution), but the
+ * renderer used to animate the whole flat `EventLog` with a single temporary
+ * circle, one event fully finished before the next started -- so only ONE
+ * branch was ever seen moving, never both at once, however truly simultaneous
+ * they are underneath. `playEventLog` uses this to fan out into concurrent
+ * animation lanes at exactly the points where the underlying trajectories
+ * really did fork, instead of forcing everything into one sequential timeline.
+ */
+export function computeEventParents(events: EventLog): (number | null)[] {
+  const parents: (number | null)[] = events.map(() => null);
+  for (let j = 1; j < events.length; j++) {
+    const targetFrom = events[j].from;
+    for (let i = j - 1; i >= 0; i--) {
+      const candidate = events[i];
+      if (candidate.type !== 'MOVE_STEP') continue;
+      if (candidate.to.row === targetFrom.row && candidate.to.col === targetFrom.col) {
+        parents[j] = i;
+        break;
+      }
+    }
+  }
+  return parents;
+}
+
+/**
+ * Reproduces `events` visually as a tree of concurrent animation lanes, rooted
+ * at the launch's own entry -- `computeEventParents` finds where the underlying
+ * trajectories really fork (a red split's two branches, born from the same
+ * cell at the same instant), and each such fork gets played as two (or more)
+ * simultaneously-running temporary circles instead of one global sequential
+ * queue (real bug reported by the user: "solo se ve una de las ramas moverse").
+ * A child lane only starts once its parent event has fully finished -- it can't
+ * move before whatever put it in motion has itself arrived -- but siblings with
+ * no dependency on each other run truly in parallel, each with its own
+ * `Phaser.GameObjects.Arc` (never a persistent per-piece GameObject -- research.md,
+ * Decisión 1). A `MOVE_STEP` walks its circle from `from` to `to`, one cell at a
+ * time; an `ANNIHILATION` walks it the same way from `from` to `at`, then fades
+ * it out there (and, having no `to`, never parents anything -- annihilating
+ * ends a trajectory). Between events, the static layer (`boardGraphics`) is
+ * redrawn via `drawBoard` against a board copy advanced with `replayEvent` --
+ * since that reducer only ever writes `to`/`at` (never clears `from`, see its
+ * own comment), the static layer is already accurate at every step with no
+ * extra bookkeeping here, and two concurrent siblings never race on the same
+ * cell (their `to`/`at` are necessarily distinct -- that's exactly what makes
+ * them independent branches instead of a mutual collision). The one accepted
+ * visual simplification (research.md, Decisión 1): a step's temporary circle
  * spawns on top of whatever the static layer already shows at `from` (typically
  * the piece that just struck this one, already settled there a step earlier) --
- * a brief overlap at the moment of impact, not a bug. Calls `onDone` once the
- * last event has finished (or immediately, with no animation, if `events` is
- * empty -- FR-004, the missclick case).
+ * a brief overlap at the moment of impact, not a bug. Calls `onDone` once every
+ * lane has finished (or immediately, with no animation, if `events` is empty --
+ * FR-004, the missclick case).
  *
  * `launch` (the confirmed direction/lane) is used only to give the very FIRST
  * event of the log a true edge-to-impact glide before its own normal animation
@@ -231,16 +283,24 @@ export function playEventLog(
   events: EventLog,
   onDone: () => void,
 ): void {
-  let board = boardBeforeLaunch;
-  let index = 0;
+  if (events.length === 0) {
+    onDone();
+    return;
+  }
 
-  function playNext(): void {
-    if (index >= events.length) {
-      onDone();
-      return;
-    }
-    const isFirstEvent = index === 0;
-    const event = events[index++];
+  let board = boardBeforeLaunch;
+
+  const parents = computeEventParents(events);
+  const children: number[][] = events.map(() => []);
+  for (let j = 0; j < events.length; j++) {
+    const parent = parents[j];
+    if (parent !== null) children[parent].push(j);
+  }
+  const roots = events.map((_, i) => i).filter((i) => parents[i] === null);
+
+  function playNode(nodeIndex: number, onNodeDone: () => void): void {
+    const isFirstEvent = nodeIndex === 0;
+    const event = events[nodeIndex];
     const piece = event.type === 'MOVE_STEP' ? event.piece : { color: event.color, fragility: 'new' as const };
     const from = event.from;
 
@@ -265,7 +325,22 @@ export function playEventLog(
       temp.destroy();
       board = replayEvent(board, event);
       drawBoard(boardGraphics, board, goal);
-      playNext();
+      const kids = children[nodeIndex];
+      if (kids.length === 0) {
+        onNodeDone();
+        return;
+      }
+      // Every child starts here, at the same instant -- this is the fork
+      // itself (a red split's two branches, in practice the only source of
+      // more than one child). `onNodeDone` fires only once ALL of them (and
+      // whatever they in turn fork into) have finished.
+      let remaining = kids.length;
+      for (const childIndex of kids) {
+        playNode(childIndex, () => {
+          remaining -= 1;
+          if (remaining === 0) onNodeDone();
+        });
+      }
     };
 
     // Walks `temp` through `path` one cell at a time, each taking exactly
@@ -387,5 +462,11 @@ export function playEventLog(
     runEvent();
   }
 
-  playNext();
+  let remainingRoots = roots.length;
+  for (const rootIndex of roots) {
+    playNode(rootIndex, () => {
+      remainingRoots -= 1;
+      if (remainingRoots === 0) onDone();
+    });
+  }
 }
