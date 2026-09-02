@@ -7,6 +7,17 @@ export type MoveStepEvent = {
   from: Coordinate;
   to: Coordinate;
   hasCollision: boolean;
+  // The color whose push mechanic (PUSH_STRATEGY, src/engine/pieces/push.ts)
+  // determined how far `piece` travelled to reach `to` -- NOT necessarily
+  // `piece.color` itself: a struck defender moves using the STRIKER's own
+  // mechanic/distance, not its own (found via a real rendering bug: brown's
+  // variable walk can coincidentally land on exactly 2 cells, which a
+  // purely-geometric "is this orange's jump" check couldn't tell apart from an
+  // actual orange push -- see launch-animation.ts). `undefined` for a piece
+  // that wasn't pushed by anything (a hand launch's own entry, or either
+  // branch's fixed 1-cell first hop out of a red split -- FR-001 of
+  // 009-red-piece, never governed by PUSH_STRATEGY at all).
+  pushedByColor?: PieceColor;
 };
 
 export type AnnihilationEvent = {
@@ -24,6 +35,9 @@ export type ImpactSite = {
   direction: Direction;
   from: Coordinate;
   to: Coordinate;
+  // Carried forward into the MOVE_STEP event this site eventually produces --
+  // see MoveStepEvent's own `pushedByColor` comment for what it means and why.
+  pushedByColor?: PieceColor;
 };
 
 export type ImpactHandler = (

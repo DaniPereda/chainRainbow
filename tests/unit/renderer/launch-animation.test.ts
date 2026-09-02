@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, setPieceAt } from '../../../src/engine/board.js';
-import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
-import { isRedSplitTrigger, jumpMidpoint, replayEvent } from '../../../src/renderer/launch-animation.js';
+import { createLevel, resolveLaunch, type ChainEvent, type MoveStepEvent } from '../../../src/engine/index.js';
+import { isRedSplitTrigger, jumpMidpoint, orangeJumpMidpoint, replayEvent } from '../../../src/renderer/launch-animation.js';
+
+/** Narrows a real EventLog entry down to MoveStepEvent for these tests -- every
+ * fixture below is picked to be one, so a mismatch here is a broken fixture. */
+function asMoveStep(event: ChainEvent): MoveStepEvent {
+  if (event.type !== 'MOVE_STEP') throw new Error('expected a MOVE_STEP event');
+  return event;
+}
 
 describe('jumpMidpoint: detects a straight, exactly-2-cell displacement (orange\'s own push distance)', () => {
   it('returns the cell in between for a horizontal 2-cell push', () => {
@@ -140,7 +147,7 @@ describe('isRedSplitTrigger: identifies the exact MOVE_STEP that triggers a red 
 
     expect(outcome.events).toEqual([
       { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'new' }, from: { row: 4, col: 2 }, to: { row: 4, col: 3 }, hasCollision: true },
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: false, pushedByColor: 'green' },
     ]);
     expect(isRedSplitTrigger(outcome.events[1])).toBe(false);
   });
@@ -156,5 +163,63 @@ describe('isRedSplitTrigger: identifies the exact MOVE_STEP that triggers a red 
       }),
     ).toBe(false);
     expect(isRedSplitTrigger({ type: 'ANNIHILATION', at: { row: 0, col: 0 }, color: 'red' })).toBe(false);
+  });
+});
+
+describe('orangeJumpMidpoint: the orange-jump visual only fires for orange\'s own mechanic, not any 2-cell geometry', () => {
+  it('is null when a piece coincidentally travels 2 cells because BROWN pushed it -- the real bug found by playtesting', () => {
+    // Real event log: brown enters and hits green at (4,3); green is then
+    // displaced using BROWN's own walk mechanic (not green's, not orange's),
+    // which happens to travel exactly 2 cells before being blocked by orange
+    // at (4,5) -- geometrically identical to an orange push, but caused by
+    // brown. Before the fix, jumpMidpoint's pure geometry check couldn't tell
+    // the difference and wrongly showed the orange bulge/sound here.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 3 }, color: 'green' },
+        { at: { row: 4, col: 5 }, color: 'orange' },
+      ],
+      hand: ['brown'],
+      goal: { at: { row: 4, col: 4 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+    const greenEvent = asMoveStep(outcome.events[1]);
+
+    expect(greenEvent).toMatchObject({
+      piece: { color: 'green' },
+      from: { row: 4, col: 3 },
+      to: { row: 4, col: 5 },
+      pushedByColor: 'brown',
+    });
+    // Confirms the geometry alone WOULD say "yes, 2 cells" -- the fix is
+    // specifically that pushedByColor overrides that.
+    expect(jumpMidpoint(greenEvent.from, greenEvent.to, 8)).toEqual({ row: 4, col: 4 });
+    expect(orangeJumpMidpoint(greenEvent, 8)).toBeNull();
+  });
+
+  it('is the midpoint when orange\'s own mechanic really did produce the 2-cell push', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 0, col: 1 }, color: 'green' }],
+      hand: ['orange'],
+      goal: { at: { row: 0, col: 3 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 0 });
+    const greenEvent = asMoveStep(outcome.events[1]);
+
+    expect(greenEvent).toMatchObject({ piece: { color: 'green' }, pushedByColor: 'orange' });
+    expect(orangeJumpMidpoint(greenEvent, 8)).toEqual({ row: 0, col: 2 });
+  });
+
+  it('is null for a hand-launched piece\'s own entry, even one that happens to be orange -- pushedByColor is only ever set for a piece someone else displaced', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 5 }, color: 'green' }],
+      hand: ['orange'],
+      goal: { at: { row: 4, col: 5 }, color: 'orange' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+    const orangeEvent = asMoveStep(outcome.events[0]);
+
+    expect(orangeEvent).toMatchObject({ piece: { color: 'orange' }, pushedByColor: undefined });
+    expect(orangeJumpMidpoint(orangeEvent, 8)).toBeNull();
   });
 });

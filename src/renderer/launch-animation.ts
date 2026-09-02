@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch } from '../engine/index.js';
+import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
 import { playGoalSound, playImpactSound, playJumpSound, playSplitSound } from './sound-effects.js';
 
@@ -64,6 +64,20 @@ export function jumpMidpoint(from: Coordinate, to: Coordinate, size: number): Co
     return { row: wrapIndex(from.row + Math.sign(delta), size), col: from.col };
   }
   return null;
+}
+
+/**
+ * The cell an orange-style jump should visually arc over, or `null` if `event`
+ * isn't one -- unlike `jumpMidpoint` alone, this also checks `pushedByColor`,
+ * not just geometry: a 2-cell displacement isn't necessarily orange's own
+ * mechanic at work, since a struck defender moves using the STRIKER's
+ * distance, not its own (a real bug found by playtesting: brown's variable
+ * walk can coincidentally land on exactly 2 cells too, which used to make a
+ * brown-pushed piece wrongly flash the orange bulge and play its sound).
+ */
+export function orangeJumpMidpoint(event: MoveStepEvent, size: number): Coordinate | null {
+  if (event.pushedByColor !== 'orange') return null;
+  return jumpMidpoint(event.from, event.to, size);
 }
 
 /**
@@ -213,7 +227,7 @@ export function playEventLog(
       const isRedSplit = isRedSplitTrigger(event);
 
       const end = pixelCenter(event.to);
-      const midpoint = jumpMidpoint(event.from, event.to, board.size);
+      const midpoint = orangeJumpMidpoint(event, board.size);
 
       if (midpoint === null) {
         if (isRedSplit) playSplitSound();

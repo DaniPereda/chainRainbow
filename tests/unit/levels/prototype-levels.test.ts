@@ -142,6 +142,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         from: { row: 4, col: 4 },
         to: { row: 4, col: 5 },
         hasCollision: false,
+        pushedByColor: 'green',
       },
     ]);
   });

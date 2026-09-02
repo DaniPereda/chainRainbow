@@ -53,6 +53,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
         direction: 'E',
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
+        pushedByColor: 'orange',
       },
     ]);
 
@@ -74,6 +75,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
         hasCollision: false,
+        pushedByColor: 'orange',
       },
     ]);
   });
@@ -100,6 +102,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
         direction: 'E',
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
+        pushedByColor: 'orange',
       },
     ]);
   });
@@ -153,6 +156,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         direction: 'N',
         from: { row: 2, col: 4 },
         to: { row: 0, col: 4 },
+        pushedByColor: 'orange',
       },
       // B: hit once (new -> cracked), continues using A's color (green, distance 1)
       // and A's own direction (E).
@@ -161,6 +165,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         direction: 'E',
         from: { row: 2, col: 4 },
         to: { row: 2, col: 5 },
+        pushedByColor: 'green',
       },
     ]);
   });
@@ -191,6 +196,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         direction: 'E',
         from: { row: 2, col: 4 },
         to: { row: 2, col: 5 },
+        pushedByColor: 'green',
       },
     ]);
   });
@@ -273,6 +279,7 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
         from: { row: 4, col: 5 },
         to: { row: 4, col: 6 },
         hasCollision: false,
+        pushedByColor: 'green',
       },
     ]);
     expect(result.nextSites).toEqual([]);
@@ -309,6 +316,7 @@ describe('applyImpact: the struck defender\'s own displacement sees the striker 
         // stops AT that cell, rather than crossing a second edge and landing at
         // (0,7) (the bug: a full extra unobstructed lap past its own striker).
         to: { row: 0, col: 0 },
+        pushedByColor: 'brown',
       },
     ]);
   });

@@ -222,12 +222,12 @@ describe('red: the two branches are now resolved synchronously, tick by tick, an
       // cracked going in) advances to broken and continues once more, using O's
       // own color (brown) and direction (west) -- wrapping around to (4,4),
       // where the real, already-settled red piece is waiting.
-      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: true, pushedByColor: 'brown' },
       // Red -- a real, already-settled piece, unrelated to either branch -- gets
       // hit like any other defender and, being red, splits again (pre-existing
       // behavior, not new here: any real red piece struck by a different color
       // splits, regardless of how that striker came to exist).
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, hasCollision: true, pushedByColor: 'green' },
       { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 3, col: 3 }, hasCollision: false },
       { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 5, col: 3 }, hasCollision: false },
     ]);

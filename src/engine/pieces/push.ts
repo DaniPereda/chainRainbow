@@ -35,14 +35,14 @@ function resolveMutualSide(
   fragilityBefore: Fragility,
   color: PieceColor,
   from: Coordinate,
-  pushOnward: (hit: Piece) => { direction: Direction; to: Coordinate },
+  pushOnward: (hit: Piece) => { direction: Direction; to: Coordinate; pushedByColor: PieceColor },
 ): ImpactSite | null {
   if (fragilityBefore === 'broken') {
     return null; // already used up its one further hop earlier -- vanishes now
   }
   const hit: Piece = { color, fragility: advance(fragilityBefore) };
-  const { direction, to } = pushOnward(hit);
-  return { piece: hit, direction, from, to };
+  const { direction, to, pushedByColor } = pushOnward(hit);
+  return { piece: hit, direction, from, to, pushedByColor };
 }
 
 /**
@@ -94,11 +94,12 @@ function settleOrVanish(
   from: Coordinate,
   to: Coordinate,
   hasCollision: boolean,
+  pushedByColor: PieceColor | undefined,
 ): { board: Board; events: ChainEvent[] } {
   const boardAfter = piece.fragility === 'broken' ? board : setPieceAt(board, to, piece);
   return {
     board: boardAfter,
-    events: [{ type: 'MOVE_STEP', piece, from, to, hasCollision }],
+    events: [{ type: 'MOVE_STEP', piece, from, to, hasCollision, pushedByColor }],
   };
 }
 
@@ -136,10 +137,12 @@ export function applyMutualImpact(
   const nextA = resolveMutualSide(siteA.piece.fragility, siteA.piece.color, siteA.to, (hit) => ({
     direction: siteB.direction,
     to: PUSH_STRATEGY[siteB.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteA.to, siteB.direction),
+    pushedByColor: siteB.piece.color,
   }));
   const nextB = resolveMutualSide(siteB.piece.fragility, siteB.piece.color, siteB.to, (hit) => ({
     direction: siteA.direction,
     to: PUSH_STRATEGY[siteA.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteB.to, siteA.direction),
+    pushedByColor: siteA.piece.color,
   }));
 
   return {
@@ -201,7 +204,14 @@ export function applyImpact(
   const defender = getPieceAt(board, site.to);
 
   if (defender === null) {
-    const { board: boardAfter, events } = settleOrVanish(board, site.piece, site.from, site.to, false);
+    const { board: boardAfter, events } = settleOrVanish(
+      board,
+      site.piece,
+      site.from,
+      site.to,
+      false,
+      site.pushedByColor,
+    );
     return { board: boardAfter, events, nextSites: [] };
   }
 
@@ -233,6 +243,7 @@ export function applyImpact(
     site.from,
     site.to,
     true,
+    site.pushedByColor,
   );
 
   if (site.piece.color === 'red') {
@@ -250,6 +261,12 @@ export function applyImpact(
   // resolution finishes (`settleOrVanish`, applied when this nextSites entry is
   // processed), never whether it strikes something in the first place.
   const to = PUSH_STRATEGY[site.piece.color](boardWithStriker, hitDefender, site.to, site.direction);
-  const nextSite: ImpactSite = { piece: hitDefender, direction: site.direction, from: site.to, to };
+  const nextSite: ImpactSite = {
+    piece: hitDefender,
+    direction: site.direction,
+    from: site.to,
+    to,
+    pushedByColor: site.piece.color,
+  };
   return { board: boardWithStriker, events: strikerEvents, nextSites: [nextSite] };
 }
