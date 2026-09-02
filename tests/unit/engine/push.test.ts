@@ -431,35 +431,54 @@ describe('applyImpact: the struck defender\'s own displacement sees the striker 
   it('a brown striker\'s just-settled cell blocks the struck defender\'s own wrap-around walk, instead of being invisible to it', () => {
     // An otherwise-empty board: the ONLY piece the struck defender's own walk could
     // possibly collide with, on its way around the board, is the striker itself --
-    // which just settled at the impact cell a few lines earlier in this same
-    // applyImpact call. Before the fix, that walk was computed against `vacated`
-    // (the pre-settle snapshot), so it couldn't see the striker there and wrapped
-    // all the way around, landing past it. After the fix, it's computed against
-    // `boardWithStriker`, so the walk stops the instant it revisits that cell.
+    // which just settled at the impact cell. Before 017's own fix, that walk was
+    // computed against a pre-settle snapshot, so it couldn't see the striker there
+    // and wrapped all the way around, landing past it. Since
+    // 021-cellwise-collision-resolution, a brown-driven walk is no longer resolved
+    // in a single `applyImpact` call (it advances one tentative cell at a time,
+    // `site.walking`) -- driving it to completion via `resolveChain` (the same
+    // queue any real launch already uses) is what verifies the full lap still
+    // correctly stops the instant it revisits the striker's cell, not a single
+    // `applyImpact` call's own `nextSites` (which now only ever reflects one step).
     const board = setPieceAt(createBoard(), { row: 0, col: 0 }, { color: 'orange', fragility: 'new' });
     const striker: Piece = { color: 'brown', fragility: 'new' };
 
-    const result = applyImpact(board, {
-      piece: striker,
-      direction: 'E',
-      from: { row: 0, col: 7 },
-      to: { row: 0, col: 0 },
-    });
+    const result = resolveChain(
+      board,
+      [{ piece: striker, direction: 'E', from: { row: 0, col: 7 }, to: { row: 0, col: 0 } }],
+      applyImpact,
+      applyMutualImpact,
+    );
 
-    expect(result.board.cells[0][0]).toEqual(striker); // the striker settled here first
-    expect(result.nextSites).toEqual([
+    expect(result.events).toEqual([
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 7 }, to: { row: 0, col: 0 }, direction: 'E', hasCollision: true },
+      // The struck defender's own walk revisits (0,0) after a full lap around an
+      // otherwise-empty board -- with the striker visible there, it collides and
+      // stops AT that cell, rather than crossing a second edge and landing at
+      // (0,7) (the bug 017 fixed: a full extra unobstructed lap past its own striker).
       {
+        type: 'MOVE_STEP',
         piece: { color: 'orange', fragility: 'cracked' },
-        direction: 'E',
         from: { row: 0, col: 0 },
-        // The struck defender's own walk revisits (0,0) after a full lap around an
-        // otherwise-empty board -- with the striker visible there, it collides and
-        // stops AT that cell, rather than crossing a second edge and landing at
-        // (0,7) (the bug: a full extra unobstructed lap past its own striker).
         to: { row: 0, col: 0 },
+        direction: 'E',
+        hasCollision: true,
         pushedByColor: 'brown',
       },
+      // Orange, now the striker of this next hop, pushes brown onward using its
+      // OWN fixed 2-cell mechanism (not brown's variable walk) -- unrelated to
+      // 017's own invariant, just the natural next link in the same cascade.
+      {
+        type: 'MOVE_STEP',
+        piece: { color: 'brown', fragility: 'cracked' },
+        from: { row: 0, col: 0 },
+        to: { row: 0, col: 2 },
+        direction: 'E',
+        hasCollision: false,
+        pushedByColor: 'orange',
+      },
     ]);
+    expect(result.board.cells[0][0]).toEqual({ color: 'orange', fragility: 'cracked' });
   });
 });
 
@@ -500,5 +519,85 @@ describe('a self-collision within the same cascade is now a real collision, not 
     // The goal is never reached this way anymore -- no orange ever lands on row0.
     expect(outcome.board.cells[0][2]).toBeNull();
     expect(outcome.result).not.toBe('won');
+  });
+});
+
+describe('applyImpact: a brown-driven displacement is a tentative 1-cell step, not a precomputed final destination (021-cellwise-collision-resolution)', () => {
+  it('when the striker is brown, the nextSite is exactly 1 cell away and marked `walking`', () => {
+    const board = setPieceAt(createBoard(), { row: 0, col: 1 }, { color: 'green', fragility: 'new' });
+    const striker: Piece = { color: 'brown', fragility: 'new' };
+
+    const result = applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+
+    expect(result.nextSites).toEqual([
+      {
+        piece: { color: 'green', fragility: 'cracked' },
+        direction: 'E',
+        from: { row: 0, col: 1 },
+        to: { row: 0, col: 2 }, // 1 cell, not a full stepUntilBlocked walk
+        pushedByColor: 'brown',
+        walking: { edgeCrossings: 0 },
+      },
+    ]);
+  });
+
+  it('when the striker is green or orange, the nextSite is still the fully-precomputed final destination -- unaffected', () => {
+    const board = setPieceAt(createBoard(), { row: 0, col: 1 }, { color: 'green', fragility: 'new' });
+    const striker: Piece = { color: 'orange', fragility: 'new' };
+
+    const result = applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+
+    expect(result.nextSites).toEqual([
+      {
+        piece: { color: 'green', fragility: 'cracked' },
+        direction: 'E',
+        from: { row: 0, col: 1 },
+        to: { row: 0, col: 3 }, // orange's own fixed 2-cell distance, unchanged
+        pushedByColor: 'orange',
+      },
+    ]);
+  });
+
+  it('a walking site landing on an empty cell takes one more step instead of settling, producing no event yet', () => {
+    const board = createBoard();
+    const walkingSite: ImpactSite = {
+      piece: { color: 'green', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 0, col: 1 },
+      to: { row: 0, col: 2 },
+      pushedByColor: 'brown',
+      walking: { edgeCrossings: 0 },
+    };
+
+    const result = applyImpact(board, walkingSite);
+
+    expect(result.events).toEqual([]);
+    expect(result.board).toEqual(board); // untouched -- still in flight
+    expect(result.nextSites).toEqual([
+      { ...walkingSite, to: { row: 0, col: 3 } }, // one cell further, from stays fixed
+    ]);
+  });
+
+  it('a walking site settles at its current cell (not the new one) once MAX_EDGE_CROSSINGS is reached, matching stepUntilBlocked\'s own cap', () => {
+    const board = createBoard();
+    const walkingSite: ImpactSite = {
+      piece: { color: 'green', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 0, col: 5 },
+      to: { row: 0, col: 7 },
+      pushedByColor: 'brown',
+      walking: { edgeCrossings: 1 }, // already crossed once
+    };
+
+    const result = applyImpact(board, walkingSite);
+
+    // One more step from (0,7) heading E crosses the edge a SECOND time --
+    // capped, so it settles at (0,7) (where it already was), not the new
+    // wrapped cell.
+    expect(result.events).toEqual([
+      { type: 'MOVE_STEP', piece: walkingSite.piece, from: { row: 0, col: 5 }, to: { row: 0, col: 7 }, direction: 'E', hasCollision: false, pushedByColor: 'brown' },
+    ]);
+    expect(result.board.cells[0][7]).toEqual(walkingSite.piece);
+    expect(result.nextSites).toEqual([]);
   });
 });

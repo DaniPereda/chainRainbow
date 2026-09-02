@@ -60,6 +60,19 @@ export type ImpactSite = {
   // Carried forward into the MOVE_STEP event this site eventually produces --
   // see MoveStepEvent's own `pushedByColor` comment for what it means and why.
   pushedByColor?: PieceColor;
+  // Present ONLY when `to` is a TENTATIVE single-cell step of an in-progress
+  // brown-driven walk (`pushedByColor === 'brown'`), never a final
+  // destination -- `from` stays fixed at the walk's real origin while `to`
+  // advances one cell every time this site comes back around the FIFO queue
+  // (021-cellwise-collision-resolution, research.md Decisión 2). Found as a
+  // real bug: two brown-pushed trajectories heading toward each other could
+  // cross paths in an intermediate cell without ever sharing a precomputed
+  // final destination, so `findCoincidingPair` (which only ever compared
+  // final destinations) never caught them meeting. Absent for green/orange
+  // (their distance is fixed and small enough that a shared final
+  // destination is always the right thing to compare) or any already-final
+  // `to`.
+  walking?: { edgeCrossings: number };
 };
 
 export type ImpactHandler = (
