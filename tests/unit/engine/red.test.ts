@@ -213,41 +213,30 @@ describe('red: the two branches are resolved synchronously, tick by tick -- but 
 
     const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
 
+    // Since 021-cellwise-collision-resolution, green and orange (both now
+    // WALKING one cell at a time, pushed by brown's own variable mechanic)
+    // genuinely walk toward each other around the board and meet for real,
+    // instead of each racing past the other to some independently-precomputed
+    // final destination. Retraced against the real engine, not hand-derived.
     expect(outcome.events).toEqual([
       { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'new' }, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, direction: 'S', hasCollision: true },
-      // E branch strikes the real green directly -- its own direction (E),
-      // nothing swapped.
+      // E branch strikes the real green directly -- its own direction (E).
       { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 5 }, direction: 'E', hasCollision: true },
-      // O branch strikes the real orange directly too -- its own direction
-      // (O), even though the E branch's own downstream continuation (below)
-      // independently computes the SAME destination (4,3): that's no longer
-      // treated as a coincidence to resolve between the branches themselves,
-      // since (4,3) is occupied by a real piece neither branch has touched
-      // yet -- ordinary FIFO just lets O strike it first (it was queued
-      // first).
+      // O branch strikes the real orange directly too -- its own direction (O).
       { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, direction: 'O', hasCollision: true },
-      // Green (now cracked, struck by the E branch) continues onward using
-      // brown's own walking strategy, in its OWN direction (E, inherited from
-      // the E branch that struck it) -- wraps around and finds (4,3) now
-      // occupied by the O branch's own just-settled piece... except the O
-      // branch was BROKEN, so it never actually wrote to the board --
-      // green settles there cleanly instead (hasCollision: false).
-      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'cracked' }, from: { row: 4, col: 5 }, to: { row: 4, col: 3 }, direction: 'E', hasCollision: false, pushedByColor: 'brown' },
-      // The real orange, struck by the O branch, continues onward using
-      // brown's own walking strategy, in ITS OWN direction (O, inherited from
-      // the O branch that struck it) -- and finds the real, already-settled
-      // red piece at (4,4).
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, direction: 'O', hasCollision: true, pushedByColor: 'brown' },
-      // Red -- unrelated to either branch -- gets hit like any other defender
-      // (not a split trigger here: red is the one being struck, not the one
-      // striking). Displaced using orange's OWN mechanism -- a fixed,
-      // board-blind 2-cell push -- landing at (4,2) directly, skipping right
-      // over green (sitting at (4,3)) without any collision check.
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 2 }, direction: 'O', hasCollision: false, pushedByColor: 'orange' },
+      // Green (now cracked, pushed by brown's walking mechanic, heading E) and
+      // orange (now cracked, pushed by brown's walking mechanic, heading O)
+      // walk toward each other one cell at a time and meet at (4,0) -- a
+      // genuine mutual collision over empty ground, both advance to broken
+      // and swap mechanism/direction (019's own established rule): green
+      // continues using orange's fixed 2-cell push, orange continues using
+      // green's (still brown-driven, walking) mechanic.
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 0 }, to: { row: 4, col: 6 }, direction: 'O', hasCollision: false, pushedByColor: 'orange' },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'broken' }, from: { row: 4, col: 0 }, to: { row: 4, col: 1 }, direction: 'E', hasCollision: false, pushedByColor: 'green' },
     ]);
-    expect(outcome.board.cells[4][2]).toEqual({ color: 'red', fragility: 'cracked' });
-    expect(outcome.board.cells[4][3]).toEqual({ color: 'green', fragility: 'cracked' });
-    expect(outcome.board.cells[4][4]).toEqual({ color: 'orange', fragility: 'cracked' });
+    expect(outcome.board.cells[4][4]).toEqual({ color: 'red', fragility: 'new' });
+    expect(outcome.board.cells[4][6]).toBeNull(); // green -- broken, never settles
+    expect(outcome.board.cells[4][1]).toBeNull(); // orange -- broken, never settles
     expect(outcome.result).toBe('lost');
   });
 

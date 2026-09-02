@@ -1,6 +1,6 @@
 import type { Board, Coordinate, Fragility, Piece, PieceColor } from '../board.js';
-import { getPieceAt, setPieceAt } from '../board.js';
-import { stepBy, stepUntilBlocked, type Direction } from '../move-step.js';
+import { getPieceAt, isInBounds, setPieceAt, wrapCoordinate } from '../board.js';
+import { step, stepBy, stepUntilBlocked, type Direction } from '../move-step.js';
 import type { ChainEvent, ImpactSite } from '../events.js';
 import { resolveChain } from '../events.js';
 
@@ -35,14 +35,16 @@ function resolveMutualSide(
   fragilityBefore: Fragility,
   color: PieceColor,
   from: Coordinate,
-  pushOnward: (hit: Piece) => { direction: Direction; to: Coordinate; pushedByColor: PieceColor },
+  pushOnward: (
+    hit: Piece,
+  ) => { direction: Direction; to: Coordinate; pushedByColor: PieceColor; walking?: { edgeCrossings: number } },
 ): ImpactSite | null {
   if (fragilityBefore === 'broken') {
     return null; // already used up its one further hop earlier -- vanishes now
   }
   const hit: Piece = { color, fragility: advance(fragilityBefore) };
-  const { direction, to, pushedByColor } = pushOnward(hit);
-  return { piece: hit, direction, from, to, pushedByColor };
+  const { direction, to, pushedByColor, walking } = pushOnward(hit);
+  return { piece: hit, direction, from, to, pushedByColor, walking };
 }
 
 /**
@@ -68,6 +70,25 @@ export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red'>, DisplacementStrat
   brown: (board, piece, position, direction) =>
     stepUntilBlocked(board, piece, position, direction, MAX_EDGE_CROSSINGS),
 };
+
+/**
+ * A single cell of an in-progress brown-driven walk -- same edge-crossing
+ * bookkeeping `stepUntilBlocked` already does internally in its own `for`
+ * loop, extracted so it can be spread across successive `applyImpact` calls
+ * instead of a single synchronous loop (021-cellwise-collision-resolution,
+ * research.md Decisión 2/4). Never decides whether the resulting cell is
+ * occupied -- that's for the caller to resolve by re-reading the real board
+ * (or the queue) with the updated `to`, exactly like any other `ImpactSite`.
+ */
+function stepWalking(
+  from: Coordinate,
+  direction: Direction,
+  edgeCrossingsSoFar: number,
+): { to: Coordinate; edgeCrossings: number; capped: boolean } {
+  const raw = step(from, direction);
+  const edgeCrossings = edgeCrossingsSoFar + (isInBounds(raw) ? 0 : 1);
+  return { to: wrapCoordinate(raw), edgeCrossings, capped: edgeCrossings >= MAX_EDGE_CROSSINGS };
+}
 
 /**
  * The axis a split's two branches travel on is always the OTHER axis from the
@@ -172,16 +193,35 @@ export function applyMutualImpact(
     return { board: finalBoard, events: [...redEvents, ...splitEvents], nextSites: [] };
   }
 
-  const nextA = resolveMutualSide(siteA.piece.fragility, siteA.piece.color, siteA.to, (hit) => ({
-    direction: siteB.direction,
-    to: PUSH_STRATEGY[siteB.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteA.to, siteB.direction),
-    pushedByColor: siteB.piece.color,
-  }));
-  const nextB = resolveMutualSide(siteB.piece.fragility, siteB.piece.color, siteB.to, (hit) => ({
-    direction: siteA.direction,
-    to: PUSH_STRATEGY[siteA.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteB.to, siteA.direction),
-    pushedByColor: siteA.piece.color,
-  }));
+  // If the inherited mechanism is brown, the onward hop becomes a single
+  // tentative step (walking) instead of a fully-precomputed final
+  // destination -- same reasoning as applyImpact's own equivalent branch
+  // (021-cellwise-collision-resolution, research.md Decisión 2/6): brown's
+  // own variable-distance walk is the only mechanism that can genuinely cross
+  // paths with another in-flight trajectory before reaching its own final
+  // cell, so it's the only one that needs re-checking one cell at a time.
+  const nextA = resolveMutualSide(siteA.piece.fragility, siteA.piece.color, siteA.to, (hit) => {
+    if (siteB.piece.color === 'brown') {
+      const { to, edgeCrossings } = stepWalking(siteA.to, siteB.direction, 0);
+      return { direction: siteB.direction, to, pushedByColor: 'brown', walking: { edgeCrossings } };
+    }
+    return {
+      direction: siteB.direction,
+      to: PUSH_STRATEGY[siteB.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteA.to, siteB.direction),
+      pushedByColor: siteB.piece.color,
+    };
+  });
+  const nextB = resolveMutualSide(siteB.piece.fragility, siteB.piece.color, siteB.to, (hit) => {
+    if (siteA.piece.color === 'brown') {
+      const { to, edgeCrossings } = stepWalking(siteB.to, siteA.direction, 0);
+      return { direction: siteA.direction, to, pushedByColor: 'brown', walking: { edgeCrossings } };
+    }
+    return {
+      direction: siteA.direction,
+      to: PUSH_STRATEGY[siteA.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteB.to, siteA.direction),
+      pushedByColor: siteA.piece.color,
+    };
+  });
 
   return {
     board,
@@ -242,6 +282,17 @@ export function applyImpact(
   const defender = getPieceAt(board, site.to);
 
   if (defender === null) {
+    // A brown-driven walk in progress: `to` is only a tentative single-cell
+    // step, not a final destination (021-cellwise-collision-resolution) --
+    // take one more step instead of settling, unless the edge-crossing cap is
+    // reached (same limit stepUntilBlocked already enforced, spec.md 008).
+    if (site.walking !== undefined) {
+      const { to, edgeCrossings, capped } = stepWalking(site.to, site.direction, site.walking.edgeCrossings);
+      if (!capped) {
+        const nextSite: ImpactSite = { ...site, to, walking: { edgeCrossings } };
+        return { board, events: [], nextSites: [nextSite] }; // still in flight -- no event yet
+      }
+    }
     const { board: boardAfter, events } = settleOrVanish(
       board,
       site.piece,
@@ -302,13 +353,35 @@ export function applyImpact(
   // BROKEN -- brokenness only ever decides whether IT settles once ITS OWN
   // resolution finishes (`settleOrVanish`, applied when this nextSites entry is
   // processed), never whether it strikes something in the first place.
-  const to = PUSH_STRATEGY[site.piece.color](boardWithStriker, hitDefender, site.to, site.direction);
-  const nextSite: ImpactSite = {
-    piece: hitDefender,
-    direction: site.direction,
-    from: site.to,
-    to,
-    pushedByColor: site.piece.color,
-  };
+  //
+  // When the striker is brown, the displaced defender's onward journey starts
+  // as a single tentative step (`walking`) instead of the fully-precomputed
+  // final destination `PUSH_STRATEGY['brown']` would give -- the only
+  // mechanism whose distance is variable enough to genuinely cross paths with
+  // another in-flight trajectory before reaching its own final cell
+  // (021-cellwise-collision-resolution, research.md Decisión 2/6). Green and
+  // orange are unaffected -- their distance is fixed and small enough that
+  // comparing final destinations (the existing `findCoincidingPair`) was
+  // always correct.
+  const nextSite: ImpactSite =
+    site.piece.color === 'brown'
+      ? (() => {
+          const { to, edgeCrossings } = stepWalking(site.to, site.direction, 0);
+          return {
+            piece: hitDefender,
+            direction: site.direction,
+            from: site.to,
+            to,
+            pushedByColor: 'brown' as const,
+            walking: { edgeCrossings },
+          };
+        })()
+      : {
+          piece: hitDefender,
+          direction: site.direction,
+          from: site.to,
+          to: PUSH_STRATEGY[site.piece.color](boardWithStriker, hitDefender, site.to, site.direction),
+          pushedByColor: site.piece.color,
+        };
   return { board: boardWithStriker, events: strikerEvents, nextSites: [nextSite] };
 }
