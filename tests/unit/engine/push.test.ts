@@ -227,16 +227,19 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
   });
 });
 
-describe('applyMutualImpact: one side is a real red piece set in motion by an earlier hit (real crash found via the generator/manual play, fixed)', () => {
-  // Before this fix: neither resolveMutualSide call could ever compute an
-  // onward push using a red trajectory's own "mechanism" (PUSH_STRATEGY has no
-  // 'red' entry -- red never continues after landing, unlike every other
-  // color), so whichever side was red crashed with a TypeError the instant it
-  // reached a mutual collision. This is NOT the split's own two branches
-  // (those are never red, per the pre-existing comment) -- it's a real,
-  // already-settled red piece that one branch's own onward hit displaced,
-  // exactly as it would displace any other different-color defender.
-  it('red as siteA settles and immediately splits siteB, mirroring applyImpact\'s own red-striker rule', () => {
+describe('applyMutualImpact: one side is a real red piece set in motion by an earlier hit -- red takes the hit like anything else (022-parallel-branch-animation follow-up review, level 2)', () => {
+  // Before this fix, red was special-cased in a mutual collision: it settled
+  // immediately, unharmed, at the meeting cell, while the OTHER side alone
+  // took a hit (and got split). Confirmed wrong by the user during a manual
+  // review of levels/2.json ("el rojo no debe tener un comportamiento especial
+  // en ningun caso. Si recibe un golpe se mueve en consecuencia y se degrada
+  // en nivel de fragilidad"): red is never special as the piece BEING hit --
+  // only as the piece DOING the hitting (splitting instead of pushing, its own
+  // established mechanism, `resolveRedSplit`). So here red advances its own
+  // fragility and continues onward using orange's own push mechanism (a fixed
+  // 2-cell jump), exactly like any other different-color defender would --
+  // while orange, hit by red, still splits, unaffected.
+  it('red as siteA advances and continues via siteB\'s own push mechanism -- deferred, not settled here', () => {
     const board = createBoard();
     const siteA: ImpactSite = {
       piece: { color: 'red', fragility: 'cracked' },
@@ -254,26 +257,26 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
 
     const result = applyMutualImpact(board, siteA, siteB);
 
-    expect(result.events[0]).toEqual({
-      type: 'MOVE_STEP',
-      piece: siteA.piece,
-      from: siteA.from,
-      to: siteA.to,
-      direction: siteA.direction,
-      hasCollision: true,
-      pushedByColor: 'brown',
-    });
-    expect(result.board.cells[2][4]).toEqual(siteA.piece); // red settled here
+    // Red produces NO event here -- like any other struck piece in a mutual
+    // collision, it only gets a real MOVE_STEP once its own onward nextSite is
+    // later resolved by resolveChain, not at the meeting point itself.
+    expect(result.board.cells[2][4]).toBeNull(); // neither side ever settles at the shared cell
     // Split direction is red's OWN direction (E) -- perpendicular branches N/S,
     // sharing orange's advance('new') = 'cracked' fragility (FR-015 of 009).
-    expect(result.events.slice(1)).toEqual([
+    expect(result.events).toEqual([
       { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false },
       { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false },
     ]);
-    expect(result.nextSites).toEqual([]);
+    // Red: advance('cracked') = 'broken', pushed onward using orange's own
+    // mechanism (PUSH_STRATEGY.orange, a fixed 2-cell jump) in orange's own
+    // direction (N) -- (2,4) -> (0,4), board-blind exactly like any other
+    // orange push.
+    expect(result.nextSites).toEqual([
+      { piece: { color: 'red', fragility: 'broken' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange' },
+    ]);
   });
 
-  it('red as siteB behaves symmetrically', () => {
+  it('red as siteB behaves symmetrically -- same outcome regardless of which slot holds red', () => {
     const board = createBoard();
     const siteA: ImpactSite = {
       piece: { color: 'orange', fragility: 'new' },
@@ -290,12 +293,17 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
 
     const result = applyMutualImpact(board, siteA, siteB);
 
-    expect(result.board.cells[2][4]).toEqual(siteB.piece); // red settled here, not orange
-    expect(result.events).toHaveLength(3); // red's own settle + 2 split branches
-    expect(result.nextSites).toEqual([]);
+    expect(result.board.cells[2][4]).toBeNull();
+    expect(result.events).toEqual([
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false },
+    ]);
+    expect(result.nextSites).toEqual([
+      { piece: { color: 'red', fragility: 'broken' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange' },
+    ]);
   });
 
-  it('the other side already BROKEN vanishes instead of being split again -- red still settles', () => {
+  it('the other side already BROKEN vanishes instead of being split again -- red still continues onward, unaffected', () => {
     const board = createBoard();
     const siteA: ImpactSite = {
       piece: { color: 'red', fragility: 'new' },
@@ -312,11 +320,13 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
 
     const result = applyMutualImpact(board, siteA, siteB);
 
-    expect(result.board.cells[2][4]).toEqual(siteA.piece);
-    expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: siteA.piece, from: siteA.from, to: siteA.to, direction: siteA.direction, hasCollision: true },
+    expect(result.board.cells[2][4]).toBeNull();
+    expect(result.events).toEqual([]); // orange vanished silently -- never split, never an event
+    expect(result.nextSites).toEqual([
+      // Red: advance('new') = 'cracked', still pushed onward via orange's own
+      // mechanism -- an already-broken opponent doesn't exempt red either.
+      { piece: { color: 'red', fragility: 'cracked' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange' },
     ]);
-    expect(result.nextSites).toEqual([]);
   });
 
   it('both red is still a same-color collision (annihilation), never reaches this branch', () => {

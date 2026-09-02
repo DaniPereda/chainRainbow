@@ -18,36 +18,6 @@ function advance(fragility: 'new' | 'cracked'): 'cracked' | 'broken' {
 }
 
 /**
- * One side of a mutual collision (019-synchronous-tick-resolution): given a
- * trajectory's fragility BEFORE this specific collision, decides whether it
- * advances and gets one more onward trajectory (per `pushOnward`), or --
- * already `'broken'` coming in -- simply vanishes here instead (`null`),
- * producing no further site. This is the exact same rule `settleOrVanish`
- * already applies to a single striker ("brokenness decides whether it settles,
- * never whether it strikes first") generalized to two trajectories striking
- * each other at once: a piece can only ever advance through `new -> cracked ->
- * broken` once each, a strictly finite, cycle-free progression -- so no pair of
- * trajectories can keep re-colliding with each other forever (research.md,
- * Decisión 3: the bug this fixes was letting an already-broken piece stay
- * "broken" and keep bouncing indefinitely instead of finally vanishing).
- */
-function resolveMutualSide(
-  fragilityBefore: Fragility,
-  color: PieceColor,
-  from: Coordinate,
-  pushOnward: (
-    hit: Piece,
-  ) => { direction: Direction; to: Coordinate; pushedByColor: PieceColor; walking?: { edgeCrossings: number } },
-): ImpactSite | null {
-  if (fragilityBefore === 'broken') {
-    return null; // already used up its one further hop earlier -- vanishes now
-  }
-  const hit: Piece = { color, fragility: advance(fragilityBefore) };
-  const { direction, to, pushedByColor, walking } = pushOnward(hit);
-  return { piece: hit, direction, from, to, pushedByColor, walking };
-}
-
-/**
  * Computes where a defender ends up after being struck by `strikerColor`, given
  * which piece it is and where it currently is. Green and orange are fixed-distance
  * jumps (never look at `board`/`piece`); brown walks one cell at a time, checking
@@ -126,17 +96,90 @@ function settleOrVanish(
 }
 
 /**
+ * Resolves what happens to `hitSite` when the OTHER side of a mutual collision
+ * (`strikerSite`) acts as its striker -- exactly the role `applyImpact` gives a
+ * real striker meeting a defender, just for a trajectory that's still in
+ * flight instead of a real, already-settled board piece. `hitSite` is NEVER
+ * special-cased by its own color, red included: whichever side gets struck,
+ * it advances its own fragility and moves according to the STRIKER's
+ * mechanism, exactly like any other piece would -- confirmed with the user
+ * (022-parallel-branch-animation follow-up review, level 2): a previous
+ * version let red simply sit still at a mutual collision, unharmed and
+ * unmoved, while the OTHER side took the hit -- an asymmetry the user's own
+ * words ruled out directly ("el rojo no debe tener un comportamiento especial
+ * en ningun caso. Si recibe un golpe se mueve en consecuencia y se degrada en
+ * nivel de fragilidad").
+ *
+ * What genuinely differs by color is the STRIKER's own mechanism, exactly as
+ * everywhere else in this file: red has no displacement of its own
+ * (`PUSH_STRATEGY` deliberately has no 'red' entry -- red doesn't push a
+ * defender, it splits it, `resolveRedSplit`'s own primitive) so a red striker
+ * resolves and writes to `board` immediately, splitting `hitSite` into its two
+ * branches right here -- exactly like `applyImpact`'s own red-striker branch,
+ * no new mechanism. Any other color defers instead, producing one more onward
+ * `ImpactSite` for `resolveChain`'s queue to pick up later; brown's own
+ * variable-distance walk becomes a single tentative step (`walking`), same
+ * reasoning as `applyImpact`'s equivalent branch (021-cellwise-collision-
+ * resolution): it's the only mechanism that can genuinely cross paths with
+ * another in-flight trajectory before reaching its own final cell.
+ */
+function strikeMutualSide(
+  board: Board,
+  hitSite: ImpactSite,
+  strikerSite: ImpactSite,
+): { board: Board; events: ChainEvent[]; nextSite: ImpactSite | null } {
+  if (hitSite.piece.fragility === 'broken') {
+    // Already used up its one further hop earlier -- vanishes here instead of
+    // taking another hit. A piece can only ever advance through `new ->
+    // cracked -> broken` once each, a strictly finite, cycle-free progression
+    // -- so no pair of trajectories can keep re-colliding with each other
+    // forever (019-synchronous-tick-resolution, research.md Decisión 3).
+    return { board, events: [], nextSite: null };
+  }
+  const hit: Piece = { color: hitSite.piece.color, fragility: advance(hitSite.piece.fragility) };
+
+  if (strikerSite.piece.color === 'red') {
+    const { board: finalBoard, events } = resolveRedSplit(board, hit, hitSite.to, strikerSite.direction);
+    return { board: finalBoard, events, nextSite: null };
+  }
+
+  if (strikerSite.piece.color === 'brown') {
+    const { to, edgeCrossings } = stepWalking(hitSite.to, strikerSite.direction, 0);
+    return {
+      board,
+      events: [],
+      nextSite: {
+        piece: hit,
+        direction: strikerSite.direction,
+        from: hitSite.to,
+        to,
+        pushedByColor: 'brown',
+        walking: { edgeCrossings },
+      },
+    };
+  }
+
+  const to = PUSH_STRATEGY[strikerSite.piece.color](board, hit, hitSite.to, strikerSite.direction);
+  return {
+    board,
+    events: [],
+    nextSite: { piece: hit, direction: strikerSite.direction, from: hitSite.to, to, pushedByColor: strikerSite.piece.color },
+  };
+}
+
+/**
  * Resolves a collision between two trajectories that are BOTH still in flight --
  * neither is a real, already-settled board piece (019-synchronous-tick-resolution).
  * Distinct from, and never a replacement for, `applyImpact`'s existing asymmetric
  * rule (a moving piece meeting whatever, if anything, is already settled on the
- * real board -- unchanged, FR-004 of spec.md). Reuses the SAME rules `applyImpact`
- * already has, applied symmetrically: same color still annihilates both; distinct
- * color still advances fragility and still hands the struck piece off to the
- * striker's own color/direction -- just done for BOTH sites at once, each acting
- * as the other's striker. Confirmed with the user before implementing (research.md,
- * Decisión 3): this makes each trajectory continue in the OTHER's direction, using
- * the OTHER's push mechanism -- a direction swap, not a bounce back the way it came.
+ * real board -- unchanged, FR-004 of spec.md). Same color still annihilates both
+ * (checked first, since neither side has a "striker" in that case). Otherwise,
+ * fully symmetric regardless of which colors are involved -- `strikeMutualSide`
+ * resolves each side exactly as if the OTHER side were its striker, run
+ * sequentially (A's own resolution, whatever it writes to `board`, feeds B's)
+ * purely because there's no other order to thread a single `Board` through two
+ * writes; the two sides never touch the same cells (that's exactly what makes
+ * this a mutual collision rather than one of them meeting a real defender).
  */
 export function applyMutualImpact(
   board: Board,
@@ -153,80 +196,13 @@ export function applyMutualImpact(
     };
   }
 
-  // A split's own two branches are never red (the red that triggered them
-  // settles immediately at the split point -- FR-007 of 009-red-piece -- and
-  // never travels onward as a branch itself). But a branch's own ONWARD hit
-  // can perfectly normally displace a REAL, already-settled red piece (an
-  // ordinary different-color defender displacement, nothing red-specific about
-  // that step) -- and that newly-displaced red piece is now a genuine in-flight
-  // trajectory that CAN reach a mutual collision. Found as a real crash
-  // (PUSH_STRATEGY has no 'red' entry) once a generated level actually
-  // exercised it -- confirmed with the user before fixing (research.md): red
-  // never "continues" after landing the way every other color does here, so
-  // it's exempt from the generic advance-and-continue rule below; it settles
-  // and immediately splits the OTHER trajectory instead, mirroring exactly
-  // what applyImpact already does when red is a normal striker -- the same
-  // settleOrVanish + resolveRedSplit primitives, no new mechanism.
-  if (siteA.piece.color === 'red' || siteB.piece.color === 'red') {
-    const [redSite, otherSite] = siteA.piece.color === 'red' ? [siteA, siteB] : [siteB, siteA];
-    const { board: boardWithRed, events: redEvents } = settleOrVanish(
-      board,
-      redSite.piece,
-      redSite.from,
-      redSite.to,
-      redSite.direction,
-      true,
-      redSite.pushedByColor,
-    );
-    if (otherSite.piece.fragility === 'broken') {
-      // Already used up its one further hop earlier -- vanishes here instead
-      // of being split again (same rule resolveMutualSide already applies).
-      return { board: boardWithRed, events: redEvents, nextSites: [] };
-    }
-    const hitOther: Piece = { color: otherSite.piece.color, fragility: advance(otherSite.piece.fragility) };
-    const { board: finalBoard, events: splitEvents } = resolveRedSplit(
-      boardWithRed,
-      hitOther,
-      redSite.to,
-      redSite.direction,
-    );
-    return { board: finalBoard, events: [...redEvents, ...splitEvents], nextSites: [] };
-  }
-
-  // If the inherited mechanism is brown, the onward hop becomes a single
-  // tentative step (walking) instead of a fully-precomputed final
-  // destination -- same reasoning as applyImpact's own equivalent branch
-  // (021-cellwise-collision-resolution, research.md Decisión 2/6): brown's
-  // own variable-distance walk is the only mechanism that can genuinely cross
-  // paths with another in-flight trajectory before reaching its own final
-  // cell, so it's the only one that needs re-checking one cell at a time.
-  const nextA = resolveMutualSide(siteA.piece.fragility, siteA.piece.color, siteA.to, (hit) => {
-    if (siteB.piece.color === 'brown') {
-      const { to, edgeCrossings } = stepWalking(siteA.to, siteB.direction, 0);
-      return { direction: siteB.direction, to, pushedByColor: 'brown', walking: { edgeCrossings } };
-    }
-    return {
-      direction: siteB.direction,
-      to: PUSH_STRATEGY[siteB.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteA.to, siteB.direction),
-      pushedByColor: siteB.piece.color,
-    };
-  });
-  const nextB = resolveMutualSide(siteB.piece.fragility, siteB.piece.color, siteB.to, (hit) => {
-    if (siteA.piece.color === 'brown') {
-      const { to, edgeCrossings } = stepWalking(siteB.to, siteA.direction, 0);
-      return { direction: siteA.direction, to, pushedByColor: 'brown', walking: { edgeCrossings } };
-    }
-    return {
-      direction: siteA.direction,
-      to: PUSH_STRATEGY[siteA.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteB.to, siteA.direction),
-      pushedByColor: siteA.piece.color,
-    };
-  });
+  const resultA = strikeMutualSide(board, siteA, siteB);
+  const resultB = strikeMutualSide(resultA.board, siteB, siteA);
 
   return {
-    board,
-    events: [],
-    nextSites: [nextA, nextB].filter((site): site is ImpactSite => site !== null),
+    board: resultB.board,
+    events: [...resultA.events, ...resultB.events],
+    nextSites: [resultA.nextSite, resultB.nextSite].filter((site): site is ImpactSite => site !== null),
   };
 }
 
