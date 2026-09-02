@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, setPieceAt } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch, type ChainEvent, type MoveStepEvent } from '../../../src/engine/index.js';
-import { isRedSplitTrigger, jumpMidpoint, orangeJumpMidpoint, replayEvent } from '../../../src/renderer/launch-animation.js';
+import {
+  cellPath,
+  isRedSplitTrigger,
+  jumpMidpoint,
+  orangeJumpMidpoint,
+  replayEvent,
+  travelDirection,
+  isWrapHop,
+} from '../../../src/renderer/launch-animation.js';
 
 /** Narrows a real EventLog entry down to MoveStepEvent for these tests -- every
  * fixture below is picked to be one, so a mismatch here is a broken fixture. */
@@ -221,5 +229,85 @@ describe('orangeJumpMidpoint: the orange-jump visual only fires for orange\'s ow
 
     expect(orangeEvent).toMatchObject({ piece: { color: 'orange' }, pushedByColor: undefined });
     expect(orangeJumpMidpoint(orangeEvent, 8)).toBeNull();
+  });
+});
+
+describe('travelDirection: derives the single N/S/E/O direction a MOVE_STEP travelled in', () => {
+  it('detects each direction on a non-wrapping move', () => {
+    expect(travelDirection({ row: 2, col: 3 }, { row: 2, col: 5 }, 8)).toBe('E');
+    expect(travelDirection({ row: 2, col: 5 }, { row: 2, col: 3 }, 8)).toBe('O');
+    expect(travelDirection({ row: 2, col: 3 }, { row: 5, col: 3 }, 8)).toBe('S');
+    expect(travelDirection({ row: 5, col: 3 }, { row: 2, col: 3 }, 8)).toBe('N');
+  });
+
+  it('follows the short way around the wrap for each axis', () => {
+    expect(travelDirection({ row: 2, col: 7 }, { row: 2, col: 1 }, 8)).toBe('E'); // 7->0->1
+    expect(travelDirection({ row: 2, col: 1 }, { row: 2, col: 7 }, 8)).toBe('O'); // 1->0->7
+    expect(travelDirection({ row: 7, col: 2 }, { row: 1, col: 2 }, 8)).toBe('S'); // 7->0->1
+    expect(travelDirection({ row: 1, col: 2 }, { row: 7, col: 2 }, 8)).toBe('N'); // 1->0->7
+  });
+});
+
+describe('isWrapHop: detects a single step that crosses the board edge', () => {
+  it('is false for a literal neighboring cell', () => {
+    expect(isWrapHop({ row: 2, col: 3 }, { row: 2, col: 4 })).toBe(false);
+    expect(isWrapHop({ row: 2, col: 3 }, { row: 3, col: 3 })).toBe(false);
+  });
+
+  it('is true when the step crosses the edge', () => {
+    expect(isWrapHop({ row: 2, col: 7 }, { row: 2, col: 0 })).toBe(true);
+    expect(isWrapHop({ row: 7, col: 2 }, { row: 0, col: 2 })).toBe(true);
+  });
+});
+
+describe('cellPath: reconstructs every intermediate cell of a real multi-cell move, one step per cell', () => {
+  it('matches a real brown walk that crosses the edge and collides with its own already-settled striker after a full lap', () => {
+    // Real event log (016/017's own guarantee: a real striker always gets
+    // revisited by its struck defender's own unobstructed walk after exactly
+    // one full 8-cell lap): brown hits green at (4,6); green, pushed by
+    // brown's own mechanic, walks east, wraps around the board once, and
+    // collides with brown's own settled cell back at (4,6) -- from and to are
+    // the SAME coordinate despite 8 real cells having been walked.
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 6 }, color: 'green' }],
+      hand: ['brown'],
+      goal: { at: { row: 4, col: 2 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+    const greenEvent = asMoveStep(outcome.events[1]);
+
+    expect(greenEvent).toMatchObject({
+      piece: { color: 'green' },
+      from: { row: 4, col: 6 },
+      to: { row: 4, col: 6 },
+      pushedByColor: 'brown',
+    });
+
+    const direction = travelDirection(greenEvent.from, greenEvent.to, 8);
+    expect(direction).toBe('E');
+
+    const path = cellPath(greenEvent.from, greenEvent.to, direction, 8);
+
+    expect(path).toEqual([
+      { row: 4, col: 7 },
+      { row: 4, col: 0 },
+      { row: 4, col: 1 },
+      { row: 4, col: 2 },
+      { row: 4, col: 3 },
+      { row: 4, col: 4 },
+      { row: 4, col: 5 },
+      { row: 4, col: 6 },
+    ]);
+    // Exactly one hop in the whole path crosses the edge.
+    const wrapHops = path.filter((cell, i) => {
+      const from = i === 0 ? greenEvent.from : path[i - 1];
+      return isWrapHop(from, cell);
+    });
+    expect(wrapHops).toEqual([{ row: 4, col: 0 }]);
+  });
+
+  it('is a single-element path for a plain 1-cell push -- identical to the old single-tween behavior', () => {
+    const direction = travelDirection({ row: 2, col: 3 }, { row: 2, col: 4 }, 8);
+    expect(cellPath({ row: 2, col: 3 }, { row: 2, col: 4 }, direction, 8)).toEqual([{ row: 2, col: 4 }]);
   });
 });

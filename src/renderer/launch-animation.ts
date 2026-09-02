@@ -66,6 +66,68 @@ export function jumpMidpoint(from: Coordinate, to: Coordinate, size: number): Co
   return null;
 }
 
+const DIRECTION_DELTA: Record<Direction, { row: number; col: number }> = {
+  N: { row: -1, col: 0 },
+  S: { row: 1, col: 0 },
+  E: { row: 0, col: 1 },
+  O: { row: 0, col: -1 },
+};
+
+function stepCoord(coord: Coordinate, direction: Direction, size: number): Coordinate {
+  const delta = DIRECTION_DELTA[direction];
+  return { row: wrapIndex(coord.row + delta.row, size), col: wrapIndex(coord.col + delta.col, size) };
+}
+
+/**
+ * The single N/S/E/O direction a MOVE_STEP travelled in, derived from `from`/
+ * `to` alone (the event itself doesn't carry a direction) -- every move in this
+ * engine runs along a single row or column (never both), so whichever axis
+ * changes, plus the sign of the short way around the wrap, is exhaustive.
+ */
+export function travelDirection(from: Coordinate, to: Coordinate, size: number): Direction {
+  if (from.row === to.row) {
+    return shortDelta(from.col, to.col, size) >= 0 ? 'E' : 'O';
+  }
+  return shortDelta(from.row, to.row, size) >= 0 ? 'S' : 'N';
+}
+
+/**
+ * Every intermediate cell (and the final `to`) a piece passes through walking
+ * from `from` in `direction`, one cell at a time -- used to animate a
+ * multi-cell move (brown's variable walk, in particular) as a real sequence of
+ * steps instead of a single tween spanning the whole distance (020-generator-
+ * red-support playtest: brown's walk could cover many more cells than green's
+ * fixed 1 or orange's fixed 2, but was animated in the exact same fixed
+ * duration, making it look far faster than any other piece and, at a wrap,
+ * visibly slide the wrong way across the board -- a straight-line pixel
+ * interpolation has no notion of wrapping). `from` itself is excluded (the
+ * piece is already there); capped at 3 board-widths of steps as a defensive
+ * bound against ever looping forever -- no real event should need anywhere
+ * near that many (MAX_EDGE_CROSSINGS in push.ts caps brown at 2 wraps).
+ */
+export function cellPath(from: Coordinate, to: Coordinate, direction: Direction, size: number): Coordinate[] {
+  const path: Coordinate[] = [];
+  let current = from;
+  for (let i = 0; i < size * 3; i++) {
+    current = stepCoord(current, direction, size);
+    path.push(current);
+    if (current.row === to.row && current.col === to.col) return path;
+  }
+  return path;
+}
+
+/**
+ * Whether the single step from `from` to `to` crosses the board's edge (wraps
+ * around) rather than moving to a literal neighboring cell -- a real same-
+ * direction single step always changes exactly one axis by 1; anything larger
+ * means the wrap kicked in. Used to snap instantly across a wrap instead of
+ * sliding a tween across the whole board (there's no pixel-continuous way to
+ * represent "the piece left one edge and reappeared on the other" as a slide).
+ */
+export function isWrapHop(from: Coordinate, to: Coordinate): boolean {
+  return Math.abs(from.row - to.row) > 1 || Math.abs(from.col - to.col) > 1;
+}
+
 /**
  * The cell an orange-style jump should visually arc over, or `null` if `event`
  * isn't one -- unlike `jumpMidpoint` alone, this also checks `pushedByColor`,
@@ -232,13 +294,37 @@ export function playEventLog(
       if (midpoint === null) {
         if (isRedSplit) playSplitSound();
         else if (event.hasCollision) playImpactSound();
-        scene.tweens.add({
-          targets: temp,
-          x: boardGraphics.x + end.x,
-          y: boardGraphics.y + end.y,
-          duration: STEP_DURATION_MS,
-          onComplete: finish,
-        });
+
+        // Walk the real path one cell at a time, each taking exactly
+        // STEP_DURATION_MS -- the SAME per-cell speed regardless of how many
+        // cells this particular move covers (a 1-cell green push already
+        // reduces to exactly one such tween, unchanged from before). A wrap
+        // hop snaps instantly instead of sliding across the whole board.
+        const direction = travelDirection(event.from, event.to, board.size);
+        const path = cellPath(event.from, event.to, direction, board.size);
+
+        const stepThrough = (index: number, from: Coordinate): void => {
+          if (index >= path.length) {
+            finish();
+            return;
+          }
+          const cell = path[index];
+          const pixel = pixelCenter(cell);
+          if (isWrapHop(from, cell)) {
+            temp.x = boardGraphics.x + pixel.x;
+            temp.y = boardGraphics.y + pixel.y;
+            stepThrough(index + 1, cell);
+            return;
+          }
+          scene.tweens.add({
+            targets: temp,
+            x: boardGraphics.x + pixel.x,
+            y: boardGraphics.y + pixel.y,
+            duration: STEP_DURATION_MS,
+            onComplete: () => stepThrough(index + 1, cell),
+          });
+        };
+        stepThrough(0, event.from);
         return;
       }
 
