@@ -227,6 +227,139 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
   });
 });
 
+describe('applyMutualImpact: one side is a real red piece set in motion by an earlier hit (real crash found via the generator/manual play, fixed)', () => {
+  // Before this fix: neither resolveMutualSide call could ever compute an
+  // onward push using a red trajectory's own "mechanism" (PUSH_STRATEGY has no
+  // 'red' entry -- red never continues after landing, unlike every other
+  // color), so whichever side was red crashed with a TypeError the instant it
+  // reached a mutual collision. This is NOT the split's own two branches
+  // (those are never red, per the pre-existing comment) -- it's a real,
+  // already-settled red piece that one branch's own onward hit displaced,
+  // exactly as it would displace any other different-color defender.
+  it('red as siteA settles and immediately splits siteB, mirroring applyImpact\'s own red-striker rule', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'red', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+      pushedByColor: 'brown',
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.events[0]).toEqual({
+      type: 'MOVE_STEP',
+      piece: siteA.piece,
+      from: siteA.from,
+      to: siteA.to,
+      direction: siteA.direction,
+      hasCollision: true,
+      pushedByColor: 'brown',
+    });
+    expect(result.board.cells[2][4]).toEqual(siteA.piece); // red settled here
+    // Split direction is red's OWN direction (E) -- perpendicular branches N/S,
+    // sharing orange's advance('new') = 'cracked' fragility (FR-015 of 009).
+    expect(result.events.slice(1)).toEqual([
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false },
+    ]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('red as siteB behaves symmetrically', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'orange', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'red', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.board.cells[2][4]).toEqual(siteB.piece); // red settled here, not orange
+    expect(result.events).toHaveLength(3); // red's own settle + 2 split branches
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('the other side already BROKEN vanishes instead of being split again -- red still settles', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'red', fragility: 'new' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'broken' }, // already used up its one further hop
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.board.cells[2][4]).toEqual(siteA.piece);
+    expect(result.events).toEqual([
+      { type: 'MOVE_STEP', piece: siteA.piece, from: siteA.from, to: siteA.to, direction: siteA.direction, hasCollision: true },
+    ]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('both red is still a same-color collision (annihilation), never reaches this branch', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'red', fragility: 'new' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'red', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'red', from: siteA.from, direction: siteA.direction },
+    ]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('end-to-end via resolveLaunch: the exact crash reproduction no longer throws', () => {
+    // Real repro: red splits brown; the E-branch hits a real red already on
+    // the board, setting it in motion; the O-branch hits a real orange, also
+    // setting it in motion; both walk (brown's own mechanic) and collide.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 0, col: 0 }, color: 'orange' },
+        { at: { row: 0, col: 1 }, color: 'brown' },
+        { at: { row: 0, col: 2 }, color: 'red' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 5, col: 5 }, color: 'green' },
+    });
+
+    expect(() => resolveLaunch(level, { direction: 'N', lane: 1 })).not.toThrow();
+  });
+});
+
 describe('applyImpact: red split interleaves both branches hop by hop (019-synchronous-tick-resolution)', () => {
   // 019-synchronous-tick-resolution: both branches are now seeded into the SAME
   // resolveChain queue (research.md, Decisión 1/2) instead of two sequential

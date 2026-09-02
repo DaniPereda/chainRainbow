@@ -132,11 +132,46 @@ export function applyMutualImpact(
     };
   }
 
-  // Neither trajectory can genuinely be red here: the red piece that triggered a
-  // split always settles immediately at the split point (FR-007 of 009-red-piece)
-  // and never travels onward as a branch itself -- only the struck defender's two
-  // branches do, and a branch's own color is always whatever it was before being
-  // hit, never red (PUSH_STRATEGY has no 'red' entry, verified by this cast).
+  // A split's own two branches are never red (the red that triggered them
+  // settles immediately at the split point -- FR-007 of 009-red-piece -- and
+  // never travels onward as a branch itself). But a branch's own ONWARD hit
+  // can perfectly normally displace a REAL, already-settled red piece (an
+  // ordinary different-color defender displacement, nothing red-specific about
+  // that step) -- and that newly-displaced red piece is now a genuine in-flight
+  // trajectory that CAN reach a mutual collision. Found as a real crash
+  // (PUSH_STRATEGY has no 'red' entry) once a generated level actually
+  // exercised it -- confirmed with the user before fixing (research.md): red
+  // never "continues" after landing the way every other color does here, so
+  // it's exempt from the generic advance-and-continue rule below; it settles
+  // and immediately splits the OTHER trajectory instead, mirroring exactly
+  // what applyImpact already does when red is a normal striker -- the same
+  // settleOrVanish + resolveRedSplit primitives, no new mechanism.
+  if (siteA.piece.color === 'red' || siteB.piece.color === 'red') {
+    const [redSite, otherSite] = siteA.piece.color === 'red' ? [siteA, siteB] : [siteB, siteA];
+    const { board: boardWithRed, events: redEvents } = settleOrVanish(
+      board,
+      redSite.piece,
+      redSite.from,
+      redSite.to,
+      redSite.direction,
+      true,
+      redSite.pushedByColor,
+    );
+    if (otherSite.piece.fragility === 'broken') {
+      // Already used up its one further hop earlier -- vanishes here instead
+      // of being split again (same rule resolveMutualSide already applies).
+      return { board: boardWithRed, events: redEvents, nextSites: [] };
+    }
+    const hitOther: Piece = { color: otherSite.piece.color, fragility: advance(otherSite.piece.fragility) };
+    const { board: finalBoard, events: splitEvents } = resolveRedSplit(
+      boardWithRed,
+      hitOther,
+      redSite.to,
+      redSite.direction,
+    );
+    return { board: finalBoard, events: [...redEvents, ...splitEvents], nextSites: [] };
+  }
+
   const nextA = resolveMutualSide(siteA.piece.fragility, siteA.piece.color, siteA.to, (hit) => ({
     direction: siteB.direction,
     to: PUSH_STRATEGY[siteB.piece.color as Exclude<PieceColor, 'red'>](board, hit, siteA.to, siteB.direction),
