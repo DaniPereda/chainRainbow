@@ -2,23 +2,50 @@
   "pieces": [
     {
       "at": {
-        "row": 5,
-        "col": 6
+        "row": 0,
+        "col": 0
       },
       "color": "orange",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 6,
-        "col": 7
+        "row": 0,
+        "col": 1
+      },
+      "color": "brown",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 0,
+        "col": 2
+      },
+      "color": "red",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 5
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 7,
+        "col": 5
       },
       "color": "green",
       "fragility": "new"
     }
   ],
   "hand": [
-    "green",
+    "brown",
+    "red",
+    "red",
+    "orange",
     "green",
     {
       "color": "orange",
