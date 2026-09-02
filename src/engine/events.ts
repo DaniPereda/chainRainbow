@@ -7,6 +7,15 @@ export type MoveStepEvent = {
   from: Coordinate;
   to: Coordinate;
   hasCollision: boolean;
+  // The direction this piece travelled in. Carried explicitly rather than left
+  // for a consumer to infer from `from`/`to` -- a real rendering bug found by
+  // the user: a piece can travel a FULL LAP and collide with the striker that
+  // launched it (016/017's own guarantee, for any real striker on an
+  // unobstructed lane), which makes `from` and `to` the SAME coordinate --
+  // geometry alone can never recover a direction from a zero displacement, and
+  // guessing one (the renderer used to always guess 'E') silently animated
+  // every such move eastward regardless of the real launch direction.
+  direction: Direction;
   // The color whose push mechanic (PUSH_STRATEGY, src/engine/pieces/push.ts)
   // determined how far `piece` travelled to reach `to` -- NOT necessarily
   // `piece.color` itself: a struck defender moves using the STRIKER's own

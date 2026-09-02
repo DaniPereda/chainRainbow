@@ -18,7 +18,7 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
     const siteB = site(5, 6);
     const handleImpact: ImpactHandler = (b, s) => ({
       board: b,
-      events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, hasCollision: false }],
+      events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, direction: s.direction, hasCollision: false }],
       nextSites: [],
     });
     const handleMutualImpact = vi.fn();
@@ -27,8 +27,8 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
 
     expect(handleMutualImpact).not.toHaveBeenCalled();
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: siteA.piece, from: siteA.from, to: siteA.to, hasCollision: false },
-      { type: 'MOVE_STEP', piece: siteB.piece, from: siteB.from, to: siteB.to, hasCollision: false },
+      { type: 'MOVE_STEP', piece: siteA.piece, from: siteA.from, to: siteA.to, direction: siteA.direction, hasCollision: false },
+      { type: 'MOVE_STEP', piece: siteB.piece, from: siteB.from, to: siteB.to, direction: siteB.direction, hasCollision: false },
     ]);
   });
 
@@ -83,7 +83,7 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
     const initial = site(0, 1);
     const handleImpact: ImpactHandler = (b, s) => ({
       board: b,
-      events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, hasCollision: false }],
+      events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, direction: s.direction, hasCollision: false }],
       nextSites: [],
     });
     const handleMutualImpact = vi.fn();
@@ -92,7 +92,7 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
 
     expect(handleMutualImpact).not.toHaveBeenCalled();
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: initial.piece, from: initial.from, to: initial.to, hasCollision: false },
+      { type: 'MOVE_STEP', piece: initial.piece, from: initial.from, to: initial.to, direction: initial.direction, hasCollision: false },
     ]);
   });
 });

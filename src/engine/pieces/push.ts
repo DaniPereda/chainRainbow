@@ -93,13 +93,14 @@ function settleOrVanish(
   piece: Piece,
   from: Coordinate,
   to: Coordinate,
+  direction: Direction,
   hasCollision: boolean,
   pushedByColor: PieceColor | undefined,
 ): { board: Board; events: ChainEvent[] } {
   const boardAfter = piece.fragility === 'broken' ? board : setPieceAt(board, to, piece);
   return {
     board: boardAfter,
-    events: [{ type: 'MOVE_STEP', piece, from, to, hasCollision, pushedByColor }],
+    events: [{ type: 'MOVE_STEP', piece, from, to, direction, hasCollision, pushedByColor }],
   };
 }
 
@@ -209,6 +210,7 @@ export function applyImpact(
       site.piece,
       site.from,
       site.to,
+      site.direction,
       false,
       site.pushedByColor,
     );
@@ -242,6 +244,7 @@ export function applyImpact(
     site.piece,
     site.from,
     site.to,
+    site.direction,
     true,
     site.pushedByColor,
   );

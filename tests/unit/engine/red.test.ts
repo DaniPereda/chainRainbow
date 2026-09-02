@@ -216,20 +216,20 @@ describe('red: the two branches are now resolved synchronously, tick by tick, an
     // still unprocessed) is headed for its own first step -- a genuine
     // same-tick coincidence between two still-in-flight trajectories.
     expect(outcome.events).toEqual([
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'new' }, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, hasCollision: true },
-      { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 5 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'new' }, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, direction: 'S', hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 5 }, direction: 'E', hasCollision: true },
       // Symmetric collision: O (brown, already broken) vanishes; green (only
       // cracked going in) advances to broken and continues once more, using O's
       // own color (brown) and direction (west) -- wrapping around to (4,4),
       // where the real, already-settled red piece is waiting.
-      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: true, pushedByColor: 'brown' },
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, direction: 'O', hasCollision: true, pushedByColor: 'brown' },
       // Red -- a real, already-settled piece, unrelated to either branch -- gets
       // hit like any other defender and, being red, splits again (pre-existing
       // behavior, not new here: any real red piece struck by a different color
       // splits, regardless of how that striker came to exist).
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, hasCollision: true, pushedByColor: 'green' },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 3, col: 3 }, hasCollision: false },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 5, col: 3 }, hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, direction: 'O', hasCollision: true, pushedByColor: 'green' },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 3, col: 3 }, direction: 'N', hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 5, col: 3 }, direction: 'S', hasCollision: false },
     ]);
     expect(outcome.board.cells[3][3]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(outcome.board.cells[4][3]).toEqual({ color: 'red', fragility: 'cracked' });

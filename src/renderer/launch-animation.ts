@@ -79,19 +79,6 @@ function stepCoord(coord: Coordinate, direction: Direction, size: number): Coord
 }
 
 /**
- * The single N/S/E/O direction a MOVE_STEP travelled in, derived from `from`/
- * `to` alone (the event itself doesn't carry a direction) -- every move in this
- * engine runs along a single row or column (never both), so whichever axis
- * changes, plus the sign of the short way around the wrap, is exhaustive.
- */
-export function travelDirection(from: Coordinate, to: Coordinate, size: number): Direction {
-  if (from.row === to.row) {
-    return shortDelta(from.col, to.col, size) >= 0 ? 'E' : 'O';
-  }
-  return shortDelta(from.row, to.row, size) >= 0 ? 'S' : 'N';
-}
-
-/**
  * Every intermediate cell (and the final `to`) a piece passes through walking
  * from `from` in `direction`, one cell at a time -- used to animate a
  * multi-cell move (brown's variable walk, in particular) as a real sequence of
@@ -300,8 +287,7 @@ export function playEventLog(
         // cells this particular move covers (a 1-cell green push already
         // reduces to exactly one such tween, unchanged from before). A wrap
         // hop snaps instantly instead of sliding across the whole board.
-        const direction = travelDirection(event.from, event.to, board.size);
-        const path = cellPath(event.from, event.to, direction, board.size);
+        const path = cellPath(event.from, event.to, event.direction, board.size);
 
         const stepThrough = (index: number, from: Coordinate): void => {
           if (index >= path.length) {

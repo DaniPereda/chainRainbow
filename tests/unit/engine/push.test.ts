@@ -13,7 +13,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
 
     expect(result.board.cells[0][1]).toEqual(piece);
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: false },
+      { type: 'MOVE_STEP', piece, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: false },
     ]);
     expect(result.nextSites).toEqual([]);
   });
@@ -45,7 +45,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     // the destination is empty and settles it.
     expect(result.board.cells[0][3]).toBeNull();
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: true },
     ]);
     expect(result.nextSites).toEqual([
       {
@@ -68,12 +68,13 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     expect(drained.board.cells[0][1]).toEqual(striker);
     expect(drained.board.cells[0][3]).toEqual({ color: 'green', fragility: 'cracked' });
     expect(drained.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: true },
       {
         type: 'MOVE_STEP',
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
+        direction: 'E',
         hasCollision: false,
         pushedByColor: 'orange',
       },
@@ -94,7 +95,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     // purely as the one nextSites entry, not a half-written board state.
     expect(result.board.cells[0][3]).toEqual({ color: 'brown', fragility: 'new' }); // untouched so far
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: true },
     ]);
     expect(result.nextSites).toEqual([
       {
@@ -258,12 +259,13 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
     // orange's push was), settling at (4,3) BEFORE orange's onward push is
     // finally processed. Verified directly against the real engine, not assumed.
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, direction: 'S', hasCollision: true },
       {
         type: 'MOVE_STEP',
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 4, col: 4 },
         to: { row: 4, col: 5 },
+        direction: 'E',
         hasCollision: true,
       },
       {
@@ -271,6 +273,7 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 4, col: 4 },
         to: { row: 4, col: 3 },
+        direction: 'O',
         hasCollision: false,
       },
       {
@@ -278,6 +281,7 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
         piece: { color: 'orange', fragility: 'cracked' },
         from: { row: 4, col: 5 },
         to: { row: 4, col: 6 },
+        direction: 'E',
         hasCollision: false,
         pushedByColor: 'green',
       },

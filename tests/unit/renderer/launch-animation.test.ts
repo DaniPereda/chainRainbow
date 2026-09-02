@@ -7,7 +7,6 @@ import {
   jumpMidpoint,
   orangeJumpMidpoint,
   replayEvent,
-  travelDirection,
   isWrapHop,
 } from '../../../src/renderer/launch-animation.js';
 
@@ -56,6 +55,7 @@ describe('replayEvent: applies one ChainEvent to a Board with the same write sem
       piece,
       from: { row: 0, col: 0 },
       to: { row: 0, col: 1 },
+      direction: 'E',
       hasCollision: true,
     });
 
@@ -71,6 +71,7 @@ describe('replayEvent: applies one ChainEvent to a Board with the same write sem
       piece: { color: 'brown', fragility: 'broken' },
       from: { row: 2, col: 2 },
       to: { row: 2, col: 5 },
+      direction: 'E',
       hasCollision: false,
     });
 
@@ -97,6 +98,7 @@ describe('replayEvent: applies one ChainEvent to a Board with the same write sem
       piece: { color: 'green', fragility: 'new' },
       from: { row: -1, col: 4 },
       to: { row: 0, col: 4 },
+      direction: 'S',
       hasCollision: false,
     });
 
@@ -154,8 +156,8 @@ describe('isRedSplitTrigger: identifies the exact MOVE_STEP that triggers a red 
     const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
 
     expect(outcome.events).toEqual([
-      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'new' }, from: { row: 4, col: 2 }, to: { row: 4, col: 3 }, hasCollision: true },
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, hasCollision: false, pushedByColor: 'green' },
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'new' }, from: { row: 4, col: 2 }, to: { row: 4, col: 3 }, direction: 'E', hasCollision: true },
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, direction: 'E', hasCollision: false, pushedByColor: 'green' },
     ]);
     expect(isRedSplitTrigger(outcome.events[1])).toBe(false);
   });
@@ -167,6 +169,7 @@ describe('isRedSplitTrigger: identifies the exact MOVE_STEP that triggers a red 
         piece: { color: 'green', fragility: 'new' },
         from: { row: 0, col: 0 },
         to: { row: 0, col: 1 },
+        direction: 'E',
         hasCollision: true,
       }),
     ).toBe(false);
@@ -232,22 +235,6 @@ describe('orangeJumpMidpoint: the orange-jump visual only fires for orange\'s ow
   });
 });
 
-describe('travelDirection: derives the single N/S/E/O direction a MOVE_STEP travelled in', () => {
-  it('detects each direction on a non-wrapping move', () => {
-    expect(travelDirection({ row: 2, col: 3 }, { row: 2, col: 5 }, 8)).toBe('E');
-    expect(travelDirection({ row: 2, col: 5 }, { row: 2, col: 3 }, 8)).toBe('O');
-    expect(travelDirection({ row: 2, col: 3 }, { row: 5, col: 3 }, 8)).toBe('S');
-    expect(travelDirection({ row: 5, col: 3 }, { row: 2, col: 3 }, 8)).toBe('N');
-  });
-
-  it('follows the short way around the wrap for each axis', () => {
-    expect(travelDirection({ row: 2, col: 7 }, { row: 2, col: 1 }, 8)).toBe('E'); // 7->0->1
-    expect(travelDirection({ row: 2, col: 1 }, { row: 2, col: 7 }, 8)).toBe('O'); // 1->0->7
-    expect(travelDirection({ row: 7, col: 2 }, { row: 1, col: 2 }, 8)).toBe('S'); // 7->0->1
-    expect(travelDirection({ row: 1, col: 2 }, { row: 7, col: 2 }, 8)).toBe('N'); // 1->0->7
-  });
-});
-
 describe('isWrapHop: detects a single step that crosses the board edge', () => {
   it('is false for a literal neighboring cell', () => {
     expect(isWrapHop({ row: 2, col: 3 }, { row: 2, col: 4 })).toBe(false);
@@ -280,13 +267,15 @@ describe('cellPath: reconstructs every intermediate cell of a real multi-cell mo
       piece: { color: 'green' },
       from: { row: 4, col: 6 },
       to: { row: 4, col: 6 },
+      direction: 'E',
       pushedByColor: 'brown',
     });
 
-    const direction = travelDirection(greenEvent.from, greenEvent.to, 8);
-    expect(direction).toBe('E');
-
-    const path = cellPath(greenEvent.from, greenEvent.to, direction, 8);
+    // The real bug this fixes: from === to here (a zero-net-displacement full
+    // lap) makes it impossible to recover a direction from geometry alone --
+    // greenEvent.direction (carried by the engine itself, not inferred) is
+    // what makes this correct instead of silently defaulting to some guess.
+    const path = cellPath(greenEvent.from, greenEvent.to, greenEvent.direction, 8);
 
     expect(path).toEqual([
       { row: 4, col: 7 },
@@ -307,7 +296,44 @@ describe('cellPath: reconstructs every intermediate cell of a real multi-cell mo
   });
 
   it('is a single-element path for a plain 1-cell push -- identical to the old single-tween behavior', () => {
-    const direction = travelDirection({ row: 2, col: 3 }, { row: 2, col: 4 }, 8);
-    expect(cellPath({ row: 2, col: 3 }, { row: 2, col: 4 }, direction, 8)).toEqual([{ row: 2, col: 4 }]);
+    expect(cellPath({ row: 2, col: 3 }, { row: 2, col: 4 }, 'E', 8)).toEqual([{ row: 2, col: 4 }]);
+  });
+
+  it('walks NORTH for a full-lap self-collision from a launch fired north -- the real bug reported by the user (it always animated east, regardless of launch direction)', () => {
+    // Same shape as the east-launch fixture above (a real striker always gets
+    // revisited by its own struck defender's walk after one full lap -- from
+    // === to either way), but launched NORTH this time. Before MoveStepEvent
+    // carried its own `direction`, this from/to pair was geometrically
+    // indistinguishable from the east case (zero net displacement either way),
+    // and the code guessed 'E' unconditionally -- animating every such
+    // collision eastward no matter which way the piece actually launched.
+    const level = createLevel({
+      pieces: [{ at: { row: 6, col: 4 }, color: 'green' }],
+      hand: ['brown'],
+      goal: { at: { row: 2, col: 4 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'N', lane: 4 });
+    const greenEvent = asMoveStep(outcome.events[1]);
+
+    expect(greenEvent).toMatchObject({
+      piece: { color: 'green' },
+      from: { row: 6, col: 4 },
+      to: { row: 6, col: 4 },
+      direction: 'N',
+      pushedByColor: 'brown',
+    });
+
+    const path = cellPath(greenEvent.from, greenEvent.to, greenEvent.direction, 8);
+
+    expect(path).toEqual([
+      { row: 5, col: 4 },
+      { row: 4, col: 4 },
+      { row: 3, col: 4 },
+      { row: 2, col: 4 },
+      { row: 1, col: 4 },
+      { row: 0, col: 4 },
+      { row: 7, col: 4 },
+      { row: 6, col: 4 },
+    ]);
   });
 });
