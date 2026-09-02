@@ -179,24 +179,28 @@ describe('red: the split counts as one hit on the defender, and both branches in
   });
 });
 
-describe('red: the two branches are now resolved synchronously, tick by tick, and can genuinely collide with each other (019-synchronous-tick-resolution, US1)', () => {
-  // Real case, found by direct experimentation and confirmed against BOTH engines
-  // (git-stashed back to pre-019 to run the OLD sequential resolveRedSplit for
-  // comparison, per this feature's own quickstart.md): red hits an already-CRACKED
-  // brown (both branches inherit BROKEN, FR-015) with a real piece adjacent to
-  // each branch's very first step. Under the OLD model (branch 1 -- E -- fully
-  // drains, including its own long cascade, before branch 2 -- O -- even takes its
-  // first step), O's own destination (4,3) is genuinely empty by the time E's chain
-  // reaches that area, so nothing this feature changes ever gets a chance to fire;
-  // the two branches' cascades interact only through the REAL, already-settled
-  // board, same as always. Under the NEW model, O is STILL an unprocessed, active
-  // trajectory (never yet given its own turn) at the exact tick E's own chain
-  // reaches O's destination cell (4,3) -- so `findCoincidingPair` catches it and
-  // resolves a genuine symmetric collision (`applyMutualImpact`) between two
-  // still-in-flight trajectories, something the old strictly-sequential model could
-  // never represent. The two engines' FINAL boards and full event traces differ
-  // completely as a result -- verified directly, not assumed.
-  it('a branch that has not taken its own first step yet can still collide with the other branch\'s downstream chain', () => {
+describe('red: the two branches are resolved synchronously, tick by tick -- but only genuinely EMPTY-cell convergences are mutual collisions (019-synchronous-tick-resolution, later corrected)', () => {
+  // Real case, found by direct experimentation. Both real pieces adjacent to
+  // the split (green at (4,5), orange at (4,3)) are STATIONARY, untouched
+  // defenders -- not moving trajectories. An earlier version of this fix
+  // (019's own original `findCoincidingPair`, with no board-occupancy check)
+  // treated the O branch's own first hop (heading to (4,3)) and the E branch's
+  // downstream continuation (which also happened to compute (4,3) as its own
+  // destination, since a walk stops wherever it finds something) as a
+  // "genuine mutual collision" purely because they shared a `to` -- even
+  // though (4,3) was occupied by a real, untouched orange the WHOLE time,
+  // and the O branch had never even been given a chance to strike it
+  // normally yet. That conflated two different things: two things racing
+  // toward the SAME real, stationary piece is not the same as two things
+  // meeting each other over empty ground -- confirmed with the user, who
+  // pointed out that each piece should only ever know who struck it and from
+  // where, never be influenced by some unrelated trajectory racing for the
+  // same real defender. `findCoincidingPair` now requires the shared
+  // destination to be genuinely EMPTY before treating it as a mutual
+  // collision (research.md); when it's occupied, ordinary FIFO processing
+  // takes over, and whichever site is older strikes the real defender first,
+  // exactly like any other cascade.
+  it('the O branch strikes the real orange directly, unaffected by the E branch\'s own separate cascade converging on the same cell', () => {
     const level = createLevel({
       pieces: [
         { at: { row: 4, col: 4 }, color: 'brown', fragility: 'cracked' },
@@ -209,41 +213,75 @@ describe('red: the two branches are now resolved synchronously, tick by tick, an
 
     const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
 
-    // The E branch (brown, broken) strikes green at (4,5) and vanishes there
-    // (broken never settles) -- green (now cracked) continues onward using
-    // brown's own walking strategy, heading east. That walk wraps around the
-    // board and reaches (4,3) -- exactly where the O branch (brown, broken,
-    // still unprocessed) is headed for its own first step -- a genuine
-    // same-tick coincidence between two still-in-flight trajectories.
     expect(outcome.events).toEqual([
       { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'new' }, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, direction: 'S', hasCollision: true },
+      // E branch strikes the real green directly -- its own direction (E),
+      // nothing swapped.
       { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 5 }, direction: 'E', hasCollision: true },
-      // Symmetric collision: O (brown, already broken) vanishes; green (only
-      // cracked going in) advances to broken and continues once more, using O's
-      // own color (brown) and direction (west) -- wrapping around to (4,4),
-      // where the real, already-settled red piece is waiting.
-      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, direction: 'O', hasCollision: true, pushedByColor: 'brown' },
-      // Red -- a real, already-settled piece, unrelated to either branch -- gets
-      // hit like any other defender and, being red, splits again (pre-existing
-      // behavior, not new here: any real red piece struck by a different color
-      // splits, regardless of how that striker came to exist).
-      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, direction: 'O', hasCollision: true, pushedByColor: 'green' },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 3, col: 3 }, direction: 'N', hasCollision: false },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 5, col: 3 }, direction: 'S', hasCollision: false },
+      // O branch strikes the real orange directly too -- its own direction
+      // (O), even though the E branch's own downstream continuation (below)
+      // independently computes the SAME destination (4,3): that's no longer
+      // treated as a coincidence to resolve between the branches themselves,
+      // since (4,3) is occupied by a real piece neither branch has touched
+      // yet -- ordinary FIFO just lets O strike it first (it was queued
+      // first).
+      { type: 'MOVE_STEP', piece: { color: 'brown', fragility: 'broken' }, from: { row: 4, col: 4 }, to: { row: 4, col: 3 }, direction: 'O', hasCollision: true },
+      // Green (now cracked, struck by the E branch) continues onward using
+      // brown's own walking strategy, in its OWN direction (E, inherited from
+      // the E branch that struck it) -- wraps around and finds (4,3) now
+      // occupied by the O branch's own just-settled piece... except the O
+      // branch was BROKEN, so it never actually wrote to the board --
+      // green settles there cleanly instead (hasCollision: false).
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'cracked' }, from: { row: 4, col: 5 }, to: { row: 4, col: 3 }, direction: 'E', hasCollision: false, pushedByColor: 'brown' },
+      // The real orange, struck by the O branch, continues onward using
+      // brown's own walking strategy, in ITS OWN direction (O, inherited from
+      // the O branch that struck it) -- and finds the real, already-settled
+      // red piece at (4,4).
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 4, col: 3 }, to: { row: 4, col: 4 }, direction: 'O', hasCollision: true, pushedByColor: 'brown' },
+      // Red -- unrelated to either branch -- gets hit like any other defender
+      // (not a split trigger here: red is the one being struck, not the one
+      // striking). Displaced using orange's OWN mechanism -- a fixed,
+      // board-blind 2-cell push -- landing at (4,2) directly, skipping right
+      // over green (sitting at (4,3)) without any collision check.
+      { type: 'MOVE_STEP', piece: { color: 'red', fragility: 'cracked' }, from: { row: 4, col: 4 }, to: { row: 4, col: 2 }, direction: 'O', hasCollision: false, pushedByColor: 'orange' },
     ]);
-    expect(outcome.board.cells[3][3]).toEqual({ color: 'orange', fragility: 'cracked' });
-    expect(outcome.board.cells[4][3]).toEqual({ color: 'red', fragility: 'cracked' });
-    expect(outcome.board.cells[5][3]).toEqual({ color: 'orange', fragility: 'cracked' });
+    expect(outcome.board.cells[4][2]).toEqual({ color: 'red', fragility: 'cracked' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'green', fragility: 'cracked' });
+    expect(outcome.board.cells[4][4]).toEqual({ color: 'orange', fragility: 'cracked' });
     expect(outcome.result).toBe('lost');
+  });
 
-    // Confirmed different from the OLD (pre-019) sequential model for this exact
-    // same board: there, branch E's entire cascade (including this same wrapping
-    // walk) fully resolves BEFORE branch O ever takes its own first step -- so by
-    // the time E's walk reaches (4,3), O hasn't touched it yet and (4,3) is
-    // genuinely empty; O only starts afterward, from the board E's chain left
-    // behind. The old engine's full trace for this board settles a single orange
-    // piece at (4,4) and nothing else -- a structurally different outcome (traced
-    // by hand against the pre-019 code before this feature's own changes, not
-    // re-asserted here since that code no longer exists on this branch).
+  it('both branches strike their own real, stationary defender directly -- exact scenario reported by the user (red north through column 6)', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 3, col: 6 }, color: 'brown' },
+        { at: { row: 3, col: 7 }, color: 'green' },
+        { at: { row: 3, col: 5 }, color: 'green' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 0, col: 0 }, color: 'orange' },
+    });
+
+    const outcome = resolveLaunch(level, { direction: 'N', lane: 6 });
+
+    // The two branches themselves (events 2/3) each strike their own real
+    // defender directly, each in its own direction -- E and O respectively,
+    // never swapped, exactly what the user expected: "cada una de ellas
+    // deberia operar solo sabiendo quien la golpea y desde donde".
+    expect(outcome.events[1]).toMatchObject({
+      piece: { color: 'brown' },
+      from: { row: 3, col: 6 },
+      to: { row: 3, col: 7 },
+      direction: 'E',
+      hasCollision: true,
+    });
+    expect(outcome.events[2]).toMatchObject({
+      piece: { color: 'brown' },
+      from: { row: 3, col: 6 },
+      to: { row: 3, col: 5 },
+      direction: 'O',
+      hasCollision: true,
+    });
+    expect(outcome.result).toBe('lost');
   });
 });
