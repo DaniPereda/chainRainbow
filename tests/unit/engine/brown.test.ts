@@ -182,7 +182,13 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
     expect(outcome.board.cells[5][3]).toBeNull();
     expect(outcome.board.cells[6][3]).toEqual({ color: 'brown', fragility: 'cracked' });
     expect(outcome.board.cells[7][3]).toBeNull(); // never reached -- the walk stopped at (5,3)
-    expect(outcome.events).toContainEqual({ type: 'ANNIHILATION', at: { row: 5, col: 3 }, color: 'green' });
+    expect(outcome.events).toContainEqual({
+      type: 'ANNIHILATION',
+      at: { row: 5, col: 3 },
+      color: 'green',
+      from: { row: 6, col: 3 },
+      direction: 'S',
+    });
     expect(outcome.result).toBe('lost');
   });
 
@@ -210,7 +216,13 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
     expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' });
     expect(outcome.board.cells[4][3]).toEqual({ color: 'brown', fragility: 'cracked' });
     expect(outcome.board.cells[4][7]).toBeNull(); // never reached -- the walk stopped at (4,0)
-    expect(outcome.events).toContainEqual({ type: 'ANNIHILATION', at: { row: 4, col: 0 }, color: 'orange' });
+    expect(outcome.events).toContainEqual({
+      type: 'ANNIHILATION',
+      at: { row: 4, col: 0 },
+      color: 'orange',
+      from: { row: 4, col: 3 },
+      direction: 'E',
+    });
     expect(outcome.result).toBe('lost');
   });
 });

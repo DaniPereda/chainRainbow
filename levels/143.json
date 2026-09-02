@@ -2,31 +2,7 @@
   "pieces": [
     {
       "at": {
-        "row": 0,
-        "col": 6
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 1,
-        "col": 5
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 2,
-        "col": 4
-      },
-      "color": "green",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 5,
+        "row": 3,
         "col": 1
       },
       "color": "green",
@@ -34,18 +10,22 @@
     },
     {
       "at": {
-        "row": 6,
-        "col": 5
+        "row": 3,
+        "col": 3
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 3
       },
       "color": "green",
       "fragility": "new"
     }
   ],
   "hand": [
-    {
-      "color": "orange",
-      "fragility": "cracked"
-    },
     "orange",
     {
       "color": "orange",
@@ -53,14 +33,6 @@
     },
     {
       "color": "green",
-      "fragility": "cracked"
-    },
-    {
-      "color": "green",
-      "fragility": "cracked"
-    },
-    {
-      "color": "green",
       "fragility": "broken"
     },
     {
@@ -70,36 +42,35 @@
     {
       "color": "green",
       "fragility": "cracked"
+    },
+    {
+      "color": "orange",
+      "fragility": "broken"
     }
   ],
   "goal": {
     "color": "orange",
     "cell": {
-      "row": 7,
-      "col": 6
+      "row": 3,
+      "col": 4
     }
   },
   "solution": [
     {
       "direction": "E",
-      "lane": 2,
-      "pieceIndex": 0
-    },
-    {
-      "direction": "N",
-      "lane": 6,
+      "lane": 3,
       "pieceIndex": 0
     }
   ],
   "params": {
+    "complexityScore": 16,
+    "maxGenerationAttempts": 1000,
     "seed": 143,
-    "complexityScore": 17,
-    "maxGenerationAttempts": 20000,
-    "launchCount": 2,
-    "chainOriginProbability": 0.82685716599226,
-    "defenderContinuationProbability": 0.6036609327420592,
-    "decoyCount": 6,
-    "boardDecoyProbability": 0.34758116733282807,
+    "launchCount": 1,
+    "chainOriginProbability": 0.8753019781317561,
+    "defenderContinuationProbability": 0.6512381106615066,
+    "decoyCount": 5,
+    "boardDecoyProbability": 0.2431358251720667,
     "availableColors": [
       "green",
       "orange"

@@ -2,70 +2,79 @@
   "pieces": [
     {
       "at": {
-        "row": 5,
+        "row": 2,
+        "col": 5
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
+        "col": 3
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 4,
         "col": 4
       },
       "color": "orange",
       "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 5,
-        "col": 6
-      },
-      "color": "orange",
-      "fragility": "new"
-    },
-    {
-      "at": {
-        "row": 6,
-        "col": 1
-      },
-      "color": "green",
-      "fragility": "new"
     }
   ],
   "hand": [
+    "orange",
     {
       "color": "orange",
       "fragility": "cracked"
     },
     {
-      "color": "orange",
+      "color": "green",
+      "fragility": "cracked"
+    },
+    {
+      "color": "green",
       "fragility": "broken"
     },
     {
-      "color": "brown",
-      "fragility": "broken"
+      "color": "orange",
+      "fragility": "cracked"
     }
   ],
   "goal": {
-    "color": "green",
+    "color": "orange",
     "cell": {
-      "row": 0,
-      "col": 1
+      "row": 2,
+      "col": 6
     }
   },
   "solution": [
     {
-      "direction": "S",
-      "lane": 1,
+      "direction": "N",
+      "lane": 3,
+      "pieceIndex": 0
+    },
+    {
+      "direction": "E",
+      "lane": 2,
       "pieceIndex": 0
     }
   ],
   "params": {
+    "complexityScore": 10,
+    "maxGenerationAttempts": 1000,
     "seed": 55,
-    "complexityScore": 11,
-    "maxGenerationAttempts": 20000,
-    "launchCount": 1,
-    "chainOriginProbability": 0.06631682992447167,
-    "defenderContinuationProbability": 0.15095531742554158,
-    "decoyCount": 2,
-    "boardDecoyProbability": 0.20191914620809256,
+    "launchCount": 2,
+    "chainOriginProbability": 0.01867440124042332,
+    "defenderContinuationProbability": 0.06631682992447167,
+    "decoyCount": 3,
+    "boardDecoyProbability": 0.16663796068169176,
     "availableColors": [
       "green",
-      "orange",
-      "brown"
+      "orange"
     ],
     "fragilityProfile": "medium"
   }

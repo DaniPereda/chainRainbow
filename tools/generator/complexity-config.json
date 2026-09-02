@@ -43,7 +43,8 @@
     "kind": "discreteSet",
     "levels": [
       { "value": ["green", "orange"] },
-      { "value": ["green", "orange", "brown"] }
+      { "value": ["green", "orange", "brown"] },
+      { "value": ["green", "orange", "brown", "red"] }
     ]
   },
   "fragilityProfile": {

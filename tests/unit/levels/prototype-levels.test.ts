@@ -89,6 +89,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'red', fragility: 'new' },
         from: { row: 2, col: 3 },
         to: { row: 3, col: 3 },
+        direction: 'S',
         hasCollision: true,
       },
       {
@@ -96,6 +97,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 3, col: 3 },
         to: { row: 3, col: 4 },
+        direction: 'E',
         hasCollision: false,
       },
       {
@@ -103,6 +105,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 3, col: 3 },
         to: { row: 3, col: 2 },
+        direction: 'O',
         hasCollision: false,
       },
     ]);
@@ -120,6 +123,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'red', fragility: 'new' },
         from: { row: 3, col: 3 },
         to: { row: 4, col: 3 },
+        direction: 'S',
         hasCollision: true,
       },
       {
@@ -127,6 +131,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 4, col: 3 },
         to: { row: 4, col: 4 },
+        direction: 'E',
         hasCollision: true,
       },
       {
@@ -134,6 +139,7 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 4, col: 3 },
         to: { row: 4, col: 2 },
+        direction: 'O',
         hasCollision: false,
       },
       {
@@ -141,7 +147,9 @@ describe('PROTOTYPE_LEVELS: levels 14/15 (red) resolve with the exact same trace
         piece: { color: 'orange', fragility: 'cracked' },
         from: { row: 4, col: 4 },
         to: { row: 4, col: 5 },
+        direction: 'E',
         hasCollision: false,
+        pushedByColor: 'green',
       },
     ]);
   });

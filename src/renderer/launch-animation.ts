@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
-import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch } from '../engine/index.js';
+import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
-import { playGoalSound, playImpactSound, playJumpSound } from './sound-effects.js';
+import { playGoalSound, playImpactSound, playJumpSound, playSplitSound } from './sound-effects.js';
 
 // 018-piece-movement-animation refinement: slowed down twice, per two rounds of
 // the user's own playtest (150ms -> 350ms -> 450ms, "todo un poco mas lento").
@@ -66,6 +66,69 @@ export function jumpMidpoint(from: Coordinate, to: Coordinate, size: number): Co
   return null;
 }
 
+const DIRECTION_DELTA: Record<Direction, { row: number; col: number }> = {
+  N: { row: -1, col: 0 },
+  S: { row: 1, col: 0 },
+  E: { row: 0, col: 1 },
+  O: { row: 0, col: -1 },
+};
+
+function stepCoord(coord: Coordinate, direction: Direction, size: number): Coordinate {
+  const delta = DIRECTION_DELTA[direction];
+  return { row: wrapIndex(coord.row + delta.row, size), col: wrapIndex(coord.col + delta.col, size) };
+}
+
+/**
+ * Every intermediate cell (and the final `to`) a piece passes through walking
+ * from `from` in `direction`, one cell at a time -- used to animate a
+ * multi-cell move (brown's variable walk, in particular) as a real sequence of
+ * steps instead of a single tween spanning the whole distance (020-generator-
+ * red-support playtest: brown's walk could cover many more cells than green's
+ * fixed 1 or orange's fixed 2, but was animated in the exact same fixed
+ * duration, making it look far faster than any other piece and, at a wrap,
+ * visibly slide the wrong way across the board -- a straight-line pixel
+ * interpolation has no notion of wrapping). `from` itself is excluded (the
+ * piece is already there); capped at 3 board-widths of steps as a defensive
+ * bound against ever looping forever -- no real event should need anywhere
+ * near that many (MAX_EDGE_CROSSINGS in push.ts caps brown at 2 wraps).
+ */
+export function cellPath(from: Coordinate, to: Coordinate, direction: Direction, size: number): Coordinate[] {
+  const path: Coordinate[] = [];
+  let current = from;
+  for (let i = 0; i < size * 3; i++) {
+    current = stepCoord(current, direction, size);
+    path.push(current);
+    if (current.row === to.row && current.col === to.col) return path;
+  }
+  return path;
+}
+
+/**
+ * Whether the single step from `from` to `to` crosses the board's edge (wraps
+ * around) rather than moving to a literal neighboring cell -- a real same-
+ * direction single step always changes exactly one axis by 1; anything larger
+ * means the wrap kicked in. Used to snap instantly across a wrap instead of
+ * sliding a tween across the whole board (there's no pixel-continuous way to
+ * represent "the piece left one edge and reappeared on the other" as a slide).
+ */
+export function isWrapHop(from: Coordinate, to: Coordinate): boolean {
+  return Math.abs(from.row - to.row) > 1 || Math.abs(from.col - to.col) > 1;
+}
+
+/**
+ * The cell an orange-style jump should visually arc over, or `null` if `event`
+ * isn't one -- unlike `jumpMidpoint` alone, this also checks `pushedByColor`,
+ * not just geometry: a 2-cell displacement isn't necessarily orange's own
+ * mechanic at work, since a struck defender moves using the STRIKER's
+ * distance, not its own (a real bug found by playtesting: brown's variable
+ * walk can coincidentally land on exactly 2 cells too, which used to make a
+ * brown-pushed piece wrongly flash the orange bulge and play its sound).
+ */
+export function orangeJumpMidpoint(event: MoveStepEvent, size: number): Coordinate | null {
+  if (event.pushedByColor !== 'orange') return null;
+  return jumpMidpoint(event.from, event.to, size);
+}
+
 /**
  * Immutable single-cell write, tolerant of an out-of-bounds `coord` (a no-op) --
  * a `MOVE_STEP`'s `from` can legitimately sit one cell outside the board (the
@@ -114,6 +177,22 @@ export function replayEvent(board: Board, event: ChainEvent): Board {
   return setCell(board, event.at, null); // ANNIHILATION
 }
 
+/**
+ * Whether `event` is red settling with a real collision -- the exact moment
+ * `applyImpact` (src/engine/pieces/push.ts) triggers `resolveRedSplit`
+ * (009-red-piece/020-generator-red-support): a MOVE_STEP for a red piece
+ * (`hasCollision: true`) is always immediately followed by the split's own
+ * branch events in the log. Red settling into empty space (`hasCollision:
+ * false`) never splits anything, so it's excluded here too -- checked ahead of
+ * `jumpMidpoint` in `playEventLog` since a split can coincidentally travel an
+ * orange-style 2-cell distance (jumpMidpoint is purely geometric, not
+ * color-aware), and this sound takes priority over both the generic impact and
+ * the jump sound either way.
+ */
+export function isRedSplitTrigger(event: ChainEvent): boolean {
+  return event.type === 'MOVE_STEP' && event.piece.color === 'red' && event.hasCollision;
+}
+
 export function pixelCenter(coord: Coordinate): { x: number; y: number } {
   return { x: coord.col * CELL_SIZE + CELL_SIZE / 2, y: coord.row * CELL_SIZE + CELL_SIZE / 2 };
 }
@@ -122,8 +201,10 @@ export function pixelCenter(coord: Coordinate): { x: number; y: number } {
  * Reproduces `events` visually, one at a time and strictly in order (research.md,
  * Decisión 3 -- `EventLog` has no notion of two events happening "at once" today).
  * Each event gets a temporary `Phaser.GameObjects.Arc` (never a persistent
- * per-piece GameObject -- research.md, Decisión 1): a `MOVE_STEP` tweens it from
- * `from` to `to`; an `ANNIHILATION` fades it out in place. Between events, the
+ * per-piece GameObject -- research.md, Decisión 1): a `MOVE_STEP` walks it from
+ * `from` to `to`, one cell at a time; an `ANNIHILATION` walks it the same way
+ * from `from` to `at`, then fades it out there -- both are "a piece travels
+ * somewhere," they only differ in what happens on arrival. Between events, the
  * static layer (`boardGraphics`) is redrawn via `drawBoard` against a board copy
  * advanced with `replayEvent` -- since that reducer only ever writes `to`/`at`
  * (never clears `from`, see its own comment), the static layer is already
@@ -161,7 +242,7 @@ export function playEventLog(
     const isFirstEvent = index === 0;
     const event = events[index++];
     const piece = event.type === 'MOVE_STEP' ? event.piece : { color: event.color, fragility: 'new' as const };
-    const from = event.type === 'MOVE_STEP' ? event.from : event.at;
+    const from = event.from;
 
     drawBoard(boardGraphics, board, goal);
 
@@ -187,25 +268,63 @@ export function playEventLog(
       playNext();
     };
 
+    // Walks `temp` through `path` one cell at a time, each taking exactly
+    // STEP_DURATION_MS -- the SAME per-cell speed regardless of how many
+    // cells this particular move covers (a 1-cell push already reduces to
+    // exactly one such tween). A wrap hop snaps instantly instead of sliding
+    // across the whole board. Shared between a normal MOVE_STEP and an
+    // ANNIHILATION -- both are "a piece travels from `from` to some cell",
+    // they only differ in what happens once it arrives (settle vs fade).
+    const walkPath = (path: Coordinate[], onArrive: () => void): void => {
+      const stepThrough = (index: number, from: Coordinate): void => {
+        if (index >= path.length) {
+          onArrive();
+          return;
+        }
+        const cell = path[index];
+        const pixel = pixelCenter(cell);
+        if (isWrapHop(from, cell)) {
+          temp.x = boardGraphics.x + pixel.x;
+          temp.y = boardGraphics.y + pixel.y;
+          stepThrough(index + 1, cell);
+          return;
+        }
+        scene.tweens.add({
+          targets: temp,
+          x: boardGraphics.x + pixel.x,
+          y: boardGraphics.y + pixel.y,
+          duration: STEP_DURATION_MS,
+          onComplete: () => stepThrough(index + 1, cell),
+        });
+      };
+      stepThrough(0, event.from);
+    };
+
     const runEvent = (): void => {
       if (event.type === 'ANNIHILATION') {
         playImpactSound();
-        scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
+        // Real bug found by the user: this used to fade `temp` out right where
+        // it spawned, never visibly travelling to `at` first -- a same-color
+        // collision looked like the piece popped into existence already
+        // annihilating, instead of arriving there like any other impact.
+        const path = cellPath(event.from, event.at, event.direction, board.size);
+        walkPath(path, () => {
+          scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
+        });
         return;
       }
 
+      const isRedSplit = isRedSplitTrigger(event);
+
       const end = pixelCenter(event.to);
-      const midpoint = jumpMidpoint(event.from, event.to, board.size);
+      const midpoint = orangeJumpMidpoint(event, board.size);
 
       if (midpoint === null) {
-        if (event.hasCollision) playImpactSound();
-        scene.tweens.add({
-          targets: temp,
-          x: boardGraphics.x + end.x,
-          y: boardGraphics.y + end.y,
-          duration: STEP_DURATION_MS,
-          onComplete: finish,
-        });
+        if (isRedSplit) playSplitSound();
+        else if (event.hasCollision) playImpactSound();
+
+        const path = cellPath(event.from, event.to, event.direction, board.size);
+        walkPath(path, finish);
         return;
       }
 
@@ -217,7 +336,8 @@ export function playEventLog(
       // (moving along a column) bulges right (an `x` offset) -- offsetting `y`
       // for a vertical jump would just look like moving faster along the same
       // line, not an arc (second round of playtest refinement).
-      playJumpSound();
+      if (isRedSplit) playSplitSound();
+      else playJumpSound();
       const mid = pixelCenter(midpoint);
       const hopOffset = CELL_SIZE * 0.4;
       const isVerticalJump = event.from.col === event.to.col;
@@ -252,7 +372,7 @@ export function playEventLog(
       });
     };
 
-    if (isFirstEvent && event.type === 'MOVE_STEP') {
+    if (isFirstEvent) {
       const fromPixel = pixelCenter(event.from);
       scene.tweens.add({
         targets: temp,

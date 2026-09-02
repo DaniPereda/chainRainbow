@@ -70,3 +70,18 @@ describe('inverseCandidates: brown "occupied" mode accepts any clear-path candid
     expect(candidates).toEqual([{ row: 1, col: 5 }, { row: 1, col: 4 }]);
   });
 });
+
+describe('inverseCandidates: red matches green\'s exact formula, only for context "settle" (020-generator-red-support)', () => {
+  it('steps back exactly 1 cell, with wrap-around -- same as green', () => {
+    expect(inverseCandidates('red', 'E', { row: 2, col: 5 }, createBoard(), 'settle')).toEqual([
+      { row: 2, col: 4 },
+    ]);
+    expect(inverseCandidates('red', 'E', { row: 2, col: 0 }, createBoard(), 'settle')).toEqual([
+      { row: 2, col: 7 },
+    ]);
+  });
+
+  it('returns no candidates for context "occupied" -- red never explains how an already-known striker itself started moving (research.md Decisión 4)', () => {
+    expect(inverseCandidates('red', 'E', { row: 2, col: 5 }, createBoard(), 'occupied')).toEqual([]);
+  });
+});

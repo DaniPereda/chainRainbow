@@ -2,76 +2,74 @@
   "pieces": [
     {
       "at": {
-        "row": 4,
-        "col": 2
+        "row": 0,
+        "col": 6
       },
-      "color": "brown",
+      "color": "green",
       "fragility": "new"
     },
     {
       "at": {
-        "row": 6,
+        "row": 1,
         "col": 4
+      },
+      "color": "orange",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 1,
+        "col": 7
+      },
+      "color": "green",
+      "fragility": "new"
+    },
+    {
+      "at": {
+        "row": 5,
+        "col": 7
       },
       "color": "green",
       "fragility": "new"
     }
   ],
   "hand": [
-    {
-      "color": "orange",
-      "fragility": "cracked"
-    },
-    {
-      "color": "orange",
-      "fragility": "cracked"
-    },
-    {
-      "color": "green",
-      "fragility": "broken"
-    },
-    {
-      "color": "brown",
-      "fragility": "broken"
-    },
-    {
-      "color": "brown",
-      "fragility": "broken"
-    }
+    "orange",
+    "brown"
   ],
   "goal": {
-    "color": "brown",
+    "color": "orange",
     "cell": {
-      "row": 3,
-      "col": 2
+      "row": 2,
+      "col": 4
     }
   },
   "solution": [
     {
       "direction": "O",
-      "lane": 6,
+      "lane": 0,
       "pieceIndex": 0
     },
     {
-      "direction": "N",
-      "lane": 2,
+      "direction": "S",
+      "lane": 4,
       "pieceIndex": 0
     }
   ],
   "params": {
+    "complexityScore": 11,
+    "maxGenerationAttempts": 1000,
     "seed": 64,
-    "complexityScore": 12,
-    "maxGenerationAttempts": 20000,
     "launchCount": 2,
-    "chainOriginProbability": 0.5358617236604915,
-    "defenderContinuationProbability": 0.39162854976020756,
-    "decoyCount": 3,
-    "boardDecoyProbability": 0.06557798450812698,
+    "chainOriginProbability": 0.2978238879237324,
+    "defenderContinuationProbability": 0.6572411491069943,
+    "decoyCount": 0,
+    "boardDecoyProbability": 0.2753349484875798,
     "availableColors": [
       "green",
       "orange",
       "brown"
     ],
-    "fragilityProfile": "medium"
+    "fragilityProfile": "easy"
   }
 }

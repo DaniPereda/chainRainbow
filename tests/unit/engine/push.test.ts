@@ -13,7 +13,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
 
     expect(result.board.cells[0][1]).toEqual(piece);
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: false },
+      { type: 'MOVE_STEP', piece, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: false },
     ]);
     expect(result.nextSites).toEqual([]);
   });
@@ -25,7 +25,9 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     const result = applyImpact(board, { piece, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
 
     expect(result.board.cells[0][1]).toBeNull();
-    expect(result.events).toEqual([{ type: 'ANNIHILATION', at: { row: 0, col: 1 }, color: 'green' }]);
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 0, col: 1 }, color: 'green', from: { row: 0, col: 0 }, direction: 'E' },
+    ]);
     expect(result.nextSites).toEqual([]);
   });
 
@@ -45,7 +47,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     // the destination is empty and settles it.
     expect(result.board.cells[0][3]).toBeNull();
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: true },
     ]);
     expect(result.nextSites).toEqual([
       {
@@ -53,6 +55,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
         direction: 'E',
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
+        pushedByColor: 'orange',
       },
     ]);
 
@@ -67,13 +70,15 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     expect(drained.board.cells[0][1]).toEqual(striker);
     expect(drained.board.cells[0][3]).toEqual({ color: 'green', fragility: 'cracked' });
     expect(drained.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: true },
       {
         type: 'MOVE_STEP',
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
+        direction: 'E',
         hasCollision: false,
+        pushedByColor: 'orange',
       },
     ]);
   });
@@ -92,7 +97,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     // purely as the one nextSites entry, not a half-written board state.
     expect(result.board.cells[0][3]).toEqual({ color: 'brown', fragility: 'new' }); // untouched so far
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 0 }, to: { row: 0, col: 1 }, direction: 'E', hasCollision: true },
     ]);
     expect(result.nextSites).toEqual([
       {
@@ -100,6 +105,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
         direction: 'E',
         from: { row: 0, col: 1 },
         to: { row: 0, col: 3 },
+        pushedByColor: 'orange',
       },
     ]);
   });
@@ -123,7 +129,9 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
 
     const result = applyMutualImpact(board, siteA, siteB);
 
-    expect(result.events).toEqual([{ type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green' }]);
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green', from: { row: 2, col: 3 }, direction: 'E' },
+    ]);
     expect(result.nextSites).toEqual([]);
   });
 
@@ -153,6 +161,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         direction: 'N',
         from: { row: 2, col: 4 },
         to: { row: 0, col: 4 },
+        pushedByColor: 'orange',
       },
       // B: hit once (new -> cracked), continues using A's color (green, distance 1)
       // and A's own direction (E).
@@ -161,6 +170,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         direction: 'E',
         from: { row: 2, col: 4 },
         to: { row: 2, col: 5 },
+        pushedByColor: 'green',
       },
     ]);
   });
@@ -191,6 +201,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         direction: 'E',
         from: { row: 2, col: 4 },
         to: { row: 2, col: 5 },
+        pushedByColor: 'green',
       },
     ]);
   });
@@ -213,6 +224,139 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
     const result = applyMutualImpact(board, siteA, siteB);
 
     expect(result.nextSites).toEqual([]);
+  });
+});
+
+describe('applyMutualImpact: one side is a real red piece set in motion by an earlier hit (real crash found via the generator/manual play, fixed)', () => {
+  // Before this fix: neither resolveMutualSide call could ever compute an
+  // onward push using a red trajectory's own "mechanism" (PUSH_STRATEGY has no
+  // 'red' entry -- red never continues after landing, unlike every other
+  // color), so whichever side was red crashed with a TypeError the instant it
+  // reached a mutual collision. This is NOT the split's own two branches
+  // (those are never red, per the pre-existing comment) -- it's a real,
+  // already-settled red piece that one branch's own onward hit displaced,
+  // exactly as it would displace any other different-color defender.
+  it('red as siteA settles and immediately splits siteB, mirroring applyImpact\'s own red-striker rule', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'red', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+      pushedByColor: 'brown',
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.events[0]).toEqual({
+      type: 'MOVE_STEP',
+      piece: siteA.piece,
+      from: siteA.from,
+      to: siteA.to,
+      direction: siteA.direction,
+      hasCollision: true,
+      pushedByColor: 'brown',
+    });
+    expect(result.board.cells[2][4]).toEqual(siteA.piece); // red settled here
+    // Split direction is red's OWN direction (E) -- perpendicular branches N/S,
+    // sharing orange's advance('new') = 'cracked' fragility (FR-015 of 009).
+    expect(result.events.slice(1)).toEqual([
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false },
+    ]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('red as siteB behaves symmetrically', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'orange', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'red', fragility: 'cracked' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.board.cells[2][4]).toEqual(siteB.piece); // red settled here, not orange
+    expect(result.events).toHaveLength(3); // red's own settle + 2 split branches
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('the other side already BROKEN vanishes instead of being split again -- red still settles', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'red', fragility: 'new' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'orange', fragility: 'broken' }, // already used up its one further hop
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.board.cells[2][4]).toEqual(siteA.piece);
+    expect(result.events).toEqual([
+      { type: 'MOVE_STEP', piece: siteA.piece, from: siteA.from, to: siteA.to, direction: siteA.direction, hasCollision: true },
+    ]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('both red is still a same-color collision (annihilation), never reaches this branch', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = {
+      piece: { color: 'red', fragility: 'new' },
+      direction: 'E',
+      from: { row: 2, col: 3 },
+      to: { row: 2, col: 4 },
+    };
+    const siteB: ImpactSite = {
+      piece: { color: 'red', fragility: 'new' },
+      direction: 'N',
+      from: { row: 4, col: 4 },
+      to: { row: 2, col: 4 },
+    };
+
+    const result = applyMutualImpact(board, siteA, siteB);
+
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'red', from: siteA.from, direction: siteA.direction },
+    ]);
+    expect(result.nextSites).toEqual([]);
+  });
+
+  it('end-to-end via resolveLaunch: the exact crash reproduction no longer throws', () => {
+    // Real repro: red splits brown; the E-branch hits a real red already on
+    // the board, setting it in motion; the O-branch hits a real orange, also
+    // setting it in motion; both walk (brown's own mechanic) and collide.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 0, col: 0 }, color: 'orange' },
+        { at: { row: 0, col: 1 }, color: 'brown' },
+        { at: { row: 0, col: 2 }, color: 'red' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 5, col: 5 }, color: 'green' },
+    });
+
+    expect(() => resolveLaunch(level, { direction: 'N', lane: 1 })).not.toThrow();
   });
 });
 
@@ -252,12 +396,13 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
     // orange's push was), settling at (4,3) BEFORE orange's onward push is
     // finally processed. Verified directly against the real engine, not assumed.
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: striker, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, hasCollision: true },
+      { type: 'MOVE_STEP', piece: striker, from: { row: 3, col: 4 }, to: { row: 4, col: 4 }, direction: 'S', hasCollision: true },
       {
         type: 'MOVE_STEP',
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 4, col: 4 },
         to: { row: 4, col: 5 },
+        direction: 'E',
         hasCollision: true,
       },
       {
@@ -265,6 +410,7 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
         piece: { color: 'green', fragility: 'cracked' },
         from: { row: 4, col: 4 },
         to: { row: 4, col: 3 },
+        direction: 'O',
         hasCollision: false,
       },
       {
@@ -272,7 +418,9 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
         piece: { color: 'orange', fragility: 'cracked' },
         from: { row: 4, col: 5 },
         to: { row: 4, col: 6 },
+        direction: 'E',
         hasCollision: false,
+        pushedByColor: 'green',
       },
     ]);
     expect(result.nextSites).toEqual([]);
@@ -309,6 +457,7 @@ describe('applyImpact: the struck defender\'s own displacement sees the striker 
         // stops AT that cell, rather than crossing a second edge and landing at
         // (0,7) (the bug: a full extra unobstructed lap past its own striker).
         to: { row: 0, col: 0 },
+        pushedByColor: 'brown',
       },
     ]);
   });
@@ -341,7 +490,13 @@ describe('a self-collision within the same cascade is now a real collision, not 
     // which pushed brown 1 cell to row2) -- for real, on the board -- BEFORE the
     // original orange's brown-driven wrap-around walk ever reaches that cell.
     expect(outcome.board.cells[5][2]).toBeNull(); // annihilated, not sitting there anymore
-    expect(outcome.events).toContainEqual({ type: 'ANNIHILATION', at: { row: 5, col: 2 }, color: 'orange' });
+    expect(outcome.events).toContainEqual({
+      type: 'ANNIHILATION',
+      at: { row: 5, col: 2 },
+      color: 'orange',
+      from: { row: 2, col: 2 },
+      direction: 'N',
+    });
     // The goal is never reached this way anymore -- no orange ever lands on row0.
     expect(outcome.board.cells[0][2]).toBeNull();
     expect(outcome.result).not.toBe('won');
