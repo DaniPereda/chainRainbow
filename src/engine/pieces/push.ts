@@ -125,7 +125,9 @@ export function applyMutualImpact(
   if (siteA.piece.color === siteB.piece.color) {
     return {
       board,
-      events: [{ type: 'ANNIHILATION', at: siteA.to, color: siteA.piece.color }],
+      events: [
+        { type: 'ANNIHILATION', at: siteA.to, color: siteA.piece.color, from: siteA.from, direction: siteA.direction },
+      ],
       nextSites: [],
     };
   }
@@ -221,7 +223,9 @@ export function applyImpact(
     const boardAfter = setPieceAt(board, site.to, null);
     return {
       board: boardAfter,
-      events: [{ type: 'ANNIHILATION', at: site.to, color: site.piece.color }],
+      events: [
+        { type: 'ANNIHILATION', at: site.to, color: site.piece.color, from: site.from, direction: site.direction },
+      ],
       nextSites: [],
     };
   }

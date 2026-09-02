@@ -39,14 +39,16 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
     const handleImpact: ImpactHandler = vi.fn();
     const handleMutualImpact: MutualImpactHandler = (b, a) => ({
       board: b,
-      events: [{ type: 'ANNIHILATION', at: a.to, color: 'green' }],
+      events: [{ type: 'ANNIHILATION', at: a.to, color: 'green', from: a.from, direction: a.direction }],
       nextSites: [],
     });
 
     const result = resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact);
 
     expect(handleImpact).not.toHaveBeenCalled();
-    expect(result.events).toEqual([{ type: 'ANNIHILATION', at: { row: 0, col: 4 }, color: 'green' }]);
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 0, col: 4 }, color: 'green', from: siteA.from, direction: siteA.direction },
+    ]);
   });
 
   it('resolves 3 coinciding sites as sequential pairwise collisions, in queue order (research.md, Decisión 4)', () => {

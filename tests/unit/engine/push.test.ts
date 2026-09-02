@@ -25,7 +25,9 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     const result = applyImpact(board, { piece, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
 
     expect(result.board.cells[0][1]).toBeNull();
-    expect(result.events).toEqual([{ type: 'ANNIHILATION', at: { row: 0, col: 1 }, color: 'green' }]);
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 0, col: 1 }, color: 'green', from: { row: 0, col: 0 }, direction: 'E' },
+    ]);
     expect(result.nextSites).toEqual([]);
   });
 
@@ -127,7 +129,9 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
 
     const result = applyMutualImpact(board, siteA, siteB);
 
-    expect(result.events).toEqual([{ type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green' }]);
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green', from: { row: 2, col: 3 }, direction: 'E' },
+    ]);
     expect(result.nextSites).toEqual([]);
   });
 
@@ -353,7 +357,13 @@ describe('a self-collision within the same cascade is now a real collision, not 
     // which pushed brown 1 cell to row2) -- for real, on the board -- BEFORE the
     // original orange's brown-driven wrap-around walk ever reaches that cell.
     expect(outcome.board.cells[5][2]).toBeNull(); // annihilated, not sitting there anymore
-    expect(outcome.events).toContainEqual({ type: 'ANNIHILATION', at: { row: 5, col: 2 }, color: 'orange' });
+    expect(outcome.events).toContainEqual({
+      type: 'ANNIHILATION',
+      at: { row: 5, col: 2 },
+      color: 'orange',
+      from: { row: 2, col: 2 },
+      direction: 'N',
+    });
     // The goal is never reached this way anymore -- no orange ever lands on row0.
     expect(outcome.board.cells[0][2]).toBeNull();
     expect(outcome.result).not.toBe('won');

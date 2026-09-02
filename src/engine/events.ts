@@ -33,6 +33,18 @@ export type AnnihilationEvent = {
   type: 'ANNIHILATION';
   at: Coordinate;
   color: PieceColor;
+  // Where the annihilated piece travelled from, and the direction it travelled
+  // in -- same purpose as MoveStepEvent's own fields, and for the same reason:
+  // a real rendering bug found by the user, where a same-color collision was
+  // animated as popping into existence directly at `at` and fading there,
+  // never visibly travelling from wherever it actually came from. For a
+  // MUTUAL same-color collision (applyMutualImpact, two in-flight trajectories
+  // meeting head-on) there are genuinely two converging pieces but only one
+  // event -- this records one side of it (arbitrarily siteA's), a deliberate
+  // simplification: showing both sides at once is a separate, bigger visual
+  // question this fix doesn't take on.
+  from: Coordinate;
+  direction: Direction;
 };
 
 export type ChainEvent = MoveStepEvent | AnnihilationEvent;

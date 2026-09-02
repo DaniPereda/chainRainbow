@@ -82,7 +82,13 @@ describe('replayEvent: applies one ChainEvent to a Board with the same write sem
   it('an ANNIHILATION clears its cell', () => {
     const board = setPieceAt(createBoard(), { row: 3, col: 3 }, { color: 'orange', fragility: 'cracked' });
 
-    const result = replayEvent(board, { type: 'ANNIHILATION', at: { row: 3, col: 3 }, color: 'orange' });
+    const result = replayEvent(board, {
+      type: 'ANNIHILATION',
+      at: { row: 3, col: 3 },
+      color: 'orange',
+      from: { row: 3, col: 0 },
+      direction: 'E',
+    });
 
     expect(result.cells[3][3]).toBeNull();
   });
@@ -122,6 +128,57 @@ describe('replayEvent: applies one ChainEvent to a Board with the same write sem
     const replayed = outcome.events.reduce(replayEvent, level.board);
 
     expect(replayed).toEqual(outcome.board);
+  });
+});
+
+describe('AnnihilationEvent carries from/direction so a same-color collision can be animated travelling, not popping into existence (real bug reported by the user)', () => {
+  it('a hand-launched piece hitting a same-color defender records where it travelled from', () => {
+    // Exact scenario reported: a green launch whose very first impact is
+    // another green -- before this fix, the animation spawned the temp circle
+    // directly at the impact cell (or, for a first event, at the board edge
+    // with no glide) and just faded it there, never visibly travelling.
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'green' }],
+      hand: ['green'],
+      goal: { at: { row: 0, col: 0 }, color: 'orange' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 4, col: 3 }, color: 'green', from: { row: 4, col: 2 }, direction: 'E' },
+    ]);
+
+    // The same cellPath machinery that animates a MOVE_STEP works identically
+    // here -- from and at are a real 1-cell displacement, so this reduces to
+    // a single-element path exactly like any other short push.
+    const annihilation = outcome.events[0];
+    if (annihilation.type !== 'ANNIHILATION') throw new Error('expected an ANNIHILATION event');
+    expect(cellPath(annihilation.from, annihilation.at, annihilation.direction, 8)).toEqual([{ row: 4, col: 3 }]);
+  });
+
+  it('a same-color collision reached after a longer walk records the real starting point, not the impact cell', () => {
+    // Brown hits green at (4,2); green (now cracked) travels using BROWN's own
+    // stepUntilBlocked mechanic (not its own fixed distance) heading east, and
+    // hits a SECOND green sitting at (4,6) -- a real multi-cell walk ending in
+    // annihilation. `from` must be (4,2) (where the walk actually started),
+    // never `at` again.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 2 }, color: 'green' },
+        { at: { row: 4, col: 6 }, color: 'green' },
+      ],
+      hand: ['brown'],
+      goal: { at: { row: 0, col: 0 }, color: 'orange' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.events[1]).toEqual({
+      type: 'ANNIHILATION',
+      at: { row: 4, col: 6 },
+      color: 'green',
+      from: { row: 4, col: 2 },
+      direction: 'E',
+    });
   });
 });
 
@@ -173,7 +230,9 @@ describe('isRedSplitTrigger: identifies the exact MOVE_STEP that triggers a red 
         hasCollision: true,
       }),
     ).toBe(false);
-    expect(isRedSplitTrigger({ type: 'ANNIHILATION', at: { row: 0, col: 0 }, color: 'red' })).toBe(false);
+    expect(
+      isRedSplitTrigger({ type: 'ANNIHILATION', at: { row: 0, col: 0 }, color: 'red', from: { row: 0, col: 3 }, direction: 'O' }),
+    ).toBe(false);
   });
 });
 

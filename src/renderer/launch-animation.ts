@@ -201,8 +201,10 @@ export function pixelCenter(coord: Coordinate): { x: number; y: number } {
  * Reproduces `events` visually, one at a time and strictly in order (research.md,
  * Decisión 3 -- `EventLog` has no notion of two events happening "at once" today).
  * Each event gets a temporary `Phaser.GameObjects.Arc` (never a persistent
- * per-piece GameObject -- research.md, Decisión 1): a `MOVE_STEP` tweens it from
- * `from` to `to`; an `ANNIHILATION` fades it out in place. Between events, the
+ * per-piece GameObject -- research.md, Decisión 1): a `MOVE_STEP` walks it from
+ * `from` to `to`, one cell at a time; an `ANNIHILATION` walks it the same way
+ * from `from` to `at`, then fades it out there -- both are "a piece travels
+ * somewhere," they only differ in what happens on arrival. Between events, the
  * static layer (`boardGraphics`) is redrawn via `drawBoard` against a board copy
  * advanced with `replayEvent` -- since that reducer only ever writes `to`/`at`
  * (never clears `from`, see its own comment), the static layer is already
@@ -240,7 +242,7 @@ export function playEventLog(
     const isFirstEvent = index === 0;
     const event = events[index++];
     const piece = event.type === 'MOVE_STEP' ? event.piece : { color: event.color, fragility: 'new' as const };
-    const from = event.type === 'MOVE_STEP' ? event.from : event.at;
+    const from = event.from;
 
     drawBoard(boardGraphics, board, goal);
 
@@ -266,10 +268,49 @@ export function playEventLog(
       playNext();
     };
 
+    // Walks `temp` through `path` one cell at a time, each taking exactly
+    // STEP_DURATION_MS -- the SAME per-cell speed regardless of how many
+    // cells this particular move covers (a 1-cell push already reduces to
+    // exactly one such tween). A wrap hop snaps instantly instead of sliding
+    // across the whole board. Shared between a normal MOVE_STEP and an
+    // ANNIHILATION -- both are "a piece travels from `from` to some cell",
+    // they only differ in what happens once it arrives (settle vs fade).
+    const walkPath = (path: Coordinate[], onArrive: () => void): void => {
+      const stepThrough = (index: number, from: Coordinate): void => {
+        if (index >= path.length) {
+          onArrive();
+          return;
+        }
+        const cell = path[index];
+        const pixel = pixelCenter(cell);
+        if (isWrapHop(from, cell)) {
+          temp.x = boardGraphics.x + pixel.x;
+          temp.y = boardGraphics.y + pixel.y;
+          stepThrough(index + 1, cell);
+          return;
+        }
+        scene.tweens.add({
+          targets: temp,
+          x: boardGraphics.x + pixel.x,
+          y: boardGraphics.y + pixel.y,
+          duration: STEP_DURATION_MS,
+          onComplete: () => stepThrough(index + 1, cell),
+        });
+      };
+      stepThrough(0, event.from);
+    };
+
     const runEvent = (): void => {
       if (event.type === 'ANNIHILATION') {
         playImpactSound();
-        scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
+        // Real bug found by the user: this used to fade `temp` out right where
+        // it spawned, never visibly travelling to `at` first -- a same-color
+        // collision looked like the piece popped into existence already
+        // annihilating, instead of arriving there like any other impact.
+        const path = cellPath(event.from, event.at, event.direction, board.size);
+        walkPath(path, () => {
+          scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
+        });
         return;
       }
 
@@ -282,35 +323,8 @@ export function playEventLog(
         if (isRedSplit) playSplitSound();
         else if (event.hasCollision) playImpactSound();
 
-        // Walk the real path one cell at a time, each taking exactly
-        // STEP_DURATION_MS -- the SAME per-cell speed regardless of how many
-        // cells this particular move covers (a 1-cell green push already
-        // reduces to exactly one such tween, unchanged from before). A wrap
-        // hop snaps instantly instead of sliding across the whole board.
         const path = cellPath(event.from, event.to, event.direction, board.size);
-
-        const stepThrough = (index: number, from: Coordinate): void => {
-          if (index >= path.length) {
-            finish();
-            return;
-          }
-          const cell = path[index];
-          const pixel = pixelCenter(cell);
-          if (isWrapHop(from, cell)) {
-            temp.x = boardGraphics.x + pixel.x;
-            temp.y = boardGraphics.y + pixel.y;
-            stepThrough(index + 1, cell);
-            return;
-          }
-          scene.tweens.add({
-            targets: temp,
-            x: boardGraphics.x + pixel.x,
-            y: boardGraphics.y + pixel.y,
-            duration: STEP_DURATION_MS,
-            onComplete: () => stepThrough(index + 1, cell),
-          });
-        };
-        stepThrough(0, event.from);
+        walkPath(path, finish);
         return;
       }
 
@@ -358,7 +372,7 @@ export function playEventLog(
       });
     };
 
-    if (isFirstEvent && event.type === 'MOVE_STEP') {
+    if (isFirstEvent) {
       const fromPixel = pixelCenter(event.from);
       scene.tweens.add({
         targets: temp,
