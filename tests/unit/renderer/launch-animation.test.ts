@@ -348,6 +348,43 @@ describe('computeEventParents: finds where trajectories really fork, so they can
     //     child of [1] specifically, not of the split or of [2].
     expect(parents).toEqual([null, 0, 0, 1]);
   });
+
+  it('groups a mutual in-flight collision\'s resulting trajectories as siblings, falling back to the immediately preceding event instead of an unconditional second root (real bug reported by the user: pieces near an unrelated part of the board animating from the very first instant of the launch)', () => {
+    // A red split into a brown east branch (hits orange, which walks east) and
+    // a brown west branch (hits red, which walks west) -- the two walks meet
+    // and mutually collide at (4,0), a cell NEITHER of them ever "arrives at"
+    // as its own recorded event (a mutual collision is never itself settled,
+    // only continued from or split at -- push.ts's `strikeMutualSide`). Since
+    // the mutual defender's color is literally 'red', it triggers the SAME
+    // split mechanism a real red striker would, so the meeting point produces
+    // THREE simultaneous results, not two: the orange side splits into N/S
+    // branches, and the red side continues onward using orange's own push
+    // mechanism. Verified against the real engine before being fixed as an
+    // expectation here.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 4 }, color: 'brown' },
+        { at: { row: 4, col: 5 }, color: 'orange' },
+        { at: { row: 4, col: 3 }, color: 'red' },
+      ],
+      hand: ['red'],
+      goal: { at: { row: 0, col: 0 }, color: 'orange' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
+
+    expect(outcome.events).toHaveLength(6);
+    const parents = computeEventParents(outcome.events);
+    // [0] red settles at the split point (root, no parent).
+    // [1]/[2] brown's east/west branches -- real siblings of [0], per the
+    //     `to`-match rule (unaffected by this fix).
+    // [3]/[4]/[5] orange-N, orange-S, red -- all share `from: (4,0)`, the
+    //     mutual collision's own meeting point, which nothing before them
+    //     ever recorded arriving at. All three must share the SAME parent
+    //     (siblings, not one waiting on another), falling back to [2] -- the
+    //     last event actually recorded before this group -- rather than any
+    //     of them becoming a second, unconditional root.
+    expect(parents).toEqual([null, 0, 0, 2, 2, 2]);
+  });
 });
 
 describe('isWrapHop: detects a single step that crosses the board edge', () => {

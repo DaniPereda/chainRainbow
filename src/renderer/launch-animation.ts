@@ -104,6 +104,26 @@ export function cellPath(from: Coordinate, to: Coordinate, direction: Direction,
 }
 
 /**
+ * Whether `coord` is a genuine board cell (both axes within `[0, size)`) --
+ * mirrors `isInBounds` (board.ts), duplicated deliberately rather than
+ * imported (Principle I, same precedent as `entryCoordinate`'s own comment).
+ * A launch's real `event.from` (`step(hitAt, opposite(direction))`,
+ * resolve-launch.ts) is ONE CELL BEHIND its first impact -- ordinarily still a
+ * real cell, but `step` deliberately never wraps, so when the impact happens
+ * on the very first cell of the lane (an immediate hit, nothing travelled
+ * first), the cell "behind" it falls off the board entirely instead of
+ * reappearing on the far edge. Used to recognize that case so the entry glide
+ * is skipped rather than fed an unreachable off-board target -- a real bug
+ * reported by the user: `cellPath` (below), stepping toward a target it can
+ * never land on, ran its full `size*3` cap before giving up, visibly circling
+ * the ENTIRE board three times before the piece's first real impact ever
+ * played.
+ */
+function isOnBoard(coord: Coordinate, size: number): boolean {
+  return coord.row >= 0 && coord.row < size && coord.col >= 0 && coord.col < size;
+}
+
+/**
  * Whether the single step from `from` to `to` crosses the board's edge (wraps
  * around) rather than moving to a literal neighboring cell -- a real same-
  * direction single step always changes exactly one axis by 1; anything larger
@@ -226,17 +246,68 @@ export function pixelCenter(coord: Coordinate): { x: number; y: number } {
  */
 export function computeEventParents(events: EventLog): (number | null)[] {
   const parents: (number | null)[] = events.map(() => null);
-  for (let j = 1; j < events.length; j++) {
-    const targetFrom = events[j].from;
-    for (let i = j - 1; i >= 0; i--) {
-      const candidate = events[i];
-      if (candidate.type !== 'MOVE_STEP') continue;
-      if (candidate.to.row === targetFrom.row && candidate.to.col === targetFrom.col) {
-        parents[j] = i;
-        break;
+
+  // The first (earliest-indexed) event to originate at each distinct `from`
+  // cell -- every OTHER event sharing that exact cell was born at the same
+  // instant as it, a SIBLING, regardless of whether any earlier event's `to`
+  // ever matches it. A red split's two branches are one case of this (their
+  // shared parent's `to` DOES match, found below) -- but a mutual in-flight
+  // collision's resulting trajectories (`applyMutualImpact`/`strikeMutualSide`,
+  // push.ts) are the other: two REAL trajectories can converge and meet at a
+  // cell that neither of them ever "arrives at" as its own recorded event (the
+  // meeting point is never settled, only continued from or split at), so nothing
+  // in the log ever has a `to` equal to that meeting cell -- yet two or three
+  // resulting events can still all share it as their own `from`. Grouping by
+  // `from` FIRST is what lets those be recognized as siblings at all, instead
+  // of each independently failing to find a parent.
+  const groupLeader: number[] = events.map(() => -1);
+  for (let j = 0; j < events.length; j++) {
+    if (groupLeader[j] !== -1) continue;
+    groupLeader[j] = j;
+    for (let k = j + 1; k < events.length; k++) {
+      if (
+        groupLeader[k] === -1 &&
+        events[k].from.row === events[j].from.row &&
+        events[k].from.col === events[j].from.col
+      ) {
+        groupLeader[k] = j;
       }
     }
   }
+
+  for (let j = 1; j < events.length; j++) {
+    if (groupLeader[j] !== j) {
+      // A follower: born at the same instant as its group's leader, so it
+      // depends on exactly the same predecessor the leader does (computed
+      // below, since the leader's own index is always < j).
+      parents[j] = parents[groupLeader[j]];
+      continue;
+    }
+
+    let found = false;
+    for (let i = j - 1; i >= 0; i--) {
+      const candidate = events[i];
+      if (candidate.type !== 'MOVE_STEP') continue;
+      if (candidate.to.row === events[j].from.row && candidate.to.col === events[j].from.col) {
+        parents[j] = i;
+        found = true;
+        break;
+      }
+    }
+    // No earlier event ever arrived here -- a mutual collision's meeting
+    // point, never itself recorded as an event (see above). Falling back to
+    // the immediately preceding event keeps this group causally AFTER
+    // everything already resolved so far in the log, instead of treating it
+    // as an unconditional second root that would otherwise start animating
+    // at the very instant the whole launch does (real bug reported by the
+    // user: pieces near an unrelated part of the board visibly moving while
+    // the actually-launched piece was still only partway through its own,
+    // entirely separate, path).
+    if (!found) {
+      parents[j] = j - 1;
+    }
+  }
+
   return parents;
 }
 
@@ -346,11 +417,22 @@ export function playEventLog(
     // Walks `temp` through `path` one cell at a time, each taking exactly
     // STEP_DURATION_MS -- the SAME per-cell speed regardless of how many
     // cells this particular move covers (a 1-cell push already reduces to
-    // exactly one such tween). A wrap hop snaps instantly instead of sliding
-    // across the whole board. Shared between a normal MOVE_STEP and an
-    // ANNIHILATION -- both are "a piece travels from `from` to some cell",
-    // they only differ in what happens once it arrives (settle vs fade).
-    const walkPath = (path: Coordinate[], onArrive: () => void): void => {
+    // exactly one such tween), and regardless of whether a given cell is a
+    // normal step or a wrap hop: there's still no continuous pixel path
+    // across a wrap, so it still snaps instead of sliding across the whole
+    // board, but only after spending its own STEP_DURATION_MS on a deferred
+    // timer instead of repositioning synchronously (real bug reported by the
+    // user: a synchronous snap could finish inside the very same tick that
+    // created `temp`, before Phaser ever rendered a frame of it -- so a step
+    // that was ENTIRELY a wrap hop, start to finish, was never actually seen
+    // at all, even though it settled correctly). `startFrom` is parameterized
+    // (rather than always `event.from`) so this same walker can also animate
+    // the entry glide -- from the board's own edge (`entryCoordinate`) to
+    // `event.from` -- at this identical speed. Shared between a normal
+    // MOVE_STEP and an ANNIHILATION -- both are "a piece travels from `from`
+    // to some cell", they only differ in what happens once it arrives (settle
+    // vs fade).
+    const walkPath = (path: Coordinate[], startFrom: Coordinate, onArrive: () => void): void => {
       const stepThrough = (index: number, from: Coordinate): void => {
         if (index >= path.length) {
           onArrive();
@@ -359,9 +441,11 @@ export function playEventLog(
         const cell = path[index];
         const pixel = pixelCenter(cell);
         if (isWrapHop(from, cell)) {
-          temp.x = boardGraphics.x + pixel.x;
-          temp.y = boardGraphics.y + pixel.y;
-          stepThrough(index + 1, cell);
+          scene.time.delayedCall(STEP_DURATION_MS, () => {
+            temp.x = boardGraphics.x + pixel.x;
+            temp.y = boardGraphics.y + pixel.y;
+            stepThrough(index + 1, cell);
+          });
           return;
         }
         scene.tweens.add({
@@ -372,7 +456,7 @@ export function playEventLog(
           onComplete: () => stepThrough(index + 1, cell),
         });
       };
-      stepThrough(0, event.from);
+      stepThrough(0, startFrom);
     };
 
     const runEvent = (): void => {
@@ -383,7 +467,7 @@ export function playEventLog(
         // collision looked like the piece popped into existence already
         // annihilating, instead of arriving there like any other impact.
         const path = cellPath(event.from, event.at, event.direction, board.size);
-        walkPath(path, () => {
+        walkPath(path, event.from, () => {
           scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
         });
         return;
@@ -399,7 +483,7 @@ export function playEventLog(
         else if (event.hasCollision) playImpactSound();
 
         const path = cellPath(event.from, event.to, event.direction, board.size);
-        walkPath(path, finish);
+        walkPath(path, event.from, finish);
         return;
       }
 
@@ -410,7 +494,13 @@ export function playEventLog(
       // jump (moving along a row) bulges up (a `y` offset); a vertical jump
       // (moving along a column) bulges right (an `x` offset) -- offsetting `y`
       // for a vertical jump would just look like moving faster along the same
-      // line, not an arc (second round of playtest refinement).
+      // line, not an arc (second round of playtest refinement). Each half of
+      // the arc (spawn->midpoint, midpoint->end) takes a FULL STEP_DURATION_MS,
+      // not half of it -- this covers 2 real cells, so at the SAME per-cell
+      // speed as every other move it takes 2*STEP_DURATION_MS total, not
+      // STEP_DURATION_MS (real bug reported by the user: the jump used to
+      // cover its 2 cells in the same total time a 1-cell move takes,
+      // effectively moving twice as fast per cell as anything else).
       if (isRedSplit) playSplitSound();
       else playJumpSound();
       const mid = pixelCenter(midpoint);
@@ -425,21 +515,21 @@ export function playEventLog(
         targets: marker,
         scale: 1,
         alpha: 0,
-        duration: STEP_DURATION_MS,
+        duration: STEP_DURATION_MS * 2,
         onComplete: () => marker.destroy(),
       });
       scene.tweens.add({
         targets: temp,
         x: midX,
         y: midY,
-        duration: STEP_DURATION_MS / 2,
+        duration: STEP_DURATION_MS,
         ease: 'Sine.easeOut',
         onComplete: () => {
           scene.tweens.add({
             targets: temp,
             x: boardGraphics.x + end.x,
             y: boardGraphics.y + end.y,
-            duration: STEP_DURATION_MS / 2,
+            duration: STEP_DURATION_MS,
             ease: 'Sine.easeIn',
             onComplete: finish,
           });
@@ -447,15 +537,21 @@ export function playEventLog(
       });
     };
 
-    if (isFirstEvent) {
-      const fromPixel = pixelCenter(event.from);
-      scene.tweens.add({
-        targets: temp,
-        x: boardGraphics.x + fromPixel.x,
-        y: boardGraphics.y + fromPixel.y,
-        duration: STEP_DURATION_MS,
-        onComplete: runEvent,
-      });
+    if (
+      isFirstEvent &&
+      isOnBoard(event.from, board.size) &&
+      (spawnAt.row !== event.from.row || spawnAt.col !== event.from.col)
+    ) {
+      // Same per-cell walk, same constant speed, as every other move -- covers
+      // the edge-to-impact glide one cell at a time instead of a single
+      // fixed-duration tween spanning however many cells happen to separate
+      // them (real bug reported by the user: a launch with a long empty run
+      // before its first impact covered far more distance in the same 450ms
+      // than a launch with a short one, making otherwise-identical launches
+      // look like they moved at very different speeds depending only on lane
+      // length, not on direction itself).
+      const entryPath = cellPath(spawnAt, event.from, launch.direction, board.size);
+      walkPath(entryPath, spawnAt, runEvent);
       return;
     }
 
