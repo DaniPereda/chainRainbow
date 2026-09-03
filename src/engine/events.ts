@@ -28,6 +28,20 @@ export type MoveStepEvent = {
   // branch's fixed 1-cell first hop out of a red split -- FR-001 of
   // 009-red-piece, never governed by PUSH_STRATEGY at all).
   pushedByColor?: PieceColor;
+  // Where this piece was REALLY travelling from/in before landing at `from` --
+  // present only when `from`/`direction` alone can't reconstruct that (a
+  // brown-driven walk in flight redirected by a mutual collision,
+  // `strikeMutualSide`, push.ts: the walk's true origin, several invisible
+  // cells earlier, is discarded there in favor of the meeting cell, since
+  // that's genuinely where THIS event's own hop begins). Purely a rendering
+  // hint (`launch-animation.ts` uses it to glide in from the real origin
+  // before this event's own animation, the same way the very first event of
+  // a launch glides in from the board's edge) -- never read by the engine
+  // itself, never affects `replayEvent`'s board write. Real bug reported by
+  // the user: without this, a piece struck mid-walk by a mutual collision
+  // simply popped into existence at the meeting cell, the whole walk that
+  // led there never visible at all.
+  visualOrigin?: { from: Coordinate; direction: Direction };
 };
 
 export type AnnihilationEvent = {
@@ -46,6 +60,8 @@ export type AnnihilationEvent = {
   // question this fix doesn't take on.
   from: Coordinate;
   direction: Direction;
+  // See MoveStepEvent's own comment -- same rendering hint, same reason.
+  visualOrigin?: { from: Coordinate; direction: Direction };
 };
 
 export type ChainEvent = MoveStepEvent | AnnihilationEvent;
@@ -73,6 +89,11 @@ export type ImpactSite = {
   // destination is always the right thing to compare) or any already-final
   // `to`.
   walking?: { edgeCrossings: number };
+  // See MoveStepEvent's own comment -- carried forward unchanged through every
+  // requeue of a walking site (the `{...site, to, walking}` spread in
+  // applyImpact/push.ts never touches it), and copied onto whatever
+  // MOVE_STEP/ANNIHILATION event this site eventually produces.
+  visualOrigin?: { from: Coordinate; direction: Direction };
 };
 
 export type ImpactHandler = (

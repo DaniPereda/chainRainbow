@@ -87,11 +87,12 @@ function settleOrVanish(
   direction: Direction,
   hasCollision: boolean,
   pushedByColor: PieceColor | undefined,
+  visualOrigin?: { from: Coordinate; direction: Direction },
 ): { board: Board; events: ChainEvent[] } {
   const boardAfter = piece.fragility === 'broken' ? board : setPieceAt(board, to, piece);
   return {
     board: boardAfter,
-    events: [{ type: 'MOVE_STEP', piece, from, to, direction, hasCollision, pushedByColor }],
+    events: [{ type: 'MOVE_STEP', piece, from, to, direction, hasCollision, pushedByColor, visualOrigin }],
   };
 }
 
@@ -122,6 +123,17 @@ function settleOrVanish(
  * reasoning as `applyImpact`'s equivalent branch (021-cellwise-collision-
  * resolution): it's the only mechanism that can genuinely cross paths with
  * another in-flight trajectory before reaching its own final cell.
+ *
+ * `hitSite.to` (the meeting cell) becomes the new `from` for whatever this
+ * side goes on to do next -- correct for the ENGINE's own purposes (that's
+ * genuinely where this next hop starts), but it discards `hitSite`'s own
+ * `from`/`direction`, which for a walking site is the walk's TRUE origin,
+ * possibly several invisible cells earlier (found as a real bug reported by
+ * the user: the piece just popped into existence at the meeting cell, the
+ * whole walk that led there never shown at all). `visualOrigin` preserves
+ * that for rendering before it's lost -- `hitSite`'s own, if it already had
+ * one (an earlier mutual collision already redirected it once), otherwise
+ * freshly captured from `hitSite.from`/`direction` here.
  */
 function strikeMutualSide(
   board: Board,
@@ -137,9 +149,16 @@ function strikeMutualSide(
     return { board, events: [], nextSite: null };
   }
   const hit: Piece = { color: hitSite.piece.color, fragility: advance(hitSite.piece.fragility) };
+  const visualOrigin = hitSite.visualOrigin ?? { from: hitSite.from, direction: hitSite.direction };
 
   if (strikerSite.piece.color === 'red') {
-    const { board: finalBoard, events } = resolveRedSplit(board, hit, hitSite.to, strikerSite.direction);
+    const { board: finalBoard, events } = resolveRedSplit(
+      board,
+      hit,
+      hitSite.to,
+      strikerSite.direction,
+      visualOrigin,
+    );
     return { board: finalBoard, events, nextSite: null };
   }
 
@@ -155,6 +174,7 @@ function strikeMutualSide(
         to,
         pushedByColor: 'brown',
         walking: { edgeCrossings },
+        visualOrigin,
       },
     };
   }
@@ -163,7 +183,14 @@ function strikeMutualSide(
   return {
     board,
     events: [],
-    nextSite: { piece: hit, direction: strikerSite.direction, from: hitSite.to, to, pushedByColor: strikerSite.piece.color },
+    nextSite: {
+      piece: hit,
+      direction: strikerSite.direction,
+      from: hitSite.to,
+      to,
+      pushedByColor: strikerSite.piece.color,
+      visualOrigin,
+    },
   };
 }
 
@@ -190,7 +217,14 @@ export function applyMutualImpact(
     return {
       board,
       events: [
-        { type: 'ANNIHILATION', at: siteA.to, color: siteA.piece.color, from: siteA.from, direction: siteA.direction },
+        {
+          type: 'ANNIHILATION',
+          at: siteA.to,
+          color: siteA.piece.color,
+          from: siteA.from,
+          direction: siteA.direction,
+          visualOrigin: siteA.visualOrigin,
+        },
       ],
       nextSites: [],
     };
@@ -224,14 +258,15 @@ function resolveRedSplit(
   hitDefender: Piece,
   position: Coordinate,
   direction: Direction,
+  visualOrigin?: { from: Coordinate; direction: Direction },
 ): { board: Board; events: ChainEvent[] } {
   const [first, second] = PERPENDICULAR_DIRECTIONS[direction];
 
   return resolveChain(
     board,
     [
-      { piece: hitDefender, direction: first, from: position, to: stepBy(position, first, 1) },
-      { piece: hitDefender, direction: second, from: position, to: stepBy(position, second, 1) },
+      { piece: hitDefender, direction: first, from: position, to: stepBy(position, first, 1), visualOrigin },
+      { piece: hitDefender, direction: second, from: position, to: stepBy(position, second, 1), visualOrigin },
     ],
     applyImpact,
     applyMutualImpact,
@@ -277,6 +312,7 @@ export function applyImpact(
       site.direction,
       false,
       site.pushedByColor,
+      site.visualOrigin,
     );
     return { board: boardAfter, events, nextSites: [] };
   }
@@ -286,7 +322,14 @@ export function applyImpact(
     return {
       board: boardAfter,
       events: [
-        { type: 'ANNIHILATION', at: site.to, color: site.piece.color, from: site.from, direction: site.direction },
+        {
+          type: 'ANNIHILATION',
+          at: site.to,
+          color: site.piece.color,
+          from: site.from,
+          direction: site.direction,
+          visualOrigin: site.visualOrigin,
+        },
       ],
       nextSites: [],
     };
@@ -313,6 +356,7 @@ export function applyImpact(
     site.direction,
     true,
     site.pushedByColor,
+    site.visualOrigin,
   );
 
   if (site.piece.color === 'red') {
