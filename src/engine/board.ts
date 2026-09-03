@@ -1,6 +1,6 @@
 export type Coordinate = { row: number; col: number };
 
-export type PieceColor = 'green' | 'orange' | 'brown' | 'red';
+export type PieceColor = 'green' | 'orange' | 'brown' | 'red' | 'black';
 
 export type Fragility = 'new' | 'cracked' | 'broken';
 
