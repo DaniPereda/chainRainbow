@@ -275,12 +275,30 @@ export function computeEventParents(events: EventLog): (number | null)[] {
     }
   }
 
+  // Whether a leader's own `parents[]` entry came from a genuine `to` match
+  // (false) or from the "no match, fall back" case below (true) -- including
+  // index 0 itself, which never has a possible predecessor at all and is
+  // treated as orphaned from the start. Threaded through so a RUN of
+  // consecutive orphaned leaders (e.g. a line clear's many swept, unrelated
+  // cells -- 023-black-piece-line-clear, none of them share a `from` with
+  // each other, so the `from`-grouping above can't catch them as siblings)
+  // collapses into ONE shared-parent group instead of chaining each one onto
+  // the previous, real bug found live: four unrelated pieces swept by the
+  // same line clear animated one after another, each waiting for the last,
+  // instead of together -- and each `parents[j] = j - 1` chain, followed
+  // strictly, would have been correct only for a genuine invisible walk
+  // (the case this fallback was originally built for), not for several
+  // already-stationary pieces removed by one single, instantaneous cause.
+  const wasOrphan: boolean[] = events.map(() => false);
+  wasOrphan[0] = true;
+
   for (let j = 1; j < events.length; j++) {
     if (groupLeader[j] !== j) {
       // A follower: born at the same instant as its group's leader, so it
       // depends on exactly the same predecessor the leader does (computed
       // below, since the leader's own index is always < j).
       parents[j] = parents[groupLeader[j]];
+      wasOrphan[j] = wasOrphan[groupLeader[j]];
       continue;
     }
 
@@ -294,18 +312,24 @@ export function computeEventParents(events: EventLog): (number | null)[] {
         break;
       }
     }
-    // No earlier event ever arrived here -- a mutual collision's meeting
-    // point, never itself recorded as an event (see above). Falling back to
-    // the immediately preceding event keeps this group causally AFTER
-    // everything already resolved so far in the log, instead of treating it
-    // as an unconditional second root that would otherwise start animating
-    // at the very instant the whole launch does (real bug reported by the
-    // user: pieces near an unrelated part of the board visibly moving while
-    // the actually-launched piece was still only partway through its own,
+    if (found) continue;
+
+    // No earlier event ever arrived here -- either a mutual collision's
+    // meeting point (never itself recorded as an event, see above), or one
+    // of several unrelated cells removed together by the same single-cause
+    // interaction (line clear). If the immediately preceding event was
+    // ITSELF one of these orphans, adopt its own parent instead of chaining
+    // onto it directly -- that's what makes a whole run of orphans siblings
+    // of each other (and of whatever real event precedes the run) rather
+    // than a serial chain. Falling back at all (rather than leaving this an
+    // unconditional root) keeps the group causally AFTER everything already
+    // resolved so far in the log, instead of starting to animate at the very
+    // instant the whole launch does (real bug reported by the user: pieces
+    // near an unrelated part of the board visibly moving while the
+    // actually-launched piece was still only partway through its own,
     // entirely separate, path).
-    if (!found) {
-      parents[j] = j - 1;
-    }
+    parents[j] = wasOrphan[j - 1] ? parents[j - 1] : j - 1;
+    wasOrphan[j] = true;
   }
 
   return parents;
@@ -471,6 +495,19 @@ export function playEventLog(
     const runEvent = (): void => {
       if (event.type === 'ANNIHILATION') {
         playImpactSound();
+        if (event.from.row === event.at.row && event.from.col === event.at.col) {
+          // No real travel to animate -- `from === at` by design for a piece
+          // swept by a line clear (023-black-piece-line-clear) that never
+          // moved at all. Real bug found live: feeding this to `cellPath`
+          // asked it to step AWAY from `at` and find its way back to it,
+          // which it can only ever do by looping all the way around the
+          // board (`current` never equals `to` until a full lap completes) --
+          // it walked a visible full lap before fading instead of just
+          // fading in place. Fading immediately is also simply the correct
+          // animation for zero real distance, independent of this bug.
+          scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
+          return;
+        }
         // Real bug found by the user: this used to fade `temp` out right where
         // it spawned, never visibly travelling to `at` first -- a same-color
         // collision looked like the piece popped into existence already
