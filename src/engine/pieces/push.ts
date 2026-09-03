@@ -34,7 +34,7 @@ type DisplacementStrategy = (
 
 const MAX_EDGE_CROSSINGS = 2;
 
-export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red'>, DisplacementStrategy> = {
+export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red' | 'black'>, DisplacementStrategy> = {
   green: (_board, _piece, position, direction) => stepBy(position, direction, 1),
   orange: (_board, _piece, position, direction) => stepBy(position, direction, 2),
   brown: (board, piece, position, direction) =>
@@ -73,6 +73,40 @@ const PERPENDICULAR_DIRECTIONS: Record<Direction, [Direction, Direction]> = {
   E: ['N', 'S'],
   O: ['N', 'S'],
 };
+
+/**
+ * The axis a line-clear (negro) affects is derived from the impact's own
+ * direction -- the exact same N/S-vs-E/O convention already established by
+ * red's own branching above (spec.md 009 FR-003), applied here to WHICH line
+ * gets cleared instead of to two new branch directions
+ * (023-black-piece-line-clear, spec.md FR-002/FR-003).
+ */
+function lineFromImpact(to: Coordinate, direction: Direction): { axis: 'row' | 'column'; index: number } {
+  return direction === 'N' || direction === 'S' ? { axis: 'column', index: to.col } : { axis: 'row', index: to.row };
+}
+
+/**
+ * Empties every occupied cell along one full row or column -- negro's own
+ * primitive (023-black-piece-line-clear, research.md Decisión 2: genuinely
+ * new, not expressible as MOVE_STEP + collision policy + repetition +
+ * branching -- no piece here travels from one cell to the next, several
+ * disappear in place at once). Pure and deterministic: scans in increasing
+ * index order so the resulting list of cleared cells -- and therefore the
+ * ANNIHILATION events built from it in `applyImpact` -- is always in the
+ * same order for the same board/line (Principle III).
+ */
+function clearLine(board: Board, axis: 'row' | 'column', index: number): { board: Board; clearedCells: Coordinate[] } {
+  const clearedCells: Coordinate[] = [];
+  let nextBoard = board;
+  for (let i = 0; i < board.size; i++) {
+    const coord: Coordinate = axis === 'row' ? { row: index, col: i } : { row: i, col: index };
+    if (getPieceAt(nextBoard, coord) !== null) {
+      clearedCells.push(coord);
+      nextBoard = setPieceAt(nextBoard, coord, null);
+    }
+  }
+  return { board: nextBoard, clearedCells };
+}
 
 /** The settle-or-vanish pattern every impact ends with: a piece occupies its
  * destination unless it's `'broken'` (FR-004), in which case it simply disappears
@@ -179,6 +213,17 @@ function strikeMutualSide(
     };
   }
 
+  if (strikerSite.piece.color === 'black') {
+    // Confirmed unreachable in practice (023-black-piece-line-clear,
+    // research.md Decisión 4): negro never produces a `nextSite` of its own
+    // (its interaction is always terminal, a line clear), so it can never
+    // become one of the two ALREADY-in-flight sides of a mutual collision --
+    // enforced here as an explicit invariant, same pattern as the "broken
+    // defender on a real board" check in `applyImpact` below, rather than
+    // silently widening `PUSH_STRATEGY`'s own type to a color it
+    // deliberately has no entry for.
+    throw new Error('invariant violated: black cannot be one side of a mutual collision');
+  }
   const to = PUSH_STRATEGY[strikerSite.piece.color](board, hit, hitSite.to, strikerSite.direction);
   return {
     board,
@@ -333,6 +378,68 @@ export function applyImpact(
       ],
       nextSites: [],
     };
+  }
+
+  if (defender.color === 'black' || site.piece.color === 'black') {
+    // Negro (either side, FR-002/FR-003) never pushes, splits, or continues --
+    // it clears the whole line instead. Checked here, right after the
+    // same-color rule and before ANY color-specific striker mechanic
+    // (including red's own split below) -- same priority tier as same-color,
+    // on purpose: research.md (023-black-piece-line-clear) Decisión 3
+    // confirms this mirrors the precedent already established by red itself
+    // yielding to the same-color rule (spec.md 009 FR-006), extended to
+    // negro's own universal defender-side rule. `site.direction` determines
+    // the axis regardless of which side is negro -- either it's negro's own
+    // travel direction (negro as attacker), or the real attacker's direction
+    // (negro as defender), exactly FR-002/FR-003's own convention.
+    //
+    // The triggering piece (`site.piece`) is swept away too, FR-004 -- it
+    // never actually gets written to `board` in this branch (unlike the
+    // generic different-color path below, which always settles the striker
+    // first), so `clearLine` only ever finds and removes REAL board pieces;
+    // the trigger's own disappearance is reported as one more ANNIHILATION,
+    // built separately from its own genuine from/direction.
+    //
+    // Each swept piece's own event uses `from === at` (FR-005: silent
+    // disappearance, no fabricated travel -- data-model.md Decisión 1) --
+    // none of them share a `from` with one another (each is its own cell),
+    // so `computeEventParents` can't group them as siblings the way it does
+    // a red split's two branches (which share one `from`). Its own orphan
+    // fallback handles this correctly (launch-animation.ts, generalized for
+    // this feature): consecutive events with no real causal match collapse
+    // into one shared-parent sibling group instead of chaining onto each
+    // other, so all four still animate together as one synchronized wipe.
+    //
+    // `triggerEvent` is listed FIRST, sweep events after -- not just
+    // presentation order. When this interaction genuinely is the very start
+    // of a hand launch (negro's own first hit, or another color's own first
+    // hit landing on a settled negro), `triggerEvent` is the one whose `from`
+    // can legitimately fall OFF the board (`resolve-launch.ts`'s own
+    // `step(hitAt, opposite(direction))`, never wrapped, for an impact right
+    // at the lane's own entry cell) -- exactly the case `playEventLog`'s
+    // `isFirstEvent` entry glide already exists to handle, but ONLY for
+    // whichever event ends up at index 0. Putting the sweep events first
+    // used to leave `triggerEvent` off-board with no glide protection at
+    // all -- a real bug found live (levels/2.json, orange sitting right at
+    // the lane's own entry point): its circle spawned and stayed rendered
+    // one cell outside the board.
+    const { axis, index } = lineFromImpact(site.to, site.direction);
+    const { board: clearedBoard, clearedCells } = clearLine(board, axis, index);
+    const triggerEvent: ChainEvent = {
+      type: 'ANNIHILATION',
+      at: site.to,
+      color: site.piece.color,
+      from: site.from,
+      direction: site.direction,
+      visualOrigin: site.visualOrigin,
+    };
+    const sweepEvents: ChainEvent[] = clearedCells.map((at) => {
+      const swept = getPieceAt(board, at);
+      /* c8 ignore next -- clearedCells only ever contains cells clearLine itself just found occupied */
+      if (swept === null) throw new Error('invariant violated: clearedCells cell was not occupied');
+      return { type: 'ANNIHILATION', at, color: swept.color, from: at, direction: site.direction };
+    });
+    return { board: clearedBoard, events: [triggerEvent, ...sweepEvents], nextSites: [] };
   }
 
   // The defender is about to be displaced by a different-color strike -- that's

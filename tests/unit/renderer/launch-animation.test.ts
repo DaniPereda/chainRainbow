@@ -385,6 +385,35 @@ describe('computeEventParents: finds where trajectories really fork, so they can
     //     of them becoming a second, unconditional root.
     expect(parents).toEqual([null, 0, 0, 2, 2, 2]);
   });
+
+  it('collapses a whole run of unrelated orphans (a line clear\'s many swept cells, 023-black-piece-line-clear) into ONE shared-parent sibling group instead of chaining each one onto the last (real bug found live: four unrelated pieces removed by the same clear animated one after another, each waiting for the previous one, instead of together)', () => {
+    // Negro launched east hits the first piece in its row (green at col 1) and
+    // clears the whole row: three swept ANNIHILATIONs (green, orange, brown --
+    // none of them share a `from` with each other, since each is `from === at`,
+    // its own real position -- no fabricated travel, data-model.md Decisión 1)
+    // plus the triggering black's own ANNIHILATION. Unlike a red split or a
+    // mutual collision, NONE of these four share a `from` with one another, so
+    // the `from`-grouping above can't catch them as siblings on its own -- this
+    // is exactly the case the orphan-run collapsing exists for.
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 1 }, color: 'green' },
+        { at: { row: 4, col: 5 }, color: 'orange' },
+        { at: { row: 4, col: 6 }, color: 'brown' },
+      ],
+      hand: ['black'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+
+    expect(outcome.events).toHaveLength(4);
+    const parents = computeEventParents(outcome.events);
+    // All four are roots -- none of them causally depends on any of the
+    // others finishing first, so `playEventLog` starts them all at the same
+    // instant (its own `roots` loop), matching how the engine actually
+    // resolves a line clear: one atomic sweep, not a sequence.
+    expect(parents).toEqual([null, null, null, null]);
+  });
 });
 
 describe('isWrapHop: detects a single step that crosses the board edge', () => {

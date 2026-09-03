@@ -9,6 +9,11 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
   orange: 0xe67e22,
   brown: 0x8d6e63,
   red: 0xe74c3c,
+  // Not literal black (0x000000) -- the board background is already a near-black
+  // 0x1e1e1e (main.ts), so true black would be nearly invisible. A dark slate
+  // reads as "black" against the other saturated colors while staying visible
+  // (023-black-piece-line-clear).
+  black: 0x4b4b55,
 };
 
 const GRID_LINE_COLOR = 0x444444;
