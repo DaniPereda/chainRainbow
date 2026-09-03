@@ -402,24 +402,29 @@ export function applyImpact(
     //
     // Each swept piece's own event uses `from === at` (FR-005: silent
     // disappearance, no fabricated travel -- data-model.md Decisión 1) --
-    // known simplification for this first iteration: since every swept cell
-    // has a DIFFERENT `from`, `computeEventParents` (launch-animation.ts)
-    // can't group them as siblings the way it does a red split's two
-    // branches (which share one `from`), so each becomes its own
-    // independent root and all animate starting at the same instant. That's
-    // still an honest, correct animation of a real synchronized wipe -- just
-    // not yet integrated into the parent/child timing model the way a
-    // shared-origin fork is. Left as-is per this feature's own scope
-    // (engine + minimal renderer integration, plan.md); revisit only if
-    // playtesting shows it looks wrong.
+    // none of them share a `from` with one another (each is its own cell),
+    // so `computeEventParents` can't group them as siblings the way it does
+    // a red split's two branches (which share one `from`). Its own orphan
+    // fallback handles this correctly (launch-animation.ts, generalized for
+    // this feature): consecutive events with no real causal match collapse
+    // into one shared-parent sibling group instead of chaining onto each
+    // other, so all four still animate together as one synchronized wipe.
+    //
+    // `triggerEvent` is listed FIRST, sweep events after -- not just
+    // presentation order. When this interaction genuinely is the very start
+    // of a hand launch (negro's own first hit, or another color's own first
+    // hit landing on a settled negro), `triggerEvent` is the one whose `from`
+    // can legitimately fall OFF the board (`resolve-launch.ts`'s own
+    // `step(hitAt, opposite(direction))`, never wrapped, for an impact right
+    // at the lane's own entry cell) -- exactly the case `playEventLog`'s
+    // `isFirstEvent` entry glide already exists to handle, but ONLY for
+    // whichever event ends up at index 0. Putting the sweep events first
+    // used to leave `triggerEvent` off-board with no glide protection at
+    // all -- a real bug found live (levels/2.json, orange sitting right at
+    // the lane's own entry point): its circle spawned and stayed rendered
+    // one cell outside the board.
     const { axis, index } = lineFromImpact(site.to, site.direction);
     const { board: clearedBoard, clearedCells } = clearLine(board, axis, index);
-    const sweepEvents: ChainEvent[] = clearedCells.map((at) => {
-      const swept = getPieceAt(board, at);
-      /* c8 ignore next -- clearedCells only ever contains cells clearLine itself just found occupied */
-      if (swept === null) throw new Error('invariant violated: clearedCells cell was not occupied');
-      return { type: 'ANNIHILATION', at, color: swept.color, from: at, direction: site.direction };
-    });
     const triggerEvent: ChainEvent = {
       type: 'ANNIHILATION',
       at: site.to,
@@ -428,7 +433,13 @@ export function applyImpact(
       direction: site.direction,
       visualOrigin: site.visualOrigin,
     };
-    return { board: clearedBoard, events: [...sweepEvents, triggerEvent], nextSites: [] };
+    const sweepEvents: ChainEvent[] = clearedCells.map((at) => {
+      const swept = getPieceAt(board, at);
+      /* c8 ignore next -- clearedCells only ever contains cells clearLine itself just found occupied */
+      if (swept === null) throw new Error('invariant violated: clearedCells cell was not occupied');
+      return { type: 'ANNIHILATION', at, color: swept.color, from: at, direction: site.direction };
+    });
+    return { board: clearedBoard, events: [triggerEvent, ...sweepEvents], nextSites: [] };
   }
 
   // The defender is about to be displaced by a different-color strike -- that's

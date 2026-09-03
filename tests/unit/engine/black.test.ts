@@ -24,9 +24,6 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
       expect(result.board.cells[4][col]).toBeNull();
     }
     expect(result.events).toEqual([
-      { type: 'ANNIHILATION', at: { row: 4, col: 1 }, color: 'green', from: { row: 4, col: 1 }, direction: 'E' },
-      { type: 'ANNIHILATION', at: { row: 4, col: 5 }, color: 'orange', from: { row: 4, col: 5 }, direction: 'E' },
-      { type: 'ANNIHILATION', at: { row: 4, col: 6 }, color: 'brown', from: { row: 4, col: 6 }, direction: 'E' },
       {
         type: 'ANNIHILATION',
         at: { row: 4, col: 1 },
@@ -35,6 +32,9 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
         direction: 'E',
         visualOrigin: undefined,
       },
+      { type: 'ANNIHILATION', at: { row: 4, col: 1 }, color: 'green', from: { row: 4, col: 1 }, direction: 'E' },
+      { type: 'ANNIHILATION', at: { row: 4, col: 5 }, color: 'orange', from: { row: 4, col: 5 }, direction: 'E' },
+      { type: 'ANNIHILATION', at: { row: 4, col: 6 }, color: 'brown', from: { row: 4, col: 6 }, direction: 'E' },
     ]);
     expect(result.nextSites).toEqual([]);
   });
@@ -57,6 +57,37 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
       expect(result.board.cells[row][4]).toBeNull();
     }
     expect(result.board.cells[3][0]).toEqual({ color: 'green', fragility: 'new' }); // no afectada -- eje correcto
+  });
+
+  it('impacto inmediato en el borde de entrada del carril: la propia negra sigue siendo el primer evento (bug visual real: su `from` cae fuera del tablero -- reproducido con levels/2.json)', () => {
+    let board = createBoard();
+    board = setPieceAt(board, { row: 0, col: 0 }, { color: 'orange', fragility: 'new' });
+    const black: Piece = { color: 'black', fragility: 'new' };
+
+    // Golpe inmediato: nada viajó antes del impacto, así que `from` (calculado
+    // por resolve-launch.ts como el paso opuesto a la dirección desde `to`) cae
+    // en col -1, fuera del tablero -- el mismo caso límite que ya provocaba el
+    // "green lanzada al oeste" (isOnBoard, ronda anterior), pero esta vez
+    // sobre el evento de la propia negra en vez del de un MOVE_STEP.
+    const result = applyImpact(board, {
+      piece: black,
+      direction: 'E',
+      from: { row: 0, col: -1 },
+      to: { row: 0, col: 0 },
+    });
+
+    // La propia negra debe ser events[0] -- así hereda el glide de entrada
+    // (isFirstEvent, launch-animation.ts) en vez de intentar spawnear
+    // directamente en su `from` fuera de tablero.
+    expect(result.events[0]).toEqual({
+      type: 'ANNIHILATION',
+      at: { row: 0, col: 0 },
+      color: 'black',
+      from: { row: 0, col: -1 },
+      direction: 'E',
+      visualOrigin: undefined,
+    });
+    expect(result.events).toHaveLength(2);
   });
 
   it('missclick: un carril completamente vacío hace que la negra vuelva a la mano, sin limpiar nada (FR-007)', () => {

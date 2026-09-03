@@ -137,6 +137,43 @@ seguido por 022 (bugs de animación encontrados jugando, arreglados y testeados 
 Verificado en vivo tras el arreglo: las cuatro fichas (tres barridas + la propia negra)
 desaparecen juntas, sin dar ninguna vuelta al tablero.
 
+## Decisión 6 (encontrada por el usuario tras la PR, editando `levels/2.json` a mano): la propia negra podía spawnear fuera del tablero
+
+**Contexto**: usando un nivel donde `orange` está sentada exactamente en la primera casilla de un
+carril, lanzar negro por ese carril produce un "impacto inmediato" -- cero casillas recorridas
+antes de chocar. En ese caso, `resolve-launch.ts` (código preexistente, sin cambios de esta
+feature) calcula el `from` del evento como `step(hitAt, opuesto(direction))`, y como `step` nunca
+envuelve, el resultado cae literalmente fuera del tablero (p.ej. `{row:0, col:-1}` para un impacto
+en `(0,0)` lanzado hacia el Este) -- la misma clase de bug que el "green lanzado al oeste" arreglado
+en una ronda anterior (`isOnBoard`, launch-animation.ts).
+
+`applyImpact`'s black branch devolvía `events: [...sweepEvents, triggerEvent]` -- las fichas
+barridas primero, la propia negra al final. Eso significa que, en el escenario de impacto
+inmediato, la propia negra NUNCA era `events[0]`, así que nunca se beneficiaba de la protección ya
+existente en `playEventLog`/`playNode` (`isFirstEvent`, que sustituye el `from` real por
+`entryCoordinate` para el primer evento de cualquier lanzamiento). Sin `visualOrigin` tampoco
+(nunca hubo colisión mutua), `leadIn` era `falsy`, así que `spawnAt = event.from` directamente --
+el círculo de la ficha negra aparecía dibujado una casilla fuera del borde izquierdo del tablero
+en vez de sobre `orange`. Confirmado visualmente (captura con zoom) antes del arreglo.
+
+**Arreglo**: reordenar el return de la rama negra a `events: [triggerEvent, ...sweepEvents]` --
+la propia negra primero. No hizo falta ningún cambio en `launch-animation.ts`: en cuanto la propia
+negra vuelve a ser `events[0]`, hereda la protección `isFirstEvent` ya existente (spawnea en
+`entryCoordinate`, que para un impacto inmediato coincide exactamente con la casilla de destino) y
+la guarda `isOnBoard(event.from, ...)` que ya existía (línea ~588) evita intentar el glide de
+entrada usando un `from` inválido, cayendo directamente en `runEvent`. Ahí, `cellPath` resuelve el
+paso desde el `from` fuera de tablero en un solo paso gracias a que su aritmética (`wrapIndex`) ya
+es modular -- el desplazamiento de "una casilla fuera, en la dirección opuesta al lanzamiento" se
+deshace exactamente con el primer paso en la dirección del lanzamiento, sin necesidad de tratarlo
+como un caso especial adicional.
+
+Verificado: reordenar no rompe `computeEventParents`/`wasOrphan` (los eventos `ANNIHILATION` nunca
+son candidatos a "match" real -- `if (candidate.type !== 'MOVE_STEP') continue` --, así que el
+agrupamiento de hermanas es el mismo sea cual sea el orden), test de regresión añadido en
+`black.test.ts` fijando `events[0]` como la propia negra para este escenario exacto, y verificado
+en vivo de nuevo sobre `levels/2.json` (el mismo nivel que el usuario editó a mano para reportarlo):
+la fila entera desaparece junta, sin ningún círculo fuera del tablero.
+
 ## Technical Context resuelto
 
 - **Language/Version**: TypeScript (Node.js), mismo stack que el resto del motor (`src/engine/`)
