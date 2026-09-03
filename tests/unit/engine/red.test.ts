@@ -231,8 +231,13 @@ describe('red: the two branches are resolved synchronously, tick by tick -- but 
       // and swap mechanism/direction (019's own established rule): green
       // continues using orange's fixed 2-cell push, orange continues using
       // green's (still brown-driven, walking) mechanic.
-      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 0 }, to: { row: 4, col: 6 }, direction: 'O', hasCollision: false, pushedByColor: 'orange' },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'broken' }, from: { row: 4, col: 0 }, to: { row: 4, col: 1 }, direction: 'E', hasCollision: false, pushedByColor: 'green' },
+      // visualOrigin on both: the walk's TRUE origin (where each branch's own
+      // striker settled and started pushing it), not the meeting cell (4,0) --
+      // 022-parallel-branch-animation follow-up: preserved through the mutual
+      // collision so the renderer can draw the whole walk, not just the jump
+      // out of the meeting point.
+      { type: 'MOVE_STEP', piece: { color: 'green', fragility: 'broken' }, from: { row: 4, col: 0 }, to: { row: 4, col: 6 }, direction: 'O', hasCollision: false, pushedByColor: 'orange', visualOrigin: { from: { row: 4, col: 5 }, direction: 'E' } },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'broken' }, from: { row: 4, col: 0 }, to: { row: 4, col: 1 }, direction: 'E', hasCollision: false, pushedByColor: 'green', visualOrigin: { from: { row: 4, col: 3 }, direction: 'O' } },
     ]);
     expect(outcome.board.cells[4][4]).toEqual({ color: 'red', fragility: 'new' });
     expect(outcome.board.cells[4][6]).toBeNull(); // green -- broken, never settles

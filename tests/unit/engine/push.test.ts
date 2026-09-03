@@ -156,21 +156,27 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
     expect(result.nextSites).toEqual([
       // A: hit once (new -> cracked), continues using B's color (orange, distance 2)
       // and B's own direction (N) -- not its own original direction (E).
+      // visualOrigin is A's own pre-collision from/direction -- A's real journey
+      // started there, not at the meeting cell (4,2), (021-cellwise-collision-
+      // resolution follow-up: preserved through the mutual collision so the
+      // renderer can draw the whole thing).
       {
         piece: { color: 'green', fragility: 'cracked' },
         direction: 'N',
         from: { row: 2, col: 4 },
         to: { row: 0, col: 4 },
         pushedByColor: 'orange',
+        visualOrigin: { from: { row: 2, col: 3 }, direction: 'E' },
       },
       // B: hit once (new -> cracked), continues using A's color (green, distance 1)
-      // and A's own direction (E).
+      // and A's own direction (E). visualOrigin is B's own pre-collision from/direction.
       {
         piece: { color: 'orange', fragility: 'cracked' },
         direction: 'E',
         from: { row: 2, col: 4 },
         to: { row: 2, col: 5 },
         pushedByColor: 'green',
+        visualOrigin: { from: { row: 4, col: 4 }, direction: 'N' },
       },
     ]);
   });
@@ -202,6 +208,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
         from: { row: 2, col: 4 },
         to: { row: 2, col: 5 },
         pushedByColor: 'green',
+        visualOrigin: { from: { row: 4, col: 4 }, direction: 'N' },
       },
     ]);
   });
@@ -264,15 +271,18 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
     // Split direction is red's OWN direction (E) -- perpendicular branches N/S,
     // sharing orange's advance('new') = 'cracked' fragility (FR-015 of 009).
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false, visualOrigin: { from: { row: 4, col: 4 }, direction: 'N' } },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false, visualOrigin: { from: { row: 4, col: 4 }, direction: 'N' } },
     ]);
     // Red: advance('cracked') = 'broken', pushed onward using orange's own
     // mechanism (PUSH_STRATEGY.orange, a fixed 2-cell jump) in orange's own
     // direction (N) -- (2,4) -> (0,4), board-blind exactly like any other
-    // orange push.
+    // orange push. visualOrigin is red's OWN pre-collision from/direction --
+    // it was walking (pushedByColor: 'brown') before reaching this meeting
+    // point, so the renderer needs that to draw red's whole journey, not just
+    // its post-collision jump.
     expect(result.nextSites).toEqual([
-      { piece: { color: 'red', fragility: 'broken' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange' },
+      { piece: { color: 'red', fragility: 'broken' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange', visualOrigin: { from: { row: 2, col: 3 }, direction: 'E' } },
     ]);
   });
 
@@ -295,11 +305,11 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
 
     expect(result.board.cells[2][4]).toBeNull();
     expect(result.events).toEqual([
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false },
-      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 1, col: 4 }, direction: 'N', hasCollision: false, visualOrigin: { from: { row: 4, col: 4 }, direction: 'N' } },
+      { type: 'MOVE_STEP', piece: { color: 'orange', fragility: 'cracked' }, from: { row: 2, col: 4 }, to: { row: 3, col: 4 }, direction: 'S', hasCollision: false, visualOrigin: { from: { row: 4, col: 4 }, direction: 'N' } },
     ]);
     expect(result.nextSites).toEqual([
-      { piece: { color: 'red', fragility: 'broken' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange' },
+      { piece: { color: 'red', fragility: 'broken' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange', visualOrigin: { from: { row: 2, col: 3 }, direction: 'E' } },
     ]);
   });
 
@@ -325,7 +335,7 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
     expect(result.nextSites).toEqual([
       // Red: advance('new') = 'cracked', still pushed onward via orange's own
       // mechanism -- an already-broken opponent doesn't exempt red either.
-      { piece: { color: 'red', fragility: 'cracked' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange' },
+      { piece: { color: 'red', fragility: 'cracked' }, direction: 'N', from: { row: 2, col: 4 }, to: { row: 0, col: 4 }, pushedByColor: 'orange', visualOrigin: { from: { row: 2, col: 3 }, direction: 'E' } },
     ]);
   });
 

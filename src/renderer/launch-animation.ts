@@ -377,12 +377,21 @@ export function playEventLog(
 
     drawBoard(boardGraphics, board, goal);
 
-    // The first event's own `from` is already one cell short of the real board
-    // edge (see entryCoordinate's comment) -- spawn there instead, and glide to
-    // the real `from` before running this event's normal animation, so a hand
-    // launch is visibly seen entering from the edge, not popping into being
-    // right next to its first impact.
-    const spawnAt = isFirstEvent ? entryCoordinate(launch.direction, launch.lane) : from;
+    // Two distinct sources of a "lead-in glide" before this event's own normal
+    // animation: the very first event of a launch glides in from the board's
+    // own edge (its own `from` is already one cell short of it -- see
+    // entryCoordinate's comment); any event, first or not, whose piece was
+    // actually travelling through cells its own from/direction alone can't
+    // reconstruct glides in from `event.visualOrigin` instead -- a
+    // brown-driven walk redirected by a mutual collision (push.ts's
+    // `strikeMutualSide`), whose true origin the engine would otherwise
+    // discard in favor of the meeting cell. At most one ever applies to a
+    // given event -- the very first event of a launch is never ALSO the
+    // product of an in-flight mutual collision, nothing has moved yet.
+    const leadIn = isFirstEvent
+      ? { from: entryCoordinate(launch.direction, launch.lane), direction: launch.direction }
+      : event.visualOrigin;
+    const spawnAt = leadIn ? leadIn.from : from;
     const start = pixelCenter(spawnAt);
     const radius = CELL_SIZE / 2 - 6;
     const temp = scene.add.circle(
@@ -538,20 +547,20 @@ export function playEventLog(
     };
 
     if (
-      isFirstEvent &&
+      leadIn &&
       isOnBoard(event.from, board.size) &&
-      (spawnAt.row !== event.from.row || spawnAt.col !== event.from.col)
+      (leadIn.from.row !== event.from.row || leadIn.from.col !== event.from.col)
     ) {
       // Same per-cell walk, same constant speed, as every other move -- covers
-      // the edge-to-impact glide one cell at a time instead of a single
+      // the lead-in glide one cell at a time instead of a single
       // fixed-duration tween spanning however many cells happen to separate
-      // them (real bug reported by the user: a launch with a long empty run
-      // before its first impact covered far more distance in the same 450ms
-      // than a launch with a short one, making otherwise-identical launches
-      // look like they moved at very different speeds depending only on lane
-      // length, not on direction itself).
-      const entryPath = cellPath(spawnAt, event.from, launch.direction, board.size);
-      walkPath(entryPath, spawnAt, runEvent);
+      // them, or popping into existence right where `event.from` begins (two
+      // real bugs reported by the user: a launch with a long empty run before
+      // its first impact covered far more distance in the same 450ms than a
+      // short one; and a mutual collision's resulting trajectory skipped the
+      // whole walk that led to the meeting point, popping in there directly).
+      const entryPath = cellPath(leadIn.from, event.from, leadIn.direction, board.size);
+      walkPath(entryPath, leadIn.from, runEvent);
       return;
     }
 
