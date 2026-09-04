@@ -14,6 +14,10 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
   // reads as "black" against the other saturated colors while staying visible
   // (023-black-piece-line-clear).
   black: 0x4b4b55,
+  // A solid violet stand-in for an actual rainbow gradient (not viable with a
+  // plain Phaser.GameObjects.Circle) -- distinguishable from all 5 other
+  // colors above, including black's dark slate (024-rainbow-color-change).
+  rainbow: 0xb26bff,
 };
 
 const GRID_LINE_COLOR = 0x444444;

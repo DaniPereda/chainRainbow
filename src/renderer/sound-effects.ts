@@ -62,3 +62,17 @@ export function playSplitSound(): void {
   playTone(196, 0.16, 'sawtooth');
   playTone(294, 0.16, 'sawtooth');
 }
+
+/**
+ * Arcoíris changing a piece's color (024-rainbow-color-change) -- a quick
+ * four-note ascending sine arpeggio, distinct from every sound above: not a
+ * single blip (impact/jump), not two simultaneous tones (split), not a slow
+ * two-note rise (goal) -- a short "sparkle" evoking a repaint rather than a
+ * collision. Plays once per color choice applied, never per candidate offered.
+ */
+export function playRainbowSound(): void {
+  playTone(440, 0.08, 'sine');
+  setTimeout(() => playTone(554.37, 0.08, 'sine'), 50);
+  setTimeout(() => playTone(659.25, 0.08, 'sine'), 100);
+  setTimeout(() => playTone(880, 0.12, 'sine'), 150);
+}

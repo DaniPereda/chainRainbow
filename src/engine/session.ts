@@ -43,11 +43,15 @@ export function selectHandPiece(session: LevelSession, index: number): LevelSess
   return { ...session, selectedHandIndex: index };
 }
 
-export function applySessionLaunch(
-  session: LevelSession,
-  launch: Launch,
-): { session: LevelSession; outcome: LaunchOutcome } {
-  const outcome = resolveLaunch(session.current, launch, session.selectedHandIndex ?? 0);
+/**
+ * Applies an already-final `LaunchOutcome` (never one still carrying a
+ * `pendingColorChoice`, 024-rainbow-color-change) to a session -- extracted
+ * from `applySessionLaunch` so a caller that had to resolve one or more color
+ * choices first (via `outcome.pendingColorChoice.resume(color)`, however many
+ * times) can commit the FINAL result the same way a non-paused launch always
+ * has.
+ */
+export function commitLaunchOutcome(session: LevelSession, outcome: LaunchOutcome): LevelSession {
   const current: Level = {
     board: outcome.board,
     hand: outcome.hand,
@@ -60,10 +64,21 @@ export function applySessionLaunch(
   const selectedHandIndex = outcome.missclick
     ? session.selectedHandIndex
     : firstHandIndex(current.hand);
-  return {
-    session: { ...session, current, status: outcome.result, selectedHandIndex },
-    outcome,
-  };
+  return { ...session, current, status: outcome.result, selectedHandIndex };
+}
+
+export function applySessionLaunch(
+  session: LevelSession,
+  launch: Launch,
+): { session: LevelSession; outcome: LaunchOutcome } {
+  const outcome = resolveLaunch(session.current, launch, session.selectedHandIndex ?? 0);
+  // Still waiting on the player's color choice -- nothing to commit yet, the
+  // session stays exactly as it was until a fully-resolved outcome comes back
+  // from `outcome.pendingColorChoice.resume(color)` (data-model.md).
+  if (outcome.pendingColorChoice) {
+    return { session, outcome };
+  }
+  return { session: commitLaunchOutcome(session, outcome), outcome };
 }
 
 export function restartSession(session: LevelSession): LevelSession {

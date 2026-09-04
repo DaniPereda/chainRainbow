@@ -136,15 +136,16 @@ export function chooseStrikerAndOrigin(
   const order = shuffle(candidates, rng);
 
   for (const striker of order) {
-    // 023-black-piece-line-clear deliberately does NOT add generator support
-    // for negro (out of scope, plan.md -- same sequential pattern as
-    // 009-red-piece's own engine-only spec, followed later by
-    // 020-generator-red-support) -- `InverseColor` (inverses.ts) still has no
-    // 'black' entry, so skip it here rather than widen that type to a color
-    // this generator can't yet invert. `availableColors` never actually
-    // contains 'black' today (no caller offers it), so this is a defensive
-    // no-op in practice, not a real behavior change.
-    if (striker === 'black') continue;
+    // 023-black-piece-line-clear/024-rainbow-color-change deliberately do NOT
+    // add generator support for negro/arcoíris (out of scope, each feature's
+    // own plan.md -- same sequential pattern as 009-red-piece's own
+    // engine-only spec, followed later by 020-generator-red-support) --
+    // `InverseColor` (inverses.ts) has no 'black'/'rainbow' entry, so skip
+    // both here rather than widen that type to colors this generator can't
+    // yet invert. `availableColors` never actually contains either today (no
+    // caller offers them), so this is a defensive no-op in practice, not a
+    // real behavior change.
+    if (striker === 'black' || striker === 'rainbow') continue;
     const origins = inverseCandidates(striker, direction, to, board, context);
     if (origins.length > 0) {
       const origin = origins[Math.floor(rng() * origins.length)];

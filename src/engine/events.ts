@@ -64,7 +64,22 @@ export type AnnihilationEvent = {
   visualOrigin?: { from: Coordinate; direction: Direction };
 };
 
-export type ChainEvent = MoveStepEvent | AnnihilationEvent;
+export type ColorChoiceEvent = {
+  type: 'COLOR_CHOICE';
+  at: Coordinate;
+  // The defender's color before/after the player's choice (024-rainbow-color-change,
+  // FR-003) -- purely descriptive, for the renderer to animate the transition; the
+  // engine itself never reads these back. Named `fromColor`/`toColor`, not
+  // `from`/`to`, deliberately: every other `ChainEvent` variant's `from`/`to`
+  // is a `Coordinate` -- reusing those names for a `PieceColor` here would
+  // poison `ChainEvent.from`/`.to` into a `Coordinate | PieceColor` union
+  // everywhere a consumer switches on `event.type`, real compile fallout
+  // found while wiring this event into the renderer.
+  fromColor: PieceColor;
+  toColor: PieceColor;
+};
+
+export type ChainEvent = MoveStepEvent | AnnihilationEvent | ColorChoiceEvent;
 
 export type EventLog = ChainEvent[];
 
@@ -96,10 +111,30 @@ export type ImpactSite = {
   visualOrigin?: { from: Coordinate; direction: Direction };
 };
 
-export type ImpactHandler = (
-  board: Board,
-  site: ImpactSite,
-) => { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] };
+/**
+ * What resolving a single `ImpactSite` produces -- either the ordinary case
+ * (a board, the events it produced, and whatever new sites `resolveChain`
+ * should queue next), or, for the first time (024-rainbow-color-change), a
+ * PAUSE: the interaction needs a color the only the player can supply before
+ * it can finish. `resume(color)` completes exactly that one interaction
+ * (never anything queued before or after it) and returns another
+ * `ImpactResolution` -- ordinarily `'resolved'`, but in principle it could
+ * itself be `'pending-color-choice'` again (the type allows it, even though
+ * no color-changing interaction today produces a `nextSite` for the newly
+ * recolored piece to reach, FR-007 of 024-rainbow-color-change).
+ */
+export type ImpactResolution =
+  | { status: 'resolved'; board: Board; events: ChainEvent[]; nextSites: ImpactSite[] }
+  | {
+      status: 'pending-color-choice';
+      board: Board;
+      events: ChainEvent[];
+      at: Coordinate;
+      options: PieceColor[];
+      resume: (color: PieceColor) => ImpactResolution;
+    };
+
+export type ImpactHandler = (board: Board, site: ImpactSite) => ImpactResolution;
 
 /**
  * Resolves a collision between two trajectories that are BOTH still in flight
@@ -173,14 +208,59 @@ function findCoincidingPair(queue: ImpactSite[], board: Board): [number, number]
  * always returns `null` immediately and this behaves exactly as before this
  * feature (FR-006).
  */
-export function resolveChain(
-  board: Board,
-  initialSites: ImpactSite[],
+/**
+ * Wraps an `ImpactHandler`'s own `'pending-color-choice'` as the WHOLE chain's
+ * own pause (024-rainbow-color-change, research.md Decisión 1): `resolvedSoFar`
+ * and `remainingQueue` are exactly what `drive` had accumulated/still had
+ * queued the instant this one site paused, captured by closure so `resume`
+ * can pick the chain back up from precisely that point -- never re-running or
+ * skipping anything else in the queue.
+ */
+function pendingFrom(
+  resolvedSoFar: EventLog,
+  remainingQueue: ImpactSite[],
+  pending: Extract<ImpactResolution, { status: 'pending-color-choice' }>,
   handleImpact: ImpactHandler,
   handleMutualImpact: MutualImpactHandler,
-): { board: Board; events: EventLog } {
-  const events: EventLog = [];
-  const queue: ImpactSite[] = [...initialSites];
+): ImpactResolution {
+  return {
+    status: 'pending-color-choice',
+    board: pending.board,
+    events: [...resolvedSoFar, ...pending.events],
+    at: pending.at,
+    options: pending.options,
+    resume: (color) => {
+      // `pending.events` (this pause's OWN pre-pause events -- 024-rainbow-
+      // color-change's attacker-vanish event, in practice) must be folded in
+      // here too, not just `resolvedSoFar` -- it's already reflected in this
+      // very object's own `events` above, but `resolvedSoFar` alone doesn't
+      // include it, a real bug found live: the cumulative log lost the
+      // attacker's own vanish event the instant a color was chosen.
+      const eventsSoFar = [...resolvedSoFar, ...pending.events];
+      const result = pending.resume(color);
+      if (result.status === 'pending-color-choice') {
+        return pendingFrom(eventsSoFar, remainingQueue, result, handleImpact, handleMutualImpact);
+      }
+      return drive(
+        result.board,
+        [...remainingQueue, ...result.nextSites],
+        [...eventsSoFar, ...result.events],
+        handleImpact,
+        handleMutualImpact,
+      );
+    },
+  };
+}
+
+function drive(
+  board: Board,
+  initialQueue: ImpactSite[],
+  initialEvents: EventLog,
+  handleImpact: ImpactHandler,
+  handleMutualImpact: MutualImpactHandler,
+): ImpactResolution {
+  const events: EventLog = [...initialEvents];
+  const queue: ImpactSite[] = [...initialQueue];
   let currentBoard = board;
 
   while (queue.length > 0) {
@@ -200,10 +280,24 @@ export function resolveChain(
 
     const site = queue.shift()!;
     const result = handleImpact(currentBoard, site);
+
+    if (result.status === 'pending-color-choice') {
+      return pendingFrom(events, queue, result, handleImpact, handleMutualImpact);
+    }
+
     currentBoard = result.board;
     events.push(...result.events);
     queue.push(...result.nextSites);
   }
 
-  return { board: currentBoard, events };
+  return { status: 'resolved', board: currentBoard, events, nextSites: [] };
+}
+
+export function resolveChain(
+  board: Board,
+  initialSites: ImpactSite[],
+  handleImpact: ImpactHandler,
+  handleMutualImpact: MutualImpactHandler,
+): ImpactResolution {
+  return drive(board, initialSites, [], handleImpact, handleMutualImpact);
 }

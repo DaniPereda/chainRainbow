@@ -1,7 +1,7 @@
 import type { Board, Coordinate, Fragility, Piece, PieceColor } from '../board.js';
 import { getPieceAt, isInBounds, setPieceAt, wrapCoordinate } from '../board.js';
 import { step, stepBy, stepUntilBlocked, type Direction } from '../move-step.js';
-import type { ChainEvent, ImpactSite } from '../events.js';
+import type { ChainEvent, ImpactResolution, ImpactSite } from '../events.js';
 import { resolveChain } from '../events.js';
 
 /**
@@ -34,7 +34,7 @@ type DisplacementStrategy = (
 
 const MAX_EDGE_CROSSINGS = 2;
 
-export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red' | 'black'>, DisplacementStrategy> = {
+export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red' | 'black' | 'rainbow'>, DisplacementStrategy> = {
   green: (_board, _piece, position, direction) => stepBy(position, direction, 1),
   orange: (_board, _piece, position, direction) => stepBy(position, direction, 2),
   brown: (board, piece, position, direction) =>
@@ -186,14 +186,25 @@ function strikeMutualSide(
   const visualOrigin = hitSite.visualOrigin ?? { from: hitSite.from, direction: hitSite.direction };
 
   if (strikerSite.piece.color === 'red') {
-    const { board: finalBoard, events } = resolveRedSplit(
-      board,
-      hit,
-      hitSite.to,
-      strikerSite.direction,
-      visualOrigin,
-    );
-    return { board: finalBoard, events, nextSite: null };
+    const splitResult = resolveRedSplit(board, hit, hitSite.to, strikerSite.direction, visualOrigin);
+    if (splitResult.status === 'pending-color-choice') {
+      // Extremely rare, undiscussed nesting (024-rainbow-color-change): BOTH
+      // sides of a mutual collision are, by definition, still in-flight
+      // trajectories -- but a defender's own COLOR (unlike its role) is never
+      // restricted by that, so a red-colored trajectory here is possible (a
+      // non-red attacker can push a struck red defender into flight, same as
+      // any other color). If that red trajectory's own split then reaches a
+      // SETTLED arcoíris further down the board, resolving it would require
+      // pausing a mutual collision for player input -- a case never surfaced
+      // by the user and not supported by this feature. Fails loudly instead
+      // of silently dropping the pending choice, same pattern as the
+      // "black cannot be one side of a mutual collision" invariant below.
+      throw new Error(
+        'unsupported: a mutual collision\'s red split reached a rainbow interaction -- ' +
+          'pausing for a color choice mid-mutual-collision is not supported',
+      );
+    }
+    return { board: splitResult.board, events: splitResult.events, nextSite: null };
   }
 
   if (strikerSite.piece.color === 'brown') {
@@ -223,6 +234,14 @@ function strikeMutualSide(
     // silently widening `PUSH_STRATEGY`'s own type to a color it
     // deliberately has no entry for.
     throw new Error('invariant violated: black cannot be one side of a mutual collision');
+  }
+
+  if (strikerSite.piece.color === 'rainbow') {
+    // Same reasoning as black immediately above (024-rainbow-color-change):
+    // arcoíris's own interaction always returns `nextSites: []` (FR-007), so
+    // it can never become one of the two already-in-flight sides of a mutual
+    // collision either.
+    throw new Error('invariant violated: rainbow cannot be one side of a mutual collision');
   }
   const to = PUSH_STRATEGY[strikerSite.piece.color](board, hit, hitSite.to, strikerSite.direction);
   return {
@@ -304,7 +323,7 @@ function resolveRedSplit(
   position: Coordinate,
   direction: Direction,
   visualOrigin?: { from: Coordinate; direction: Direction },
-): { board: Board; events: ChainEvent[] } {
+): ImpactResolution {
   const [first, second] = PERPENDICULAR_DIRECTIONS[direction];
 
   return resolveChain(
@@ -331,10 +350,29 @@ function resolveRedSplit(
  * to the piece it displaced, changes no decision from the previous implementation,
  * only when the write happens.
  */
-export function applyImpact(
-  board: Board,
-  site: ImpactSite,
-): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
+/**
+ * Prepends `prefix` to whatever events a (possibly still-pending)
+ * `ImpactResolution` carries, leaving everything else untouched -- used to
+ * thread a striker's own settle event onto red's split (024-rainbow-color-
+ * change: the split's inner `resolveChain` may now itself pause, in which
+ * case the prefix needs to survive across however many `resume` calls it
+ * takes to finally resolve, not just the first one).
+ */
+function withEventPrefix(prefix: ChainEvent[], result: ImpactResolution): ImpactResolution {
+  if (result.status === 'resolved') {
+    return { status: 'resolved', board: result.board, events: [...prefix, ...result.events], nextSites: result.nextSites };
+  }
+  return {
+    status: 'pending-color-choice',
+    board: result.board,
+    events: [...prefix, ...result.events],
+    at: result.at,
+    options: result.options,
+    resume: (color) => withEventPrefix(prefix, result.resume(color)),
+  };
+}
+
+export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
   const defender = getPieceAt(board, site.to);
 
   if (defender === null) {
@@ -346,7 +384,7 @@ export function applyImpact(
       const { to, edgeCrossings, capped } = stepWalking(site.to, site.direction, site.walking.edgeCrossings);
       if (!capped) {
         const nextSite: ImpactSite = { ...site, to, walking: { edgeCrossings } };
-        return { board, events: [], nextSites: [nextSite] }; // still in flight -- no event yet
+        return { status: 'resolved', board, events: [], nextSites: [nextSite] }; // still in flight -- no event yet
       }
     }
     const { board: boardAfter, events } = settleOrVanish(
@@ -359,12 +397,13 @@ export function applyImpact(
       site.pushedByColor,
       site.visualOrigin,
     );
-    return { board: boardAfter, events, nextSites: [] };
+    return { status: 'resolved', board: boardAfter, events, nextSites: [] };
   }
 
   if (defender.color === site.piece.color) {
     const boardAfter = setPieceAt(board, site.to, null);
     return {
+      status: 'resolved',
       board: boardAfter,
       events: [
         {
@@ -439,7 +478,70 @@ export function applyImpact(
       if (swept === null) throw new Error('invariant violated: clearedCells cell was not occupied');
       return { type: 'ANNIHILATION', at, color: swept.color, from: at, direction: site.direction };
     });
-    return { board: clearedBoard, events: [triggerEvent, ...sweepEvents], nextSites: [] };
+    return { status: 'resolved', board: clearedBoard, events: [triggerEvent, ...sweepEvents], nextSites: [] };
+  }
+
+  if (defender.color === 'rainbow' || site.piece.color === 'rainbow') {
+    // Arcoíris (either side, FR-002/FR-003 of 024-rainbow-color-change) never
+    // pushes, splits, or clears a line -- its impact changes a color instead,
+    // and needs the PLAYER to pick which one. Checked here, right after
+    // negro's own universal rule and before ANY color-specific striker
+    // mechanic (including red's split below) -- research.md (024) Decisión 3:
+    // negro still wins whenever both are involved (checked above, unchanged);
+    // arcoíris wins over red (FR-010), the same precedence pattern negro
+    // (023) already established for itself.
+    //
+    // The DEFENDER -- whichever piece was already resting at `site.to` before
+    // this impact, rainbow or not -- is always the one whose color changes
+    // (research.md Decisión 2, confirmed with the user: matches the original
+    // design doc's own wording, "cambia el color de la ficha impactada"). The
+    // OTHER piece (the attacker, `site.piece`) disappears, consumed by the
+    // effect -- FR-004, same pattern as negro's own disappearing trigger.
+    // Fragility is left untouched -- confirmed with the user (research.md
+    // Decisión 11): a repaint, not a structural hit, unlike every other
+    // color's own impact. The recolored piece keeps whatever fragility the
+    // defender already had (`defender.fragility`, read below, never reset to
+    // 'new' and never advanced) -- only its color changes.
+    const options: PieceColor[] = ['green', 'orange', 'brown', 'red', 'black'];
+    const at = site.to;
+    const from = defender.color;
+    // The attacker's own ANNIHILATION (its real travel to `at`, then vanish)
+    // is emitted HERE, as part of the PENDING result -- not deferred into
+    // `resume` -- so it plays out BEFORE the color dialog opens, exactly like
+    // every other piece's impact fully resolving before its consequence is
+    // shown. Real bug found live by the user: with this event deferred into
+    // `resume`, the dialog popped up instantly, with no travel animation at
+    // all -- `events[0]` of the pending result was empty, so `playEventLog`
+    // had nothing to play before calling back. Putting it here also means
+    // it's `events[0]` of the launch's OWN first segment when this genuinely
+    // is the launch's first hit, so it still gets `isFirstEvent`'s entry-glide
+    // protection for an off-board `from` (same reasoning as negro's own
+    // `triggerEvent` reordering, push.ts's earlier fix) -- unaffected by this
+    // change, since it's still `events[0]` either way.
+    //
+    // The board carried forward already reflects the attacker's own
+    // disappearance (`at` cleared) -- `resume` only ever adds the recolor on
+    // top of THIS board, never the pre-impact one, so the engine's own state
+    // stays consistent with what the renderer shows during the pause: the
+    // defender's old-colored piece is gone, not sitting there unrecolored.
+    const vanishedEvent: ChainEvent = {
+      type: 'ANNIHILATION',
+      at,
+      color: site.piece.color,
+      from: site.from,
+      direction: site.direction,
+      visualOrigin: site.visualOrigin,
+    };
+    const boardDuringPause = setPieceAt(board, at, null);
+
+    const resume = (color: PieceColor): ImpactResolution => {
+      const recolored: Piece = { color, fragility: defender.fragility };
+      const boardAfter = setPieceAt(boardDuringPause, at, recolored);
+      const colorChoiceEvent: ChainEvent = { type: 'COLOR_CHOICE', at, fromColor: from, toColor: color };
+      return { status: 'resolved', board: boardAfter, events: [colorChoiceEvent], nextSites: [] };
+    };
+
+    return { status: 'pending-color-choice', board: boardDuringPause, events: [vanishedEvent], at, options, resume };
   }
 
   // The defender is about to be displaced by a different-color strike -- that's
@@ -467,13 +569,8 @@ export function applyImpact(
   );
 
   if (site.piece.color === 'red') {
-    const { board: finalBoard, events: splitEvents } = resolveRedSplit(
-      boardWithStriker,
-      hitDefender,
-      site.to,
-      site.direction,
-    );
-    return { board: finalBoard, events: [...strikerEvents, ...splitEvents], nextSites: [] };
+    const splitResult = resolveRedSplit(boardWithStriker, hitDefender, site.to, site.direction);
+    return withEventPrefix(strikerEvents, splitResult);
   }
 
   // hitDefender still exerts its own strike on whatever it lands on, even when
@@ -510,5 +607,5 @@ export function applyImpact(
           to: PUSH_STRATEGY[site.piece.color](boardWithStriker, hitDefender, site.to, site.direction),
           pushedByColor: site.piece.color,
         };
-  return { board: boardWithStriker, events: strikerEvents, nextSites: [nextSite] };
+  return { status: 'resolved', board: boardWithStriker, events: strikerEvents, nextSites: [nextSite] };
 }

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
-import { playGoalSound, playImpactSound, playJumpSound, playSplitSound } from './sound-effects.js';
+import { playGoalSound, playImpactSound, playJumpSound, playRainbowSound, playSplitSound } from './sound-effects.js';
 
 // 018-piece-movement-animation refinement: slowed down twice, per two rounds of
 // the user's own playtest (150ms -> 350ms -> 450ms, "todo un poco mas lento").
@@ -194,6 +194,14 @@ export function replayEvent(board: Board, event: ChainEvent): Board {
     }
     return setCell(board, event.to, event.piece);
   }
+  if (event.type === 'COLOR_CHOICE') {
+    // Fragility is read off the board being replayed rather than carried on
+    // the event itself (024-rainbow-color-change never changes it, research.md
+    // Decisión 2's "repaint, not a structural hit") -- avoids widening
+    // `ColorChoiceEvent` just to duplicate data this reducer can already see.
+    const existing = board.cells[event.at.row][event.at.col];
+    return setCell(board, event.at, { color: event.toColor, fragility: existing?.fragility ?? 'new' });
+  }
   return setCell(board, event.at, null); // ANNIHILATION
 }
 
@@ -215,6 +223,19 @@ export function isRedSplitTrigger(event: ChainEvent): boolean {
 
 export function pixelCenter(coord: Coordinate): { x: number; y: number } {
   return { x: coord.col * CELL_SIZE + CELL_SIZE / 2, y: coord.row * CELL_SIZE + CELL_SIZE / 2 };
+}
+
+/**
+ * The cell an event visually originates from -- `from` for a `MOVE_STEP`/
+ * `AnnihilationEvent`, or `at` for a `ColorChoiceEvent` (024-rainbow-color-
+ * change: it never travels, so its own cell IS its origin, same treatment as
+ * an `ANNIHILATION` with `from === at`). Centralizes the one place that needs
+ * to know all three variants share "a cell this event is anchored to", so the
+ * rest of this file can keep treating `ChainEvent.from` as if it were still
+ * universal.
+ */
+function eventOrigin(event: ChainEvent): Coordinate {
+  return event.type === 'COLOR_CHOICE' ? event.at : event.from;
 }
 
 /**
@@ -267,8 +288,8 @@ export function computeEventParents(events: EventLog): (number | null)[] {
     for (let k = j + 1; k < events.length; k++) {
       if (
         groupLeader[k] === -1 &&
-        events[k].from.row === events[j].from.row &&
-        events[k].from.col === events[j].from.col
+        eventOrigin(events[k]).row === eventOrigin(events[j]).row &&
+        eventOrigin(events[k]).col === eventOrigin(events[j]).col
       ) {
         groupLeader[k] = j;
       }
@@ -276,21 +297,28 @@ export function computeEventParents(events: EventLog): (number | null)[] {
   }
 
   // Whether a leader's own `parents[]` entry came from a genuine `to` match
-  // (false) or from the "no match, fall back" case below (true) -- including
-  // index 0 itself, which never has a possible predecessor at all and is
-  // treated as orphaned from the start. Threaded through so a RUN of
-  // consecutive orphaned leaders (e.g. a line clear's many swept, unrelated
-  // cells -- 023-black-piece-line-clear, none of them share a `from` with
-  // each other, so the `from`-grouping above can't catch them as siblings)
-  // collapses into ONE shared-parent group instead of chaining each one onto
-  // the previous, real bug found live: four unrelated pieces swept by the
-  // same line clear animated one after another, each waiting for the last,
-  // instead of together -- and each `parents[j] = j - 1` chain, followed
-  // strictly, would have been correct only for a genuine invisible walk
-  // (the case this fallback was originally built for), not for several
-  // already-stationary pieces removed by one single, instantaneous cause.
+  // (false) or from the "no match, fall back" case below (true). Threaded
+  // through so a RUN of consecutive orphaned leaders (e.g. a line clear's
+  // many swept, unrelated cells -- 023-black-piece-line-clear, none of them
+  // share a `from` with each other, so the `from`-grouping above can't catch
+  // them as siblings) collapses into ONE shared-parent group instead of
+  // chaining each one onto the previous, real bug found live: four unrelated
+  // pieces swept by the same line clear animated one after another, each
+  // waiting for the last, instead of together.
+  //
+  // Index 0 is deliberately left `false` (its default) rather than seeded
+  // `true` -- a second real bug found live by the user, this time for negro:
+  // event 0 (the triggering piece's own real travel to the impact cell) is
+  // never itself "one of these orphans" in the sense that matters for j=1's
+  // fallback below, even though it also has no predecessor of its own. Only
+  // whether events 1..n *chain onto* event 0 (fine: `wasOrphan[0]` false ->
+  // `parents[1] = 0`, waits for event 0 to actually arrive) or *skip past* it
+  // to become a second, independent root (wrong: seeding it `true` made every
+  // swept cell start at the very instant the launch began, alongside the
+  // triggering piece's own still-in-progress travel -- so a whole row/column
+  // visibly cleared before the piece that caused it had even arrived, and
+  // regardless of whether that piece ended up striking or being struck).
   const wasOrphan: boolean[] = events.map(() => false);
-  wasOrphan[0] = true;
 
   for (let j = 1; j < events.length; j++) {
     if (groupLeader[j] !== j) {
@@ -306,7 +334,8 @@ export function computeEventParents(events: EventLog): (number | null)[] {
     for (let i = j - 1; i >= 0; i--) {
       const candidate = events[i];
       if (candidate.type !== 'MOVE_STEP') continue;
-      if (candidate.to.row === events[j].from.row && candidate.to.col === events[j].from.col) {
+      const origin = eventOrigin(events[j]);
+      if (candidate.to.row === origin.row && candidate.to.col === origin.col) {
         parents[j] = i;
         found = true;
         break;
@@ -368,6 +397,15 @@ export function computeEventParents(events: EventLog): (number | null)[] {
  * -- see `entryCoordinate`'s own comment (018 refinement, user playtest
  * request: "que la animación empezara en la casilla 0 desde el lanzamiento de
  * la mano").
+ *
+ * `isFirstSegment` (default `true`) gates that same glide -- 024-rainbow-
+ * color-change is the first feature to call this function more than once for
+ * a SINGLE launch (once per pause/resume around a color choice, `BoardScene`),
+ * passing only the NEW slice of events each time. Node 0 of a later slice is
+ * never the launch's own true entry (that already played in an earlier call),
+ * so the caller passes `false` for every call after the first to suppress the
+ * edge glide -- without this, each resumed segment would incorrectly glide
+ * its first event in from the board's outer edge all over again.
  */
 export function playEventLog(
   scene: Phaser.Scene,
@@ -377,6 +415,7 @@ export function playEventLog(
   launch: Launch,
   events: EventLog,
   onDone: () => void,
+  isFirstSegment = true,
 ): void {
   if (events.length === 0) {
     onDone();
@@ -394,10 +433,15 @@ export function playEventLog(
   const roots = events.map((_, i) => i).filter((i) => parents[i] === null);
 
   function playNode(nodeIndex: number, onNodeDone: () => void): void {
-    const isFirstEvent = nodeIndex === 0;
+    const isFirstEvent = isFirstSegment && nodeIndex === 0;
     const event = events[nodeIndex];
-    const piece = event.type === 'MOVE_STEP' ? event.piece : { color: event.color, fragility: 'new' as const };
-    const from = event.from;
+    const piece =
+      event.type === 'MOVE_STEP'
+        ? event.piece
+        : event.type === 'COLOR_CHOICE'
+          ? { color: event.fromColor, fragility: 'new' as const }
+          : { color: event.color, fragility: 'new' as const };
+    const from = eventOrigin(event);
 
     drawBoard(boardGraphics, board, goal);
 
@@ -414,7 +458,9 @@ export function playEventLog(
     // product of an in-flight mutual collision, nothing has moved yet.
     const leadIn = isFirstEvent
       ? { from: entryCoordinate(launch.direction, launch.lane), direction: launch.direction }
-      : event.visualOrigin;
+      : event.type === 'COLOR_CHOICE'
+        ? undefined
+        : event.visualOrigin;
     const spawnAt = leadIn ? leadIn.from : from;
     const start = pixelCenter(spawnAt);
     const radius = CELL_SIZE / 2 - 6;
@@ -493,6 +539,28 @@ export function playEventLog(
     };
 
     const runEvent = (): void => {
+      if (event.type === 'COLOR_CHOICE') {
+        // No travel to animate -- the defender never moves (024-rainbow-
+        // color-change, FR-007); the attacker's own travel and disappearance
+        // is a SEPARATE, already-real ANNIHILATION event (push.ts orders it
+        // first). This one just flips the circle already sitting at `at` from
+        // its old color to the chosen one: shrink, swap the fill, grow back
+        // -- a discrete swap rather than a continuous color tween, which
+        // would need to fight Phaser's plain numeric interpolation blending
+        // RGB channels incorrectly for two arbitrary packed hex colors.
+        playRainbowSound();
+        scene.tweens.add({
+          targets: temp,
+          scale: 0,
+          duration: STEP_DURATION_MS / 2,
+          onComplete: () => {
+            temp.fillColor = PIECE_COLOR[event.toColor];
+            scene.tweens.add({ targets: temp, scale: 1, duration: STEP_DURATION_MS / 2, onComplete: finish });
+          },
+        });
+        return;
+      }
+
       if (event.type === 'ANNIHILATION') {
         playImpactSound();
         if (event.from.row === event.at.row && event.from.col === event.at.col) {
@@ -585,8 +653,8 @@ export function playEventLog(
 
     if (
       leadIn &&
-      isOnBoard(event.from, board.size) &&
-      (leadIn.from.row !== event.from.row || leadIn.from.col !== event.from.col)
+      isOnBoard(eventOrigin(event), board.size) &&
+      (leadIn.from.row !== eventOrigin(event).row || leadIn.from.col !== eventOrigin(event).col)
     ) {
       // Same per-cell walk, same constant speed, as every other move -- covers
       // the lead-in glide one cell at a time instead of a single
@@ -596,7 +664,7 @@ export function playEventLog(
       // its first impact covered far more distance in the same 450ms than a
       // short one; and a mutual collision's resulting trajectory skipped the
       // whole walk that led to the meeting point, popping in there directly).
-      const entryPath = cellPath(leadIn.from, event.from, leadIn.direction, board.size);
+      const entryPath = cellPath(leadIn.from, eventOrigin(event), leadIn.direction, board.size);
       walkPath(entryPath, leadIn.from, runEvent);
       return;
     }

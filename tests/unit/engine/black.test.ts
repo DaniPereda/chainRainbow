@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createBoard, setPieceAt, type Piece } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
 import { applyImpact } from '../../../src/engine/pieces/push.js';
+import { expectResolved } from './test-helpers.js';
 
 describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o columna (US1)', () => {
   it('impacto E/O: limpia toda la fila, incluidas fichas no adyacentes al impacto, y a la propia negra', () => {
@@ -11,12 +12,12 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
     board = setPieceAt(board, { row: 4, col: 6 }, { color: 'brown', fragility: 'new' });
     const black: Piece = { color: 'black', fragility: 'new' };
 
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: black,
       direction: 'E',
       from: { row: 4, col: 0 },
       to: { row: 4, col: 1 },
-    });
+    }));
 
     // Toda la fila 4 queda vacía -- las tres fichas que había, y la propia negra
     // (que nunca llega a escribirse en el tablero, FR-004).
@@ -46,12 +47,12 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
     board = setPieceAt(board, { row: 3, col: 0 }, { color: 'green', fragility: 'new' }); // control: misma fila, otra columna
     const black: Piece = { color: 'black', fragility: 'new' };
 
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: black,
       direction: 'S',
       from: { row: 2, col: 4 },
       to: { row: 3, col: 4 },
-    });
+    }));
 
     for (let row = 0; row < 8; row++) {
       expect(result.board.cells[row][4]).toBeNull();
@@ -69,12 +70,12 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
     // en col -1, fuera del tablero -- el mismo caso límite que ya provocaba el
     // "green lanzada al oeste" (isOnBoard, ronda anterior), pero esta vez
     // sobre el evento de la propia negra en vez del de un MOVE_STEP.
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: black,
       direction: 'E',
       from: { row: 0, col: -1 },
       to: { row: 0, col: 0 },
-    });
+    }));
 
     // La propia negra debe ser events[0] -- así hereda el glide de entrada
     // (isFirstEvent, launch-animation.ts) en vez de intentar spawnear
@@ -134,12 +135,12 @@ describe('negro (023-black-piece-line-clear): asentada en el tablero limpia al s
     board = setPieceAt(board, { row: 4, col: 0 }, { color: 'green', fragility: 'new' }); // control: misma fila, otra columna
     const striker: Piece = { color: 'green', fragility: 'new' };
 
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: striker,
       direction: 'S',
       from: { row: 3, col: 4 },
       to: { row: 4, col: 4 },
-    });
+    }));
 
     for (let row = 0; row < 8; row++) {
       expect(result.board.cells[row][4]).toBeNull();
@@ -158,12 +159,12 @@ describe('negro (023-black-piece-line-clear): asentada en el tablero limpia al s
     board = setPieceAt(board, { row: 0, col: 4 }, { color: 'brown', fragility: 'new' }); // control: misma columna, otra fila
     const striker: Piece = { color: 'green', fragility: 'new' };
 
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: striker,
       direction: 'E',
       from: { row: 4, col: 3 },
       to: { row: 4, col: 4 },
-    });
+    }));
 
     for (let col = 0; col < 8; col++) {
       expect(result.board.cells[4][col]).toBeNull();
@@ -178,12 +179,12 @@ describe('negro (023-black-piece-line-clear): asentada en el tablero limpia al s
     board = setPieceAt(board, { row: 4, col: 0 }, { color: 'green', fragility: 'new' }); // control: misma fila
     const red: Piece = { color: 'red', fragility: 'new' };
 
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: red,
       direction: 'S',
       from: { row: 3, col: 4 },
       to: { row: 4, col: 4 },
-    });
+    }));
 
     // Nada de MOVE_STEP -- ninguna rama perpendicular de rojo se produjo.
     expect(result.events.every((event) => event.type === 'ANNIHILATION')).toBe(true);
@@ -203,12 +204,12 @@ describe('negro (023-black-piece-line-clear): negro contra negro sigue siendo mi
     board = setPieceAt(board, { row: 1, col: 4 }, { color: 'orange', fragility: 'new' }); // misma columna -- NO debe desaparecer
     const attacker: Piece = { color: 'black', fragility: 'new' };
 
-    const result = applyImpact(board, {
+    const result = expectResolved(applyImpact(board, {
       piece: attacker,
       direction: 'S',
       from: { row: 3, col: 4 },
       to: { row: 4, col: 4 },
-    });
+    }));
 
     expect(result.events).toEqual([
       { type: 'ANNIHILATION', at: { row: 4, col: 4 }, color: 'black', from: { row: 3, col: 4 }, direction: 'S', visualOrigin: undefined },
