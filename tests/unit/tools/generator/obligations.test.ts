@@ -60,7 +60,9 @@ describe('resolveObligations: drains the queue for a single-launch construction 
 
     expect(outcome.ok).toBe(true);
     expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'new' });
-    expect(outcome.rawLaunches).toEqual([{ direction: 'E', lane: 4, color: 'orange' }]);
+    expect(outcome.rawLaunches).toEqual([
+      { direction: 'E', lane: 4, color: 'orange', target: { row: 4, col: 2 } },
+    ]);
   });
 
   it('fails the attempt when a hand-launch\'s path from the edge is not clear', () => {
@@ -116,7 +118,9 @@ describe('resolveObligations: drains the queue for a single-launch construction 
     const outcome = resolveObligations(root, ctx);
 
     expect(outcome.ok).toBe(true);
-    expect(outcome.rawLaunches).toEqual([{ direction: 'E', lane: 5, color: 'orange' }]);
+    expect(outcome.rawLaunches).toEqual([
+      { direction: 'E', lane: 5, color: 'orange', target: { row: 5, col: 0 } },
+    ]);
   });
 });
 
@@ -220,7 +224,9 @@ describe('resolveObligations: red split resolution (020-generator-red-support)',
     // The secondary branch -- furniture, sharing the split's advanced fragility.
     expect(outcome.board.cells[4][2]).toEqual({ color: 'green', fragility: 'cracked' });
     // Red itself, hand-launched, striking D from the north.
-    expect(outcome.rawLaunches).toEqual([{ direction: 'N', lane: 3, color: 'red' }]);
+    expect(outcome.rawLaunches).toEqual([
+      { direction: 'N', lane: 3, color: 'red', target: { row: 4, col: 3 } },
+    ]);
   });
 
   it('D always resolves as furniture with fragility "new", even when defenderContinuationProbability would otherwise always choose to chain', () => {
@@ -318,8 +324,8 @@ describe('resolveObligations: red split resolution (020-generator-red-support)',
     expect(outcome.board.cells[4][0]).toEqual({ color: 'green', fragility: 'new' }); // the chain's own origin
     expect(outcome.board.cells[4][2]).toBeNull(); // produced only by real play, not here
     expect(outcome.rawLaunches).toEqual([
-      { direction: 'N', lane: 3, color: 'red' },
-      { direction: 'E', lane: 4, color: 'orange' },
+      { direction: 'N', lane: 3, color: 'red', target: { row: 4, col: 3 } },
+      { direction: 'E', lane: 4, color: 'orange', target: { row: 4, col: 0 } },
     ]);
   });
 });

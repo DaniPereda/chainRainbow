@@ -399,3 +399,81 @@ describe('generateLevelWithRng: red split resolution (020-generator-red-support)
     expect(validatesForward(level, result.level.solution)).toBe(true);
   });
 });
+
+describe('generateLevel: 026-generator-black-decoys -- negro protege un carril/celda real, nunca lo que protege', () => {
+  // Real bug found live while building this feature: negro limpia la línea
+  // ENTERA, no solo hasta donde golpea -- si se acerca por el MISMO eje que
+  // lo que protege (el carril de otro lanzamiento, o la dirección de un
+  // empuje), se lleva por delante el propio objetivo/origen que necesitaba
+  // sobrevivir, dejando ese lanzamiento sin nada que golpear. El arreglo
+  // (research.md Decisión 1 revisada) hace que negro se acerque siempre en
+  // PERPENDICULAR -- este fuzz test confirma, contra el motor real y muchos
+  // seeds, que la solución completa (incluido el paso de negro cuando
+  // aparece) siempre termina en 'won' sin ningún missclick ni victoria/
+  // derrota prematura.
+  it('con blackLineClearProbability activado, toda solución generada (con o sin negro) se reproduce correctamente con el motor real', () => {
+    let sawBlack = false;
+
+    for (let seed = 0; seed < 300; seed++) {
+      const result = generateLevel({
+        launchCount: 3,
+        availableColors: ['green', 'orange'],
+        chainOriginProbability: 0.5,
+        decoyCount: 0,
+        seed,
+        defenderContinuationProbability: 0.4,
+        blackLineClearProbability: 1,
+      });
+      if (!result.ok) continue;
+
+      const hasBlack = result.level.hand.some((entry) => (typeof entry === 'string' ? entry : entry.color) === 'black');
+      sawBlack ||= hasBlack;
+
+      const level = createLevel({
+        pieces: result.level.pieces,
+        hand: result.level.hand,
+        goal: { at: result.level.goal.cell, color: result.level.goal.color },
+      });
+      expect(validatesForward(level, result.level.solution)).toBe(true);
+    }
+
+    // Si esto fuera falso, el resto del test no habría ejercitado esta
+    // feature en absoluto -- confirma que al menos algunos de los 300 seeds
+    // realmente activaron y aceptaron un candidato de negro.
+    expect(sawBlack).toBe(true);
+  });
+
+  // Ejemplo concreto (seed 2, mismos parámetros que el test anterior),
+  // verificado contra el motor real antes de fijarlo aquí: negro (E, carril
+  // 1) limpia un bloqueante en (1,3) que estaba directamente en el camino de
+  // aproximación del segundo lanzamiento real (S, carril 3) -- sin negro,
+  // ese lanzamiento golpearía el bloqueante en vez de la naranja real en
+  // (2,3). Al acercarse negro en perpendicular (fila 1, no columna 3), esa
+  // naranja sobrevive intacta.
+  it('seed 2: negro limpia un bloqueante que bloqueaba de verdad el segundo lanzamiento, sin tocar la ficha real de esa columna', () => {
+    const result = generateLevel({
+      launchCount: 3,
+      availableColors: ['green', 'orange'],
+      chainOriginProbability: 0.5,
+      decoyCount: 0,
+      seed: 2,
+      defenderContinuationProbability: 0.4,
+      blackLineClearProbability: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.level.hand[0]).toBe('black');
+    expect(result.level.solution[0]).toEqual({ direction: 'E', lane: 1, pieceIndex: 0 });
+    // La naranja real que el segundo lanzamiento necesita golpear sigue en
+    // pie en el tablero inicial -- negro (fila 1) nunca tocó la columna 3.
+    expect(result.level.pieces).toContainEqual({ at: { row: 2, col: 3 }, color: 'orange', fragility: 'new' });
+
+    const level = createLevel({
+      pieces: result.level.pieces,
+      hand: result.level.hand,
+      goal: { at: result.level.goal.cell, color: result.level.goal.color },
+    });
+    expect(validatesForward(level, result.level.solution)).toBe(true);
+  });
+});
