@@ -95,19 +95,22 @@ describe('arcoíris (024-rainbow-color-change): lanzada cambia el color de la de
     expect(outcome.hand).toEqual(level.hand);
   });
 
-  it('precedencia frente a negro: gana siempre la limpieza de línea de negro (FR-009, quickstart.md Escenario 4)', () => {
-    // Arcoíris lanzada golpea una negra asentada.
+  it('precedencia frente a negro: solo gana la limpieza de negro cuando negro ES la atacante -- una negra asentada ya no tiene prioridad de defensora (FR-009 corregido, research.md 023 Decisión 7 / 024 Decisión 3)', () => {
+    // Arcoíris lanzada golpea una negra asentada -- negro ya NO tiene
+    // prioridad como defensora (023, Decisión 7), así que gana el cambio de
+    // color de arcoíris, exactamente como contra cualquier otro color.
     const boardA = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'black', fragility: 'new' });
     const rainbow: Piece = { color: 'rainbow', fragility: 'new' };
     const resultA = applyImpact(boardA, { piece: rainbow, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
-    expect(resultA.status).toBe('resolved');
-    if (resultA.status !== 'resolved') throw new Error('unreachable');
-    expect(resultA.events.every((event) => event.type === 'ANNIHILATION')).toBe(true);
-    for (let row = 0; row < 8; row++) {
-      expect(resultA.board.cells[row][4]).toBeNull();
-    }
+    expect(resultA.status).toBe('pending-color-choice');
+    if (resultA.status !== 'pending-color-choice') throw new Error('unreachable');
+    expect(resultA.at).toEqual({ row: 4, col: 4 });
+    const resolvedA = expectResolved(resultA.resume('green'));
+    expect(resolvedA.board.cells[4][4]).toEqual({ color: 'green', fragility: 'new' });
 
-    // Negro lanzada golpea una arcoíris asentada.
+    // Negro lanzada golpea una arcoíris asentada -- negro-como-ATACANTE sigue
+    // ganando siempre (sin cambios): su propia limpieza de línea se dispara
+    // igual que contra cualquier otro color.
     const boardB = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
     const black: Piece = { color: 'black', fragility: 'new' };
     const resultB = applyImpact(boardB, { piece: black, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });

@@ -205,3 +205,96 @@ la fila entera desaparece junta, sin ningún círculo fuera del tablero.
   limpieza) + renderer (`board-view.ts` para el color visual; `sound-effects.ts` para un sonido
   propio, opcional) + tests dedicados. Sin cambios de esquema de niveles ni en
   `tools/generator/`.
+
+## Decisión 7 (revoca la Decisión 3 -- reportada por el usuario durante la sesión de 024-rainbow-color-change): negro NUNCA tiene prioridad como defensora; solo se activa cuando ELLA MISMA impacta
+
+**Contexto**: la Decisión 3 (arriba) estableció que negro, como defensora, gana SIEMPRE sobre
+cualquier mecánica del atacante -- incluida la de rojo. Probando en vivo (nivel 2 modificado a
+mano, con una negra añadida al tablero), el usuario reportó dos problemas reales con esa regla:
+(1) la limpieza se disparaba ANTES de que la ficha lanzada llegara siquiera a tocar la negra
+(un problema de TIMING de animación, ya arreglado por separado -- 024, Decisión 12 de ese mismo
+research.md); y (2), más fundamental, la limpieza se disparaba SIEMPRE al golpear a una negra
+asentada, incluso cuando eso no tenía sentido -- p. ej. verde golpeando a una negra en una
+columna vacía, donde la negra simplemente debería desplazarse una casilla y avanzar su
+fragilidad, sin limpiar nada, exactamente como pasaría con cualquier otro color.
+
+**Decisión (nueva, revoca la Decisión 3)**: negro deja de tener CUALQUIER prioridad como
+defensora. La única comprobación que queda en `applyImpact` es `site.piece.color === 'black'`
+(negro es la ATACANTE de este impacto concreto) -- exactamente el mismo nivel/patrón que ya
+ocupa la ramificación de rojo (`site.piece.color === 'red'`), nunca `defender.color === 'black'`.
+Cuando negro es la DEFENSORA, cae directamente en el camino genérico ya existente para
+cualquier otro color:
+
+- Atacante verde/naranja/marrón → negro se desplaza usando el `PUSH_STRATEGY` de ESE atacante
+  (misma dirección, 1/2/N casillas) -- FR-002 corregido: "la dirección que tomará la ficha negra
+  vendrá determinada por la ficha que la ha golpeado."
+- Atacante rojo → negro se divide en dos ramas perpendiculares vía `resolveRedSplit`, exactamente
+  como cualquier otra defensora golpeada por rojo.
+- Atacante arcoíris (024) → negro cambia de color como cualquier otra defensora (arcoíris ya no
+  cede ante negro -- ver 024, Decisión 3, actualizada junto con este cambio).
+
+Ese desplazamiento (o cada rama de la división de rojo) se reencola como un `ImpactSite` normal
+con `piece.color: 'black'` -- si esa nueva casilla está VACÍA, negro simplemente se asienta ahí
+(fragilidad ya avanzada por el camino genérico, sin ningún evento de limpieza). Si esa nueva
+casilla está OCUPADA, negro pasa a ser la ATACANTE de ESE impacto siguiente -- y AHORA SÍ, su
+propio efecto se dispara, en la dirección en la que negro estaba viajando en ese momento
+(heredada del atacante original, o de la rama de rojo que la desplazó). Esto reutiliza
+literalmente la infraestructura de cola ya existente (`resolveChain`/`nextSites`) sin ningún
+código nuevo -- una vez estrechada la condición a `site.piece.color === 'black'`, todo lo demás
+(el que negro solo se active al impactar, con la dirección heredada correcta) sale gratis del
+mecanismo genérico que YA procesa cualquier otro color desplazado.
+
+**Verificado contra el motor real** (no asumido) antes de fijarlo como expectativa en los tests:
+un caso incluso reveló un efecto emergente correcto -- verde empuja a negra hacia una fila con
+más fichas; negra golpea a una roja ya asentada ahí, se convierte en atacante, y limpia TODA la
+fila en su propia dirección (oeste) -- incluida la propia verde, que ya se había asentado en esa
+misma fila un paso antes. No es un bug: es la composición natural de "verde empuja" +
+"negro-atacante limpia su línea", exactamente el espíritu del Principio V (primitivas
+composables).
+
+**Impacto en 024 (arcoíris)**: FR-009/Decisión 3 de 024-rainbow-color-change quedan corregidas en
+el mismo cambio -- arcoíris ya no cede ante una negra asentada (negro no tiene prioridad de
+defensora que ceder), así que arcoíris gana normalmente contra una negra defensora. Negro-como-
+ATACANTE sigue ganando siempre sobre arcoíris, sin cambios (igual que ya ganaba sobre rojo).
+
+## Decisión 8 (reportada por el usuario, un efecto colateral real de la Decisión 7): el salto de naranja no se veía cuando el desplazamiento terminaba en ANNIHILATION, no en MOVE_STEP
+
+**Contexto**: al probar la Decisión 7 (negro ahora SÍ puede ser empujada por naranja, algo antes
+imposible -- negro estaba intercept ada antes de llegar nunca al camino genérico de empuje), el
+usuario reportó que naranja empujando a una negra "impacta bien en la segunda casilla saltando la
+primera, pero no se ve saltar" -- el desplazamiento de 2 casillas era correcto, pero la animación
+no mostraba el arco/burbuja característico de naranja. Reproducido headlessly: cuando el
+desplazamiento de 2 casillas termina en OTRA ficha del MISMO color (aniquilación) -- o, desde la
+Decisión 7, en negro disparando su propia limpieza tras ser empujada -- el evento resultante es un
+`ANNIHILATION`, no un `MOVE_STEP`. `AnnihilationEvent` nunca tuvo un campo `pushedByColor`
+(a diferencia de `MoveStepEvent`, que sí lo tiene desde 018), así que `orangeJumpMidpoint`
+siempre devolvía `null` para él, sin importar la distancia real recorrida -- el renderer caía
+siempre al camino de `cellPath`/`walkPath` genérico (línea recta, sin arco).
+
+**Importante**: este bug NO es exclusivo de negro -- es general, y ya existía antes de esta
+sesión (verificado: naranja empujando un verde hacia OTRO verde, 2 casillas, tenía el mismo
+problema). Simplemente nunca se había notado porque, hasta ahora, ningún playtest había producido
+una combinación tan directa "empuje de naranja termina justo en una aniquilación" -- la
+combinación de dos negras separadas exactamente 2 casillas del nivel 2 (modificado a mano por el
+usuario) lo hizo evidente por primera vez.
+
+**Arreglo**:
+1. `AnnihilationEvent` gana un campo `pushedByColor?: PieceColor` (`events.ts`), igual que ya
+   tiene `MoveStepEvent`.
+2. Cada punto de `push.ts` que construye un `ANNIHILATION` (mismo color en `applyImpact`, mismo
+   color en `applyMutualImpact`, el evento disparador de negro, y el evento de desaparición de la
+   atacante en el cambio de color de arcoíris) pasa `pushedByColor: site.pushedByColor` /
+   `siteA.pushedByColor` -- el dato YA estaba disponible en el `ImpactSite`, solo faltaba
+   propagarlo al evento.
+3. `orangeJumpMidpoint` (`launch-animation.ts`) pasa a aceptar `MoveStepEvent | AnnihilationEvent`
+   (antes solo el primero), usando `.to` o `.at` según corresponda para la geometría.
+4. La animación de salto (marcador + arco de dos tramos) se extrajo a una función compartida
+   (`playOrangeJump`) para que la rama `ANNIHILATION` de `runEvent` pueda usarla también, en vez
+   de duplicar ese código -- termina en un `fade` (la ficha se desvanece) en vez de en `finish`
+   directamente (la ficha se asienta), la única diferencia real entre los dos casos.
+
+**Verificado**: nuevo test dedicado en `launch-animation.test.ts` (`orangeJumpMidpoint` sobre un
+evento `ANNIHILATION` real, verificado contra el motor) más las 4 correcciones mecánicas a tests
+ya existentes que ahora ven el campo `pushedByColor` nuevo en sus propias aserciones. `npm test`
+en verde (258/258).
+

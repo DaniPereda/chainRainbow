@@ -126,73 +126,70 @@ describe('negro (023-black-piece-line-clear): lanzada limpia toda su fila o colu
   });
 });
 
-describe('negro (023-black-piece-line-clear): asentada en el tablero limpia al ser golpeada (US2)', () => {
-  it('impacto N/S: limpia toda la columna de la negra -- una ficha de control en su misma fila sobrevive', () => {
-    let board = createBoard();
-    board = setPieceAt(board, { row: 4, col: 4 }, { color: 'black', fragility: 'new' });
-    board = setPieceAt(board, { row: 1, col: 4 }, { color: 'green', fragility: 'new' });
-    board = setPieceAt(board, { row: 6, col: 4 }, { color: 'orange', fragility: 'cracked' });
-    board = setPieceAt(board, { row: 4, col: 0 }, { color: 'green', fragility: 'new' }); // control: misma fila, otra columna
-    const striker: Piece = { color: 'green', fragility: 'new' };
+describe('negro (023-black-piece-line-clear): asentada en el tablero se comporta como cualquier otra ficha al ser golpeada (US2 revocada -- corrección reportada por el usuario, research.md Decisión 7)', () => {
+  // La versión original de esta historia (negro asentada limpia SIEMPRE al ser
+  // golpeada, sea cual sea el color/dirección de quien la golpea) resultó
+  // incorrecta: el usuario reportó en vivo que el efecto se disparaba antes de
+  // que la ficha lanzada llegara siquiera a tocar la negra, y siempre, tuviera
+  // o no sentido. La regla correcta: negro asentada NUNCA tiene prioridad
+  // especial como defensora -- reacciona exactamente igual que cualquier otra
+  // ficha al mecanismo propio de quien la golpea (empuje, salto, división de
+  // rojo, cambio de color de arcoíris...). Su propio efecto (limpiar la línea)
+  // solo se dispara cuando ELLA MISMA acaba siendo la atacante de un impacto
+  // -- incluido cuando eso ocurre COMO CONSECUENCIA de haber sido desplazada.
 
-    const result = expectResolved(applyImpact(board, {
-      piece: striker,
-      direction: 'S',
-      from: { row: 3, col: 4 },
-      to: { row: 4, col: 4 },
-    }));
+  it('verde la empuja UNA casilla en su misma dirección -- si aterriza vacía, no limpia nada, solo avanza su fragilidad', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 3 }, color: 'black' }],
+      hand: ['green'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
 
-    for (let row = 0; row < 8; row++) {
-      expect(result.board.cells[row][4]).toBeNull();
-    }
-    expect(result.board.cells[4][0]).toEqual({ color: 'green', fragility: 'new' });
-    expect(result.nextSites).toEqual([]);
-    // La atacante también desaparece (FR-004) -- nunca se asienta en (4,4).
-    expect(result.events.some((event) => event.type === 'ANNIHILATION' && event.color === 'green' && event.at.row === 4 && event.at.col === 4)).toBe(true);
+    const outcome = resolveLaunch(level, { direction: 'N', lane: 3 });
+
+    // Verde se asienta donde estaba la negra; la negra avanza una casilla más
+    // al norte -- desplazamiento normal de verde, ninguna limpieza.
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'green', fragility: 'new' });
+    expect(outcome.board.cells[3][3]).toEqual({ color: 'black', fragility: 'cracked' });
+    expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(false);
   });
 
-  it('impacto E/O: limpia toda la fila de la negra -- una ficha de control en su misma columna sobrevive', () => {
-    let board = createBoard();
-    board = setPieceAt(board, { row: 4, col: 4 }, { color: 'black', fragility: 'new' });
-    board = setPieceAt(board, { row: 4, col: 1 }, { color: 'green', fragility: 'new' });
-    board = setPieceAt(board, { row: 4, col: 6 }, { color: 'orange', fragility: 'new' });
-    board = setPieceAt(board, { row: 0, col: 4 }, { color: 'brown', fragility: 'new' }); // control: misma columna, otra fila
-    const striker: Piece = { color: 'green', fragility: 'new' };
+  it('rojo la divide en dos ramas perpendiculares -- si ambas aterrizan vacías, no limpia nada', () => {
+    const level = createLevel({
+      pieces: [{ at: { row: 4, col: 4 }, color: 'black' }],
+      hand: ['red'],
+      goal: { at: { row: 0, col: 0 }, color: 'black' },
+    });
 
-    const result = expectResolved(applyImpact(board, {
-      piece: striker,
-      direction: 'E',
-      from: { row: 4, col: 3 },
-      to: { row: 4, col: 4 },
-    }));
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
+
+    expect(outcome.board.cells[4][4]).toEqual({ color: 'red', fragility: 'new' });
+    expect(outcome.board.cells[4][5]).toEqual({ color: 'black', fragility: 'cracked' });
+    expect(outcome.board.cells[4][3]).toEqual({ color: 'black', fragility: 'cracked' });
+    expect(outcome.events.some((event) => event.type === 'ANNIHILATION')).toBe(false);
+  });
+
+  it('si el empuje hace que negro aterrice sobre una ficha real, SU PROPIO efecto se dispara entonces, en la dirección en la que negro viajaba -- verificado contra el motor real antes de fijarlo como expectativa', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 0, col: 0 }, color: 'orange' },
+        { at: { row: 0, col: 1 }, color: 'brown' },
+        { at: { row: 0, col: 2 }, color: 'red' },
+        { at: { row: 0, col: 3 }, color: 'black' },
+      ],
+      hand: ['green'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+
+    // Verde entra por el borde este y empuja a la negra un paso al oeste,
+    // exactamente donde estaba la roja -- negro pasa a ser la atacante de ESE
+    // impacto y limpia la fila entera en su propia dirección (oeste),
+    // incluida la propia verde, que ya se había asentado en esa misma fila.
+    const outcome = resolveLaunch(level, { direction: 'O', lane: 0 });
 
     for (let col = 0; col < 8; col++) {
-      expect(result.board.cells[4][col]).toBeNull();
+      expect(outcome.board.cells[0][col]).toBeNull();
     }
-    expect(result.board.cells[0][4]).toEqual({ color: 'brown', fragility: 'new' });
-  });
-
-  it('rojo golpea a una negra: gana la limpieza, la ramificación habitual de rojo nunca se produce (research.md Decisión 3)', () => {
-    let board = createBoard();
-    board = setPieceAt(board, { row: 4, col: 4 }, { color: 'black', fragility: 'new' });
-    board = setPieceAt(board, { row: 6, col: 4 }, { color: 'orange', fragility: 'new' });
-    board = setPieceAt(board, { row: 4, col: 0 }, { color: 'green', fragility: 'new' }); // control: misma fila
-    const red: Piece = { color: 'red', fragility: 'new' };
-
-    const result = expectResolved(applyImpact(board, {
-      piece: red,
-      direction: 'S',
-      from: { row: 3, col: 4 },
-      to: { row: 4, col: 4 },
-    }));
-
-    // Nada de MOVE_STEP -- ninguna rama perpendicular de rojo se produjo.
-    expect(result.events.every((event) => event.type === 'ANNIHILATION')).toBe(true);
-    for (let row = 0; row < 8; row++) {
-      expect(result.board.cells[row][4]).toBeNull();
-    }
-    expect(result.board.cells[4][0]).toEqual({ color: 'green', fragility: 'new' }); // eje correcto: fila no afectada
-    expect(result.nextSites).toEqual([]);
   });
 });
 
