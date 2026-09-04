@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { AnnihilationEvent, Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
-import { playGoalSound, playImpactSound, playJumpSound, playRainbowSound, playSplitSound } from './sound-effects.js';
+import { playGoalSound, playImpactSound, playJumpSound, playPurpleSound, playRainbowSound, playSplitSound } from './sound-effects.js';
 
 // 018-piece-movement-animation refinement: slowed down twice, per two rounds of
 // the user's own playtest (150ms -> 350ms -> 450ms, "todo un poco mas lento").
@@ -443,7 +443,49 @@ export function playEventLog(
   }
   const roots = events.map((_, i) => i).filter((i) => parents[i] === null);
 
-  function playNode(nodeIndex: number, onNodeDone: () => void): void {
+  // The number of cells this NON-first event travels before reaching the
+  // point where it should be visually synchronized with its siblings -- used
+  // only to pad SIBLING events that share a convergence point but travelled
+  // different real distances to reach it (025-purple-attraction-piece:
+  // research.md Decisión 2's own "wait for each other" only applies to the
+  // ENGINE's event ordering; without this, the renderer had no idea two
+  // siblings needed to visually arrive together too). Two distinct shapes,
+  // both real bugs reported live by the user testing púrpura:
+  // - `event.visualOrigin` present: the "lead-in glide" case (a mutual
+  //   collision's DIFFERENT-color continuation, `strikeMutualSide` --
+  //   `event.from` was rewritten to the meeting cell, the true pre-collision
+  //   origin only survives in `visualOrigin`). The synchronizable segment is
+  //   that lead-in (`visualOrigin.from` -> `eventOrigin(event)`) -- whatever
+  //   the event does AFTER reaching it (its own post-collision leg) is no
+  //   longer part of the shared moment and mustn't be synced too. First bug:
+  //   the closer piece bred through the meeting cell and kept going alone
+  //   while the farther one was still catching up.
+  // - No `visualOrigin`: the event's OWN `from` already IS the true origin
+  //   (a mutual collision's SAME-color case, `applyMutualImpact` -- two
+  //   genuinely different origins, each with its own real ANNIHILATION event,
+  //   converging directly on the shared `at` with no separate leg at all).
+  //   The synchronizable segment is the whole thing, `from` -> `to`/`at`.
+  //   Second bug, found immediately after fixing the first: the SHORTER of
+  //   these two would fade out alone while the longer one was still walking,
+  //   because this function used to return 0 for anything without a
+  //   `visualOrigin` at all, never accounting for this shape.
+  function syncTravelCellCount(nodeIndex: number): number {
+    const event = events[nodeIndex];
+    if (event.type === 'COLOR_CHOICE') return 0;
+    const origin = eventOrigin(event);
+    if (!isOnBoard(origin, board.size)) return 0;
+
+    if (event.visualOrigin) {
+      if (event.visualOrigin.from.row === origin.row && event.visualOrigin.from.col === origin.col) return 0;
+      return cellPath(event.visualOrigin.from, origin, event.visualOrigin.direction, board.size).length;
+    }
+
+    const destination = event.type === 'MOVE_STEP' ? event.to : event.at;
+    if (destination.row === origin.row && destination.col === origin.col) return 0;
+    return cellPath(origin, destination, event.direction, board.size).length;
+  }
+
+  function playNode(nodeIndex: number, waitCells: number, onNodeDone: () => void): void {
     const isFirstEvent = isFirstSegment && nodeIndex === 0;
     const event = events[nodeIndex];
     const piece =
@@ -492,16 +534,25 @@ export function playEventLog(
         return;
       }
       // Every child starts here, at the same instant -- this is the fork
-      // itself (a red split's two branches, in practice the only source of
-      // more than one child). `onNodeDone` fires only once ALL of them (and
-      // whatever they in turn fork into) have finished.
+      // itself (a red split's two branches, or two mutual-collision sides
+      // converging on the same cell, in practice the only sources of more
+      // than one child). `onNodeDone` fires only once ALL of them (and
+      // whatever they in turn fork into) have finished. Siblings can have
+      // travelled different REAL distances to reach this shared origin (a
+      // red split's branches never do -- same fixed 1-cell hop both sides --
+      // but púrpura's two attracted pieces routinely do) -- `waitCells`
+      // pads whichever ones are shorter so all of them visibly arrive at
+      // the shared cell together before any of them proceeds, instead of
+      // the closer one breezing through alone while the others catch up.
+      const syncLengths = kids.map(syncTravelCellCount);
+      const maxSyncCells = Math.max(...syncLengths);
       let remaining = kids.length;
-      for (const childIndex of kids) {
-        playNode(childIndex, () => {
+      kids.forEach((childIndex, i) => {
+        playNode(childIndex, maxSyncCells - syncLengths[i], () => {
           remaining -= 1;
           if (remaining === 0) onNodeDone();
         });
-      }
+      });
     };
 
     // Walks `temp` through `path` one cell at a time, each taking exactly
@@ -605,6 +656,27 @@ export function playEventLog(
       });
     };
 
+    // `waitCells` (computed by the caller from `syncTravelCellCount`)
+    // synchronizes this node's own arrival at wherever its siblings need to
+    // meet it, with a stationary pause -- fired at most ONCE, at whichever of
+    // two points is genuinely this event's own convergence moment: right
+    // after its lead-in glide (below, when `leadIn` gives it a separate
+    // pre-collision segment) if it has one, or right after its own
+    // walk/jump/immediate-fade arrives (inside `runEvent`'s own branches,
+    // when there's no separate lead-in and the event's own from -> to/at IS
+    // that journey -- e.g. a same-color mutual annihilation's two genuinely
+    // different origins). Never fires twice for the same node -- a leadIn
+    // glide already consumes it before `runEvent` even starts.
+    let waitFired = false;
+    const afterArrival = (callback: () => void): void => {
+      if (waitFired || waitCells === 0) {
+        callback();
+        return;
+      }
+      waitFired = true;
+      scene.time.delayedCall(waitCells * STEP_DURATION_MS, callback);
+    };
+
     const runEvent = (): void => {
       if (event.type === 'COLOR_CHOICE') {
         // No travel to animate -- the defender never moves (024-rainbow-
@@ -643,8 +715,9 @@ export function playEventLog(
           // it walked a visible full lap before fading instead of just
           // fading in place. Fading immediately is also simply the correct
           // animation for zero real distance, independent of this bug.
-          playImpactSound();
-          fade();
+          if (event.color === 'purple') playPurpleSound();
+          else playImpactSound();
+          afterArrival(fade);
           return;
         }
 
@@ -655,7 +728,7 @@ export function playEventLog(
           // negro's own trigger after being pushed into a real defender):
           // `from`/`at` really are 2 cells apart via orange's own mechanic.
           playJumpSound();
-          playOrangeJump(event.from, event.at, jumpMid, fade);
+          playOrangeJump(event.from, event.at, jumpMid, () => afterArrival(fade));
           return;
         }
 
@@ -663,9 +736,17 @@ export function playEventLog(
         // it spawned, never visibly travelling to `at` first -- a same-color
         // collision looked like the piece popped into existence already
         // annihilating, instead of arriving there like any other impact.
-        playImpactSound();
+        // A púrpura's own ANNIHILATION always takes this path (real travel,
+        // never a 2-cell orange jump) -- its activation sound plays here
+        // instead of the generic impact sound (025-purple-attraction-piece,
+        // research.md Decisión 4). `afterArrival(fade)` -- not a bare `fade`
+        // -- is what makes a same-color mutual annihilation's two separate
+        // events (one per real side, since the fix above) wait for each
+        // other here instead of the shorter one fading out alone.
+        if (event.color === 'purple') playPurpleSound();
+        else playImpactSound();
         const path = cellPath(event.from, event.at, event.direction, board.size);
-        walkPath(path, event.from, fade);
+        walkPath(path, event.from, () => afterArrival(fade));
         return;
       }
 
@@ -677,13 +758,13 @@ export function playEventLog(
         else if (event.hasCollision) playImpactSound();
 
         const path = cellPath(event.from, event.to, event.direction, board.size);
-        walkPath(path, event.from, finish);
+        walkPath(path, event.from, () => afterArrival(finish));
         return;
       }
 
       if (isRedSplit) playSplitSound();
       else playJumpSound();
-      playOrangeJump(event.from, event.to, midpoint, finish);
+      playOrangeJump(event.from, event.to, midpoint, () => afterArrival(finish));
     };
 
     if (
@@ -699,8 +780,11 @@ export function playEventLog(
       // its first impact covered far more distance in the same 450ms than a
       // short one; and a mutual collision's resulting trajectory skipped the
       // whole walk that led to the meeting point, popping in there directly).
+      // `afterArrival(runEvent)` -- not a bare `runEvent` -- is what makes a
+      // SHORTER lead-in among siblings wait here for a longer one instead of
+      // carrying straight on to its own post-collision leg alone.
       const entryPath = cellPath(leadIn.from, eventOrigin(event), leadIn.direction, board.size);
-      walkPath(entryPath, leadIn.from, runEvent);
+      walkPath(entryPath, leadIn.from, () => afterArrival(runEvent));
       return;
     }
 
@@ -709,7 +793,7 @@ export function playEventLog(
 
   let remainingRoots = roots.length;
   for (const rootIndex of roots) {
-    playNode(rootIndex, () => {
+    playNode(rootIndex, 0, () => {
       remainingRoots -= 1;
       if (remainingRoots === 0) onDone();
     });

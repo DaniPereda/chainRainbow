@@ -473,6 +473,28 @@ describe('computeEventParents: finds where trajectories really fork, so they can
     //     trigger, not chained after the rest of the sweep.
     expect(parents).toEqual([null, 0, 1, 1, 1, 0]);
   });
+
+  it('groups a same-color mutual annihilation\'s two DIFFERENT-origin events as siblings too, via the orphan-chain fallback -- neither shares a `from` with the other (025-purple-attraction-piece: applyMutualImpact now emits one ANNIHILATION per real side instead of one, real bug reported live by the user, "se anima la ficha de arriba pero no la de abajo")', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 1 }, color: 'green' },
+        { at: { row: 4, col: 6 }, color: 'green' },
+      ],
+      hand: [{ color: 'purple', fragility: 'broken' }],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
+
+    expect(outcome.events).toHaveLength(3);
+    const parents = computeEventParents(outcome.events);
+    // [0] púrpura's own travel-and-disappearance -- the only genuine root.
+    // [1]/[2] the two attracted greens' own ANNIHILATIONs, from their TRUE
+    //     (and different) origins -- neither shares a `from` with the other,
+    //     so the from-grouping alone can't catch them as siblings; both must
+    //     still land on the SAME parent (0) via the orphan-chain fallback,
+    //     exactly like a line clear's unrelated swept cells do.
+    expect(parents).toEqual([null, 0, 0]);
+  });
 });
 
 describe('isWrapHop: detects a single step that crosses the board edge', () => {
