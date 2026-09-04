@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { Hand } from '../engine/index.js';
-import { PIECE_COLOR, drawPieceFragility } from './board-view.js';
+import { drawPieceCircle, drawPieceFragility } from './board-view.js';
 
 export const PIECE_RADIUS = 14;
 const SLOT_WIDTH = 40;
@@ -37,8 +37,7 @@ export function drawHand(
   return hand.pieces.map((piece, index) => {
     const x = startX + index * SLOT_WIDTH;
 
-    graphics.fillStyle(PIECE_COLOR[piece.color], 1);
-    graphics.fillCircle(x, 0, PIECE_RADIUS);
+    drawPieceCircle(graphics, x, 0, PIECE_RADIUS, piece.color);
     drawPieceFragility(graphics, x, 0, PIECE_RADIUS, piece.fragility);
 
     if (index === selectedIndex) {

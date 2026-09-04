@@ -14,11 +14,18 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
   // reads as "black" against the other saturated colors while staying visible
   // (023-black-piece-line-clear).
   black: 0x4b4b55,
-  // A solid violet stand-in for an actual rainbow gradient (not viable with a
-  // plain Phaser.GameObjects.Circle) -- distinguishable from all 5 other
-  // colors above, including black's dark slate (024-rainbow-color-change).
+  // Fallback for surfaces that can only render a single flat fill (the animated
+  // `temp` circle in launch-animation.ts) -- a solid violet stand-in for an actual
+  // rainbow gradient, distinguishable from all 5 other colors above, including
+  // black's dark slate (024-rainbow-color-change). Static rendering uses
+  // `drawPieceCircle` below instead, which draws real rainbow bands.
   rainbow: 0xb26bff,
 };
+
+// Outer-to-inner band colors for a static rainbow piece -- real rainbows put red
+// outermost, so the largest ring is drawn first with the rest layered on top,
+// each `fillCircle` call painting over the previous one (025-rainbow-visual).
+const RAINBOW_BANDS = [0xe74c3c, 0xe67e22, 0xf1c40f, 0x2ecc71, 0x3498db, 0x9b59b6];
 
 const GRID_LINE_COLOR = 0x444444;
 
@@ -92,6 +99,34 @@ export function drawPieceFragility(
 }
 
 /**
+ * Draws a single piece's fill at `(centerX, centerY)` -- a flat `fillCircle` in
+ * `PIECE_COLOR[color]` for every color except 'rainbow', which instead layers
+ * `RAINBOW_BANDS` as concentric rings of shrinking radius so a static rainbow
+ * piece actually reads as a rainbow rather than a flat violet circle
+ * (025-rainbow-visual). Shared between the board (`drawBoard`) and the hand
+ * (`hand-panel.ts`'s `drawHand`) so both surfaces stay visually consistent.
+ */
+export function drawPieceCircle(
+  graphics: Phaser.GameObjects.Graphics,
+  centerX: number,
+  centerY: number,
+  radius: number,
+  color: PieceColor,
+): void {
+  if (color !== 'rainbow') {
+    graphics.fillStyle(PIECE_COLOR[color], 1);
+    graphics.fillCircle(centerX, centerY, radius);
+    return;
+  }
+
+  RAINBOW_BANDS.forEach((bandColor, index) => {
+    const bandRadius = radius * (1 - index / RAINBOW_BANDS.length);
+    graphics.fillStyle(bandColor, 1);
+    graphics.fillCircle(centerX, centerY, bandRadius);
+  });
+}
+
+/**
  * Draws a Board + Goal (engine state) onto a Phaser Graphics object as plain
  * shapes -- no image assets. Deterministic given the same inputs; the only side
  * effect is drawing onto `graphics`, so it doesn't need its own Vitest coverage
@@ -127,8 +162,7 @@ export function drawBoard(
       const centerY = row * CELL_SIZE + CELL_SIZE / 2;
       const radius = CELL_SIZE / 2 - 6;
 
-      graphics.fillStyle(PIECE_COLOR[piece.color], 1);
-      graphics.fillCircle(centerX, centerY, radius);
+      drawPieceCircle(graphics, centerX, centerY, radius, piece.color);
       drawPieceFragility(graphics, centerX, centerY, radius, piece.fragility);
     }
   }
