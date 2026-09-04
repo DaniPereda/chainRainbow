@@ -289,6 +289,20 @@ export function applyMutualImpact(
   siteB: ImpactSite,
 ): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
   if (siteA.piece.color === siteB.piece.color) {
+    // Two genuinely separate trajectories converge and both annihilate --
+    // TWO events, one per real side, not one (025-purple-attraction-piece:
+    // reported live by the user as "se anima la ficha de arriba pero no la de
+    // abajo" -- únicamente había un evento, así que el renderer literalmente
+    // no tenía nada que animar para el otro lado). Previously deliberately
+    // simplified to a single event "recording one side of it" (see
+    // AnnihilationEvent's own comment, since corrected) when this was mostly
+    // a rare edge case of red's own parallel branches; púrpura's whole
+    // mechanic routinely produces exactly this shape, making the gap
+    // impossible to ignore. Both events share the same `at` (that's the
+    // definition of a mutual collision) -- the renderer treats them as
+    // siblings via the SAME origin-orphan-chaining fallback already used for
+    // an unrelated line-clear's swept cells (`computeEventParents`), no
+    // changes needed there.
     return {
       board,
       events: [
@@ -300,6 +314,15 @@ export function applyMutualImpact(
           direction: siteA.direction,
           pushedByColor: siteA.pushedByColor,
           visualOrigin: siteA.visualOrigin,
+        },
+        {
+          type: 'ANNIHILATION',
+          at: siteB.to,
+          color: siteB.piece.color,
+          from: siteB.from,
+          direction: siteB.direction,
+          pushedByColor: siteB.pushedByColor,
+          visualOrigin: siteB.visualOrigin,
         },
       ],
       nextSites: [],

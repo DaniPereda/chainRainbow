@@ -113,7 +113,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
 });
 
 describe('applyMutualImpact: two in-flight trajectories colliding with each other (019-synchronous-tick-resolution)', () => {
-  it('same color: mutual annihilation, no nextSites -- same rule as applyImpact\'s own same-color case', () => {
+  it('same color: mutual annihilation, one ANNIHILATION per real side, no nextSites -- 025-purple-attraction-piece: both sides now get their own event, not just siteA\'s', () => {
     const board = createBoard();
     const siteA: ImpactSite = {
       piece: { color: 'green', fragility: 'cracked' },
@@ -131,7 +131,8 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
     const result = applyMutualImpact(board, siteA, siteB);
 
     expect(result.events).toEqual([
-      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green', from: { row: 2, col: 3 }, direction: 'E' },
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green', from: { row: 2, col: 3 }, direction: 'E', pushedByColor: undefined, visualOrigin: undefined },
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green', from: { row: 4, col: 4 }, direction: 'N', pushedByColor: undefined, visualOrigin: undefined },
     ]);
     expect(result.nextSites).toEqual([]);
   });
@@ -358,7 +359,8 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
     const result = applyMutualImpact(board, siteA, siteB);
 
     expect(result.events).toEqual([
-      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'red', from: siteA.from, direction: siteA.direction },
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'red', from: siteA.from, direction: siteA.direction, pushedByColor: undefined, visualOrigin: undefined },
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'red', from: siteB.from, direction: siteB.direction, pushedByColor: undefined, visualOrigin: undefined },
     ]);
     expect(result.nextSites).toEqual([]);
   });

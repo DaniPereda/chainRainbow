@@ -54,10 +54,12 @@ export type AnnihilationEvent = {
   // animated as popping into existence directly at `at` and fading there,
   // never visibly travelling from wherever it actually came from. For a
   // MUTUAL same-color collision (applyMutualImpact, two in-flight trajectories
-  // meeting head-on) there are genuinely two converging pieces but only one
-  // event -- this records one side of it (arbitrarily siteA's), a deliberate
-  // simplification: showing both sides at once is a separate, bigger visual
-  // question this fix doesn't take on.
+  // meeting head-on) there are genuinely two converging pieces and TWO
+  // ANNIHILATION events, one per real side (025-purple-attraction-piece --
+  // previously only one was emitted, "recording one side of it", a
+  // deliberate simplification that held up until púrpura's own mechanic made
+  // the missing side impossible to ignore: the user saw only one of the two
+  // attracted pieces ever animate).
   from: Coordinate;
   direction: Direction;
   // See MoveStepEvent's own comment -- same rendering hint, same reason. Real

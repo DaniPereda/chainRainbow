@@ -86,10 +86,11 @@ describe('púrpura (025-purple-attraction-piece): resolveLaunch -- la atracción
     const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
 
     expect(outcome.missclick).toBe(false);
-    // La propia púrpura viaja y desaparece -- un único ANNIHILATION propio,
-    // seguido de la aniquilación por mismo color de las DOS fichas atraídas
-    // resuelta como UN SOLO evento mutuo (nunca dos asentamientos
-    // independientes por separado).
+    // La propia púrpura viaja y desaparece -- un ANNIHILATION propio, seguido
+    // de la aniquilación por mismo color de las DOS fichas atraídas, cada una
+    // con su PROPIO evento (no un único evento que solo represente un lado --
+    // bug real reportado por el usuario probando en vivo: "se anima la ficha
+    // de arriba pero no la de abajo").
     expect(outcome.events).toEqual([
       {
         type: 'ANNIHILATION',
@@ -106,6 +107,15 @@ describe('púrpura (025-purple-attraction-piece): resolveLaunch -- la atracción
         color: 'green',
         from: { row: 4, col: 6 },
         direction: 'O',
+        pushedByColor: undefined,
+        visualOrigin: undefined,
+      },
+      {
+        type: 'ANNIHILATION',
+        at: { row: 4, col: 4 },
+        color: 'green',
+        from: { row: 4, col: 1 },
+        direction: 'E',
         pushedByColor: undefined,
         visualOrigin: undefined,
       },
@@ -130,8 +140,10 @@ describe('púrpura (025-purple-attraction-piece): resolveLaunch -- la atracción
     const outcome = resolveLaunch(level, { direction: 'S', lane: 4 });
 
     expect(outcome.missclick).toBe(false);
-    expect(outcome.events.filter((event) => event.type === 'ANNIHILATION')).toHaveLength(2);
+    // Púrpura + una ANNIHILATION por cada una de las dos fichas atraídas.
+    expect(outcome.events.filter((event) => event.type === 'ANNIHILATION')).toHaveLength(3);
     expect(outcome.events[1]).toMatchObject({ type: 'ANNIHILATION', at: { row: 4, col: 4 }, color: 'orange' });
+    expect(outcome.events[2]).toMatchObject({ type: 'ANNIHILATION', at: { row: 4, col: 4 }, color: 'orange' });
     expect(outcome.board.cells[4][2]).toBeNull();
     expect(outcome.board.cells[4][6]).toBeNull();
   });
