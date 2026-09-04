@@ -36,6 +36,12 @@ export type Obligation = {
   // fragility ('cracked', since D is forced 'new' -- research.md Decisión 5)
   // rather than the free 'new' any other furniture piece gets.
   furnitureFragility?: Fragility;
+  // 026-generator-black-decoys: presente solo en una obligación 'striker-origin'
+  // cuyo eventual lanzamiento de mano es responsable de empujar una ficha hasta
+  // ESTA celda (la del 'defender' padre que la originó) -- permite, cuando esa
+  // obligación resuelve por lanzamiento directo (chooseHand), registrar un
+  // LandingCell candidato para la Estrategia B (research.md Decisión 3/6).
+  explainsLandingAt?: Coordinate;
 };
 
 export type RawLaunch = {
@@ -46,6 +52,23 @@ export type RawLaunch = {
   // lanzamiento -- generate.ts lo usa para anular la fragilidad normal (siempre
   // NEW/CRACKED para fichas de la solución) únicamente en este caso.
   forcedFragility?: 'broken';
+  // 026-generator-black-decoys, research.md Decisión 2: la celda exacta contra
+  // la que este lanzamiento impacta -- ya conocida en el momento en que se
+  // descubre. Necesaria para que la Estrategia A (proteger el carril de
+  // aproximación) sepa dónde termina, sin volver a recorrer el tablero.
+  target: Coordinate;
+};
+
+// 026-generator-black-decoys, research.md Decisión 3: una celda de aterrizaje
+// candidata para la Estrategia B -- una celda donde, según la solución ya
+// construida, una ficha se asienta como resultado de un empuje anterior.
+// `launchIndex` apunta al lanzamiento de mano (en `rawLaunches`) responsable de
+// ese empuje -- solo se registra cuando ese striker resuelve por lanzamiento
+// directo (research.md Decisión 6, alcance v1: nunca cuando es él mismo el
+// eslabón de una cadena más profunda).
+export type LandingCell = {
+  cell: Coordinate;
+  launchIndex: number;
 };
 
 export type ResolutionContext = {
@@ -70,6 +93,12 @@ export type ResolutionContext = {
 export type ResolutionOutcome = {
   board: Board;
   rawLaunches: RawLaunch[]; // en orden de DESCUBRIMIENTO -- el llamador las invierte (data-model.md)
+  // 026-generator-black-decoys, research.md Decisión 3: candidatas para la
+  // Estrategia B, en el orden en que se descubrieron. La seguridad de usar
+  // cualquiera de ellas se decide reproduciendo la solución candidata con el
+  // motor real (validatesForward, generate.ts) -- no hace falta ningún
+  // registro de señuelos separado (research.md Decisión 4, revisada).
+  landingCells: LandingCell[];
   ok: boolean;
 };
 
@@ -193,6 +222,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
   let board = ctx.board;
   let launchesUsed = 0;
   const rawLaunches: RawLaunch[] = [];
+  const landingCells: LandingCell[] = [];
   const queue: Obligation[] = [initial];
 
   // 013-generator-fragility-difficulty: el estado compartido de 'easy' se
@@ -255,7 +285,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
         'settle',
         ctx.rng,
       );
-      if (resolved === null) return { board, rawLaunches, ok: false };
+      if (resolved === null) return { board, rawLaunches, landingCells, ok: false };
 
       // 020-generator-red-support: a red split explains obligation.cell
       // completely differently -- three new obligations instead of the usual
@@ -310,6 +340,10 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
         // fija), así que su asentamiento limpio ya era y sigue siendo alcanzable
         // con un golpeador real.
         mustBeBroken: resolved.striker === 'brown',
+        // 026-generator-black-decoys: si este striker resuelve por lanzamiento
+        // directo, ES el empuje que llena obligation.cell -- candidato a
+        // LandingCell para la Estrategia B.
+        explainsLandingAt: obligation.cell,
       });
       continue;
     }
@@ -325,16 +359,20 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
     const chooseHand = forceHand || ctx.rng() >= ctx.chainOriginProbability;
 
     if (chooseHand) {
-      if (launchesUsed >= ctx.launchCount) return { board, rawLaunches, ok: false };
+      if (launchesUsed >= ctx.launchCount) return { board, rawLaunches, landingCells, ok: false };
       if (!clearPathFromEdge(board, obligation.cell, obligation.direction!)) {
-        return { board, rawLaunches, ok: false };
+        return { board, rawLaunches, landingCells, ok: false };
       }
       rawLaunches.push({
         direction: obligation.direction!,
         lane: laneOf(obligation.cell, obligation.direction!),
         color: obligation.color,
         forcedFragility: obligation.mustBeBroken ? 'broken' : undefined,
+        target: obligation.cell,
       });
+      if (obligation.explainsLandingAt !== undefined) {
+        landingCells.push({ cell: obligation.explainsLandingAt, launchIndex: rawLaunches.length - 1 });
+      }
       launchesUsed++;
       continue;
     }
@@ -354,7 +392,7 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
       'occupied',
       ctx.rng,
     );
-    if (resolved === null) return { board, rawLaunches, ok: false };
+    if (resolved === null) return { board, rawLaunches, landingCells, ok: false };
 
     queue.push({
       cell: resolved.origin,
@@ -372,5 +410,5 @@ export function resolveObligations(initial: Obligation, ctx: ResolutionContext):
     });
   }
 
-  return { board, rawLaunches, ok: launchesUsed >= ctx.launchCount };
+  return { board, rawLaunches, landingCells, ok: launchesUsed >= ctx.launchCount };
 }

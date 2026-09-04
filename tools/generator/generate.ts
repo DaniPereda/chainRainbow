@@ -3,7 +3,8 @@ import { createBoard } from '../../src/engine/board.js';
 import type { Direction } from '../../src/engine/move-step.js';
 import { evaluateGoal } from '../../src/engine/goal.js';
 import { createLevel, resolveLaunch, type HandPieceInput, type Level } from '../../src/engine/index.js';
-import { resolveObligations, type Obligation } from './obligations.js';
+import { resolveObligations, type Obligation, type RawLaunch } from './obligations.js';
+import { buildBlackDecoyCandidates } from './black-decoys.js';
 import { assignGroupFragility, type FragilityProfile } from './fragility.js';
 import { loadComplexityConfig, resolveComplexity, type ComplexityFactorName } from './complexity.js';
 import { createRng } from './rng.js';
@@ -34,6 +35,12 @@ export type GenerationParams = {
   // 7 factores de complejidad conocidos (research.md Decisión 4). Cualquier factor
   // ya dado explícitamente arriba queda excluido del reparto y del rango válido.
   complexityScore?: number;
+  // 026-generator-black-decoys, research.md Decisión 7: activa el retrofit de
+  // negro. Sorteado UNA VEZ por intento (no por paso, a diferencia de
+  // boardDecoyProbability), justo tras resolver la solución real. Ausente o 0
+  // -- comportamiento actual, cero llamadas nuevas a rng(). No participa en el
+  // reparto de complexityScore en esta versión.
+  blackLineClearProbability?: number;
 };
 
 const COMPLEXITY_FACTOR_NAMES: readonly ComplexityFactorName[] = [
@@ -143,37 +150,24 @@ export function validatesForward(level: Level, solution: SolutionStep[]): boolea
   return false; // solution vacía -- no debería ocurrir con launchCount >= 1
 }
 
-function attemptOnce(params: ResolvedGenerationParams, rng: () => number): GeneratedLevel | null {
-  const defenderContinuationProbability =
-    params.defenderContinuationProbability ?? DEFAULT_DEFENDER_CONTINUATION_PROBABILITY;
-  const maxChainDepth = params.maxChainDepth ?? DEFAULT_MAX_CHAIN_DEPTH;
-
-  const goalColor = params.availableColors[Math.floor(rng() * params.availableColors.length)];
-  const goalCell: Coordinate = { row: Math.floor(rng() * 8), col: Math.floor(rng() * 8) };
-
-  const root: Obligation = {
-    cell: goalCell,
-    color: goalColor,
-    kind: 'defender',
-    direction: null,
-    chainDepth: 0,
-    isRoot: true,
-  };
-
-  const outcome = resolveObligations(root, {
-    board: createBoard(),
-    rng,
-    availableColors: params.availableColors,
-    launchCount: params.launchCount,
-    defenderContinuationProbability,
-    chainOriginProbability: params.chainOriginProbability,
-    maxChainDepth,
-    boardDecoyProbability: params.boardDecoyProbability,
-  });
-  if (!outcome.ok) return null;
-
+/**
+ * Construye la mano/solución/nivel de una secuencia concreta de `rawLaunches`
+ * y la valida con el motor real -- `null` si `validatesForward` la rechaza.
+ * Extraída de `attemptOnce` (026-generator-black-decoys, research.md Decisión
+ * 4 revisada) para poder llamarla dos veces: una para la solución real "de
+ * toda la vida", y otra -- solo si la primera ya tuvo éxito -- para la
+ * versión con el lanzamiento de negro insertado, sin duplicar ninguna lógica.
+ */
+function buildLevelFrom(
+  board: Board,
+  rawLaunches: RawLaunch[],
+  goalCell: Coordinate,
+  goalColor: PieceColor,
+  params: ResolvedGenerationParams,
+  rng: () => number,
+): { pieces: { at: Coordinate; color: PieceColor; fragility: Fragility }[]; hand: HandPieceInput[]; solution: SolutionStep[] } | null {
   // Los lanzamientos se descubren en orden inverso al de juego real (data-model.md).
-  const playOrder = outcome.rawLaunches.slice().reverse();
+  const playOrder = rawLaunches.slice().reverse();
   // FR-005/FR-010: la construcción nunca vuelve a golpear una ficha lanzada, así
   // que NEW/CRACKED son siempre seguras para ella -- nunca BROKEN (señal exclusiva
   // de señuelo de mano, FR-009/FR-010) -- EXCEPTO un lanzamiento con
@@ -213,7 +207,7 @@ function attemptOnce(params: ResolvedGenerationParams, rng: () => number): Gener
     pieceIndex: 0,
   }));
 
-  const pieces = boardPieces(outcome.board);
+  const pieces = boardPieces(board);
   const level = createLevel({
     pieces,
     hand,
@@ -221,6 +215,70 @@ function attemptOnce(params: ResolvedGenerationParams, rng: () => number): Gener
   });
 
   if (!validatesForward(level, solution)) return null;
+
+  return { pieces, hand, solution };
+}
+
+function attemptOnce(params: ResolvedGenerationParams, rng: () => number): GeneratedLevel | null {
+  const defenderContinuationProbability =
+    params.defenderContinuationProbability ?? DEFAULT_DEFENDER_CONTINUATION_PROBABILITY;
+  const maxChainDepth = params.maxChainDepth ?? DEFAULT_MAX_CHAIN_DEPTH;
+
+  const goalColor = params.availableColors[Math.floor(rng() * params.availableColors.length)];
+  const goalCell: Coordinate = { row: Math.floor(rng() * 8), col: Math.floor(rng() * 8) };
+
+  const root: Obligation = {
+    cell: goalCell,
+    color: goalColor,
+    kind: 'defender',
+    direction: null,
+    chainDepth: 0,
+    isRoot: true,
+  };
+
+  const outcome = resolveObligations(root, {
+    board: createBoard(),
+    rng,
+    availableColors: params.availableColors,
+    launchCount: params.launchCount,
+    defenderContinuationProbability,
+    chainOriginProbability: params.chainOriginProbability,
+    maxChainDepth,
+    boardDecoyProbability: params.boardDecoyProbability,
+  });
+  if (!outcome.ok) return null;
+
+  let built = buildLevelFrom(outcome.board, outcome.rawLaunches, goalCell, goalColor, params, rng);
+  if (built === null) return null;
+
+  // 026-generator-black-decoys, research.md Decisión 1/4 revisada: retrofit
+  // oportunista, intentado SOLO después de que la solución real ya sea
+  // válida por sí sola. Cada candidato (Estrategia A, luego B) se construye
+  // y valida de punta a punta con el MISMO `buildLevelFrom` -- si ninguno
+  // valida, `built` sigue siendo la solución original, ya sabida correcta
+  // (spec.md FR-003/User Story 3: la ausencia de negro nunca hace fallar un
+  // intento que de otro modo habría tenido éxito).
+  if (
+    params.blackLineClearProbability !== undefined &&
+    params.blackLineClearProbability > 0 &&
+    rng() < params.blackLineClearProbability
+  ) {
+    const candidates = buildBlackDecoyCandidates(
+      outcome.board,
+      outcome.rawLaunches,
+      outcome.landingCells,
+      params.availableColors,
+      params.fragilityProfile,
+      rng,
+    );
+    for (const candidate of candidates) {
+      const attempt = buildLevelFrom(candidate.board, candidate.rawLaunches, goalCell, goalColor, params, rng);
+      if (attempt !== null) {
+        built = attempt;
+        break;
+      }
+    }
+  }
 
   // Fichas señuelo, añadidas al final -- no recalculan ningún pieceIndex ya
   // asignado a la solución (research.md).
@@ -230,15 +288,15 @@ function attemptOnce(params: ResolvedGenerationParams, rng: () => number): Gener
   }
   // FR-009: los señuelos de mano SÍ pueden llegar a BROKEN -- rango completo.
   const decoyFragility = assignGroupFragility(params.fragilityProfile, params.decoyCount, ['new', 'cracked', 'broken'], rng);
-  const decoyHand: HandPieceInput[] = hand.concat(
+  const decoyHand: HandPieceInput[] = built.hand.concat(
     decoyColors.map((color, i) => toHandPieceInput(color, decoyFragility[i])),
   );
 
   return {
-    pieces,
+    pieces: built.pieces,
     hand: decoyHand,
     goal: { color: goalColor, cell: goalCell },
-    solution,
+    solution: built.solution,
     params,
   };
 }
