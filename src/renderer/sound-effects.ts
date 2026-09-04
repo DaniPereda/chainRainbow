@@ -76,3 +76,16 @@ export function playRainbowSound(): void {
   setTimeout(() => playTone(659.25, 0.08, 'sine'), 100);
   setTimeout(() => playTone(880, 0.12, 'sine'), 150);
 }
+
+/**
+ * Púrpura's attraction activating (025-purple-attraction-piece) -- a quick
+ * DESCENDING two-note sweep, deliberately the mirror image of arcoíris's own
+ * ascending arpeggio: a "pull inward" rather than a "sparkle outward", and
+ * close enough together (30ms) to read as one snap rather than goal's slower
+ * two-note rise. Plays once per settle that actually triggers the attraction
+ * -- never for a missclick, which produces no ANNIHILATION at all.
+ */
+export function playPurpleSound(): void {
+  playTone(880, 0.09, 'sine');
+  setTimeout(() => playTone(440, 0.14, 'sine'), 30);
+}

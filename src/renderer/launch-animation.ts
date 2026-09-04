@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { AnnihilationEvent, Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
-import { playGoalSound, playImpactSound, playJumpSound, playRainbowSound, playSplitSound } from './sound-effects.js';
+import { playGoalSound, playImpactSound, playJumpSound, playPurpleSound, playRainbowSound, playSplitSound } from './sound-effects.js';
 
 // 018-piece-movement-animation refinement: slowed down twice, per two rounds of
 // the user's own playtest (150ms -> 350ms -> 450ms, "todo un poco mas lento").
@@ -643,7 +643,8 @@ export function playEventLog(
           // it walked a visible full lap before fading instead of just
           // fading in place. Fading immediately is also simply the correct
           // animation for zero real distance, independent of this bug.
-          playImpactSound();
+          if (event.color === 'purple') playPurpleSound();
+          else playImpactSound();
           fade();
           return;
         }
@@ -663,7 +664,12 @@ export function playEventLog(
         // it spawned, never visibly travelling to `at` first -- a same-color
         // collision looked like the piece popped into existence already
         // annihilating, instead of arriving there like any other impact.
-        playImpactSound();
+        // A púrpura's own ANNIHILATION always takes this path (real travel,
+        // never a 2-cell orange jump) -- its activation sound plays here
+        // instead of the generic impact sound (025-purple-attraction-piece,
+        // research.md Decisión 4).
+        if (event.color === 'purple') playPurpleSound();
+        else playImpactSound();
         const path = cellPath(event.from, event.at, event.direction, board.size);
         walkPath(path, event.from, fade);
         return;

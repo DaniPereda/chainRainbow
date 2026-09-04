@@ -34,7 +34,7 @@ type DisplacementStrategy = (
 
 const MAX_EDGE_CROSSINGS = 2;
 
-export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red' | 'black' | 'rainbow'>, DisplacementStrategy> = {
+export const PUSH_STRATEGY: Record<Exclude<PieceColor, 'red' | 'black' | 'rainbow' | 'purple'>, DisplacementStrategy> = {
   green: (_board, _piece, position, direction) => stepBy(position, direction, 1),
   orange: (_board, _piece, position, direction) => stepBy(position, direction, 2),
   brown: (board, piece, position, direction) =>
@@ -243,6 +243,17 @@ function strikeMutualSide(
     // collision either.
     throw new Error('invariant violated: rainbow cannot be one side of a mutual collision');
   }
+
+  if (strikerSite.piece.color === 'purple') {
+    // Same reasoning as black/rainbow above (025-purple-attraction-piece):
+    // a púrpura-colored `ImpactSite` never exists in `resolveChain`'s queue at
+    // all -- its own launch resolves entirely through `scanPurpleSettle`
+    // before `resolveChain` starts, and the two sites it seeds carry the
+    // ATTRACTED pieces' own colors, never `'purple'` itself (research.md,
+    // Decisión 1/2). So it can never become one of the two already-in-flight
+    // sides of a mutual collision either.
+    throw new Error('invariant violated: purple cannot be one side of a mutual collision');
+  }
   const to = PUSH_STRATEGY[strikerSite.piece.color](board, hit, hitSite.to, strikerSite.direction);
   return {
     board,
@@ -346,7 +357,7 @@ function resolveRedSplit(
  * case the prefix needs to survive across however many `resume` calls it
  * takes to finally resolve, not just the first one).
  */
-function withEventPrefix(prefix: ChainEvent[], result: ImpactResolution): ImpactResolution {
+export function withEventPrefix(prefix: ChainEvent[], result: ImpactResolution): ImpactResolution {
   if (result.status === 'resolved') {
     return { status: 'resolved', board: result.board, events: [...prefix, ...result.events], nextSites: result.nextSites };
   }
@@ -389,6 +400,30 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
         return { status: 'resolved', board, events: [], nextSites: [nextSite] }; // still in flight -- no event yet
       }
     }
+
+    // One of the two pieces a púrpura's attraction is pulling toward its own
+    // settle cell (025-purple-attraction-piece, research.md Decisión 2) --
+    // sibling of `walking` immediately above, but with a KNOWN destination and
+    // an initial padding phase so both attracted sites, even starting at
+    // different distances, finish their real advance on the exact same
+    // `resolveChain` queue cycle. While padding, re-queue unchanged (no
+    // movement, no event); once exhausted, advance one cell with plain
+    // `step` -- deliberately NOT `stepWalking` (no wrap-around, no
+    // edge-crossing cap: the path back to the attraction cell is always
+    // in-bounds by construction, since both pieces were found by a bounded,
+    // non-wrapping scan in the first place). Never resolves on its own --
+    // `findCoincidingPair`/`applyMutualImpact` always intercepts the pair the
+    // moment both `to` fields coincide on the (empty) attraction cell, before
+    // either one would otherwise be dequeued again.
+    if (site.attracting !== undefined) {
+      if (site.attracting.padSteps > 0) {
+        const nextSite: ImpactSite = { ...site, attracting: { padSteps: site.attracting.padSteps - 1 } };
+        return { status: 'resolved', board, events: [], nextSites: [nextSite] };
+      }
+      const nextSite: ImpactSite = { ...site, to: step(site.to, site.direction) };
+      return { status: 'resolved', board, events: [], nextSites: [nextSite] };
+    }
+
     const { board: boardAfter, events } = settleOrVanish(
       board,
       site.piece,
@@ -591,6 +626,17 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
   if (site.piece.color === 'red') {
     const splitResult = resolveRedSplit(boardWithStriker, hitDefender, site.to, site.direction);
     return withEventPrefix(strikerEvents, splitResult);
+  }
+
+  if (site.piece.color === 'purple') {
+    // Confirmed unreachable in practice (025-purple-attraction-piece):
+    // púrpura's own launch never enters `applyImpact` as a striker at all --
+    // it has no mechanic against a real defender (spec.md FR-007), and its
+    // settling condition/attraction effect are resolved entirely by
+    // `scanPurpleSettle` before `resolveChain` ever starts (research.md,
+    // Decisión 1). Enforced here as an explicit invariant, same pattern as
+    // `strikeMutualSide`'s black/rainbow/purple checks above.
+    throw new Error('invariant violated: purple cannot strike a real defender');
   }
 
   // hitDefender still exerts its own strike on whatever it lands on, even when

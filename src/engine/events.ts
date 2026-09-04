@@ -113,6 +113,19 @@ export type ImpactSite = {
   // destination is always the right thing to compare) or any already-final
   // `to`.
   walking?: { edgeCrossings: number };
+  // Present ONLY on one of the two sites a púrpura's attraction seeds
+  // (025-purple-attraction-piece), while it travels toward the cell where
+  // púrpura settled. Like `walking`, `to` is a tentative single-cell step, not
+  // a final destination -- but unlike `walking`, the destination IS known in
+  // advance (the attraction cell), and the walk starts with a padding phase so
+  // both attracted sites -- even starting at different distances -- finish
+  // their real advance on the exact same `resolveChain` queue cycle (research.md
+  // Decisión 2). `padSteps` is decremented without moving `to` while > 0; once
+  // exhausted, each cycle advances `to` one cell with plain `step`/`isInBounds`
+  // (never `wrapCoordinate`/`stepWalking`'s edge-crossing cap -- the path back
+  // to the attraction cell is always in-bounds by construction, since the
+  // piece was found by a bounded, non-wrapping scan in the first place).
+  attracting?: { padSteps: number };
   // See MoveStepEvent's own comment -- carried forward unchanged through every
   // requeue of a walking site (the `{...site, to, walking}` spread in
   // applyImpact/push.ts never touches it), and copied onto whatever

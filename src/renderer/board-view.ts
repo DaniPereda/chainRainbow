@@ -20,6 +20,12 @@ export const PIECE_COLOR: Record<PieceColor, number> = {
   // black's dark slate (024-rainbow-color-change). Static rendering uses
   // `drawPieceCircle` below instead, which draws real rainbow bands.
   rainbow: 0xb26bff,
+  // A deeper, more saturated violet than rainbow's own lighter/pinker
+  // 0xb26bff -- distinguishable at a glance from rainbow and from black's dark
+  // slate (025-purple-attraction-piece). Flat fill, no special treatment like
+  // rainbow's bands: púrpura never lingers on the board long enough (FR-011)
+  // for a fancier render to matter.
+  purple: 0x8e44ad,
 };
 
 // Outer-to-inner band colors for a static rainbow piece -- real rainbows put red

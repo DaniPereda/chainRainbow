@@ -20,7 +20,7 @@ export function returnPiece(hand: Hand, piece: Piece): Hand {
   return { pieces: [piece, ...hand.pieces] };
 }
 
-function entryCoordinate(direction: Direction, lane: number): Coordinate {
+export function entryCoordinate(direction: Direction, lane: number): Coordinate {
   switch (direction) {
     case 'N':
       return { row: 7, col: lane };
