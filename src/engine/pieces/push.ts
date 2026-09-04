@@ -287,6 +287,7 @@ export function applyMutualImpact(
           color: siteA.piece.color,
           from: siteA.from,
           direction: siteA.direction,
+          pushedByColor: siteA.pushedByColor,
           visualOrigin: siteA.visualOrigin,
         },
       ],
@@ -338,19 +339,6 @@ function resolveRedSplit(
 }
 
 /**
- * Resolves exactly ONE impact -- `site.piece` arriving at `site.to` -- and returns
- * at most one `nextSites` entry for whatever it displaces, letting `resolveChain`
- * (the caller, either `resolveLaunch`'s own outer queue or `resolveRedSplit`'s
- * inner one) process the rest (016-immediate-chain-placement, research.md
- * Decisión 3). Never recurses to resolve a whole cascade itself -- that's exactly
- * what used to make an in-flight piece invisible to the rest of its own cascade
- * until the recursion unwound. Whether `site.piece` itself settles was always a
- * LOCAL decision (only whether its own immediate strike was an annihilation, never
- * anything deeper) -- so writing it immediately, before even knowing what happens
- * to the piece it displaced, changes no decision from the previous implementation,
- * only when the write happens.
- */
-/**
  * Prepends `prefix` to whatever events a (possibly still-pending)
  * `ImpactResolution` carries, leaving everything else untouched -- used to
  * thread a striker's own settle event onto red's split (024-rainbow-color-
@@ -371,6 +359,20 @@ function withEventPrefix(prefix: ChainEvent[], result: ImpactResolution): Impact
     resume: (color) => withEventPrefix(prefix, result.resume(color)),
   };
 }
+
+/**
+ * Resolves exactly ONE impact -- `site.piece` arriving at `site.to` -- and returns
+ * at most one `nextSites` entry for whatever it displaces, letting `resolveChain`
+ * (the caller, either `resolveLaunch`'s own outer queue or `resolveRedSplit`'s
+ * inner one) process the rest (016-immediate-chain-placement, research.md
+ * Decisión 3). Never recurses to resolve a whole cascade itself -- that's exactly
+ * what used to make an in-flight piece invisible to the rest of its own cascade
+ * until the recursion unwound. Whether `site.piece` itself settles was always a
+ * LOCAL decision (only whether its own immediate strike was an annihilation, never
+ * anything deeper) -- so writing it immediately, before even knowing what happens
+ * to the piece it displaced, changes no decision from the previous implementation,
+ * only when the write happens.
+ */
 
 export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
   const defender = getPieceAt(board, site.to);
@@ -412,6 +414,7 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
           color: site.piece.color,
           from: site.from,
           direction: site.direction,
+          pushedByColor: site.pushedByColor,
           visualOrigin: site.visualOrigin,
         },
       ],
@@ -419,18 +422,28 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
     };
   }
 
-  if (defender.color === 'black' || site.piece.color === 'black') {
-    // Negro (either side, FR-002/FR-003) never pushes, splits, or continues --
-    // it clears the whole line instead. Checked here, right after the
-    // same-color rule and before ANY color-specific striker mechanic
-    // (including red's own split below) -- same priority tier as same-color,
-    // on purpose: research.md (023-black-piece-line-clear) Decisión 3
-    // confirms this mirrors the precedent already established by red itself
-    // yielding to the same-color rule (spec.md 009 FR-006), extended to
-    // negro's own universal defender-side rule. `site.direction` determines
-    // the axis regardless of which side is negro -- either it's negro's own
-    // travel direction (negro as attacker), or the real attacker's direction
-    // (negro as defender), exactly FR-002/FR-003's own convention.
+  if (site.piece.color === 'black') {
+    // Negro clears the whole line INSTEAD OF pushing/splitting/continuing --
+    // but, since research.md (023) Decisión 7, only when negro ITSELF is the
+    // one doing the impacting, exactly the same tier red's own split already
+    // occupies (`site.piece.color === 'red'`, below): a real design
+    // correction reported by the user -- negro used to ALSO dominate as the
+    // DEFENDER (any color hitting a settled negro triggered the clear
+    // immediately, regardless of that color's own mechanic), which made a
+    // settled negro behave nothing like every other piece. Now a settled
+    // negro struck by green/orange/brown/red/arcoíris just falls through to
+    // the exact same generic paths below that ANY other defender color
+    // already uses -- pushed same-direction, split perpendicular, recolored,
+    // whichever that attacker's own mechanic dictates -- with its fragility
+    // advancing normally along the way (`hitDefender`, below). Negro's own
+    // effect only fires again if THAT displacement (or split) itself goes on
+    // to land negro on top of a real, different-colored piece -- at which
+    // point `site.piece.color === 'black'` becomes true for THAT new impact,
+    // in negro's OWN direction of travel at that moment (inherited from
+    // whichever attacker displaced it -- FR-002/FR-003's own convention,
+    // unchanged). Landing on an empty cell instead never re-enters this
+    // branch at all (`defender === null`, above) -- negro just settles like
+    // any other piece, no line clear, exactly as the user described.
     //
     // The triggering piece (`site.piece`) is swept away too, FR-004 -- it
     // never actually gets written to `board` in this branch (unlike the
@@ -470,6 +483,7 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
       color: site.piece.color,
       from: site.from,
       direction: site.direction,
+      pushedByColor: site.pushedByColor,
       visualOrigin: site.visualOrigin,
     };
     const sweepEvents: ChainEvent[] = clearedCells.map((at) => {
@@ -485,11 +499,16 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
     // Arcoíris (either side, FR-002/FR-003 of 024-rainbow-color-change) never
     // pushes, splits, or clears a line -- its impact changes a color instead,
     // and needs the PLAYER to pick which one. Checked here, right after
-    // negro's own universal rule and before ANY color-specific striker
-    // mechanic (including red's split below) -- research.md (024) Decisión 3:
-    // negro still wins whenever both are involved (checked above, unchanged);
-    // arcoíris wins over red (FR-010), the same precedence pattern negro
-    // (023) already established for itself.
+    // negro's own (now attacker-only, research.md 023 Decisión 7) rule and
+    // before ANY color-specific striker mechanic (including red's split
+    // below) -- research.md (024) Decisión 3: negro-as-ATTACKER still wins
+    // over arcoíris (unchanged -- negro's own line-clear always fires when
+    // negro itself is impacting, whoever/whatever it hits, same as it always
+    // has); arcoíris-as-defender is otherwise reached normally when struck by
+    // any non-black attacker, INCLUDING a settled negro being struck by an
+    // arcoíris attacker (negro no longer has any defender-side priority to
+    // pre-empt it). Arcoíris wins over red (FR-010), the same precedence
+    // pattern negro (023) already established for itself.
     //
     // The DEFENDER -- whichever piece was already resting at `site.to` before
     // this impact, rainbow or not -- is always the one whose color changes
@@ -530,6 +549,7 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
       color: site.piece.color,
       from: site.from,
       direction: site.direction,
+      pushedByColor: site.pushedByColor,
       visualOrigin: site.visualOrigin,
     };
     const boardDuringPause = setPieceAt(board, at, null);

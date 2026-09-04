@@ -34,6 +34,14 @@
     },
     {
       "at": {
+        "row": 0,
+        "col": 5
+      },
+      "color": "black",
+      "fragility": "new"
+    },
+    {
+      "at": {
         "row": 1,
         "col": 5
       },

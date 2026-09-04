@@ -60,6 +60,15 @@ export type AnnihilationEvent = {
   // question this fix doesn't take on.
   from: Coordinate;
   direction: Direction;
+  // See MoveStepEvent's own comment -- same rendering hint, same reason. Real
+  // rendering bug found by the user: a piece pushed orange's own 2-cell
+  // distance that lands on a same-color piece (or, since 023's Decisión 7,
+  // negro's own trigger event after being pushed into a real defender) IS a
+  // genuine jump -- `from`/`at` really are 2 cells apart -- but the renderer
+  // had no way to know that from an `AnnihilationEvent` alone (only
+  // `MoveStepEvent` carried this), so it always animated a plain cell-by-cell
+  // walk instead of the arc/bulge every other orange push already gets.
+  pushedByColor?: PieceColor;
   // See MoveStepEvent's own comment -- same rendering hint, same reason.
   visualOrigin?: { from: Coordinate; direction: Direction };
 };

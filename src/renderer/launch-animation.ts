@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
+import type { AnnihilationEvent, Board, ChainEvent, Coordinate, Direction, EventLog, Goal, Launch, MoveStepEvent } from '../engine/index.js';
 import { CELL_SIZE, PIECE_COLOR, drawBoard } from './board-view.js';
 import { playGoalSound, playImpactSound, playJumpSound, playRainbowSound, playSplitSound } from './sound-effects.js';
 
@@ -143,10 +143,21 @@ export function isWrapHop(from: Coordinate, to: Coordinate): boolean {
  * distance, not its own (a real bug found by playtesting: brown's variable
  * walk can coincidentally land on exactly 2 cells too, which used to make a
  * brown-pushed piece wrongly flash the orange bulge and play its sound).
+ *
+ * Takes a `MoveStepEvent` OR an `AnnihilationEvent` -- a piece orange pushed
+ * its own 2-cell distance doesn't always end up SETTLING there (`MoveStepEvent`):
+ * landing on a same-color piece, or (023-black-piece-line-clear, Decisión 7)
+ * on a real defender that makes negro trigger its own line clear, are both
+ * genuine jumps that end in an `ANNIHILATION` instead -- real bug reported by
+ * the user ("no se ve saltar"): `AnnihilationEvent` never carried
+ * `pushedByColor` at all, so this check always came back `null` for it,
+ * silently falling back to a plain cell-by-cell walk no matter how far apart
+ * `from`/`at` genuinely were.
  */
-export function orangeJumpMidpoint(event: MoveStepEvent, size: number): Coordinate | null {
+export function orangeJumpMidpoint(event: MoveStepEvent | AnnihilationEvent, size: number): Coordinate | null {
   if (event.pushedByColor !== 'orange') return null;
-  return jumpMidpoint(event.from, event.to, size);
+  const to = event.type === 'MOVE_STEP' ? event.to : event.at;
+  return jumpMidpoint(event.from, to, size);
 }
 
 /**
@@ -538,88 +549,31 @@ export function playEventLog(
       stepThrough(0, startFrom);
     };
 
-    const runEvent = (): void => {
-      if (event.type === 'COLOR_CHOICE') {
-        // No travel to animate -- the defender never moves (024-rainbow-
-        // color-change, FR-007); the attacker's own travel and disappearance
-        // is a SEPARATE, already-real ANNIHILATION event (push.ts orders it
-        // first). This one just flips the circle already sitting at `at` from
-        // its old color to the chosen one: shrink, swap the fill, grow back
-        // -- a discrete swap rather than a continuous color tween, which
-        // would need to fight Phaser's plain numeric interpolation blending
-        // RGB channels incorrectly for two arbitrary packed hex colors.
-        playRainbowSound();
-        scene.tweens.add({
-          targets: temp,
-          scale: 0,
-          duration: STEP_DURATION_MS / 2,
-          onComplete: () => {
-            temp.fillColor = PIECE_COLOR[event.toColor];
-            scene.tweens.add({ targets: temp, scale: 1, duration: STEP_DURATION_MS / 2, onComplete: finish });
-          },
-        });
-        return;
-      }
-
-      if (event.type === 'ANNIHILATION') {
-        playImpactSound();
-        if (event.from.row === event.at.row && event.from.col === event.at.col) {
-          // No real travel to animate -- `from === at` by design for a piece
-          // swept by a line clear (023-black-piece-line-clear) that never
-          // moved at all. Real bug found live: feeding this to `cellPath`
-          // asked it to step AWAY from `at` and find its way back to it,
-          // which it can only ever do by looping all the way around the
-          // board (`current` never equals `to` until a full lap completes) --
-          // it walked a visible full lap before fading instead of just
-          // fading in place. Fading immediately is also simply the correct
-          // animation for zero real distance, independent of this bug.
-          scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
-          return;
-        }
-        // Real bug found by the user: this used to fade `temp` out right where
-        // it spawned, never visibly travelling to `at` first -- a same-color
-        // collision looked like the piece popped into existence already
-        // annihilating, instead of arriving there like any other impact.
-        const path = cellPath(event.from, event.at, event.direction, board.size);
-        walkPath(path, event.from, () => {
-          scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
-        });
-        return;
-      }
-
-      const isRedSplit = isRedSplitTrigger(event);
-
-      const end = pixelCenter(event.to);
-      const midpoint = orangeJumpMidpoint(event, board.size);
-
-      if (midpoint === null) {
-        if (isRedSplit) playSplitSound();
-        else if (event.hasCollision) playImpactSound();
-
-        const path = cellPath(event.from, event.to, event.direction, board.size);
-        walkPath(path, event.from, finish);
-        return;
-      }
-
-      // Orange's own 2-cell push -- a visible hop over the skipped cell, called
-      // out with its own highlight marker there, and its own distinct sound
-      // (018-piece-movement-animation refinement, user playtest request). The
-      // bulge is always PERPENDICULAR to the direction of travel: a horizontal
-      // jump (moving along a row) bulges up (a `y` offset); a vertical jump
-      // (moving along a column) bulges right (an `x` offset) -- offsetting `y`
-      // for a vertical jump would just look like moving faster along the same
-      // line, not an arc (second round of playtest refinement). Each half of
-      // the arc (spawn->midpoint, midpoint->end) takes a FULL STEP_DURATION_MS,
-      // not half of it -- this covers 2 real cells, so at the SAME per-cell
-      // speed as every other move it takes 2*STEP_DURATION_MS total, not
-      // STEP_DURATION_MS (real bug reported by the user: the jump used to
-      // cover its 2 cells in the same total time a 1-cell move takes,
-      // effectively moving twice as fast per cell as anything else).
-      if (isRedSplit) playSplitSound();
-      else playJumpSound();
+    // Orange's own 2-cell push -- a visible hop over the skipped cell, called
+    // out with its own highlight marker there (018-piece-movement-animation
+    // refinement, user playtest request). The bulge is always PERPENDICULAR
+    // to the direction of travel: a horizontal jump (moving along a row)
+    // bulges up (a `y` offset); a vertical jump (moving along a column)
+    // bulges right (an `x` offset) -- offsetting `y` for a vertical jump
+    // would just look like moving faster along the same line, not an arc
+    // (second round of playtest refinement). Each half of the arc
+    // (spawn->midpoint, midpoint->end) takes a FULL STEP_DURATION_MS, not
+    // half of it -- this covers 2 real cells, so at the SAME per-cell speed
+    // as every other move it takes 2*STEP_DURATION_MS total, not
+    // STEP_DURATION_MS (real bug reported by the user: the jump used to
+    // cover its 2 cells in the same total time a 1-cell move takes,
+    // effectively moving twice as fast per cell as anything else). Shared
+    // between a MOVE_STEP that settles at `to` and an ANNIHILATION that
+    // instead fades once it arrives -- real bug reported by the user ("no se
+    // ve saltar"): a piece pushed orange's own distance into a same-color
+    // piece (or, since 023 Decisión 7, into a real defender that makes negro
+    // trigger its own line clear) genuinely jumped 2 cells, but had no way to
+    // get this treatment before `AnnihilationEvent` carried `pushedByColor`.
+    const playOrangeJump = (from: Coordinate, to: Coordinate, midpoint: Coordinate, onArrive: () => void): void => {
+      const end = pixelCenter(to);
       const mid = pixelCenter(midpoint);
       const hopOffset = CELL_SIZE * 0.4;
-      const isVerticalJump = event.from.col === event.to.col;
+      const isVerticalJump = from.col === to.col;
       const midX = boardGraphics.x + mid.x + (isVerticalJump ? hopOffset : 0);
       const midY = boardGraphics.y + mid.y - (isVerticalJump ? 0 : hopOffset);
       const marker = scene.add
@@ -645,10 +599,91 @@ export function playEventLog(
             y: boardGraphics.y + end.y,
             duration: STEP_DURATION_MS,
             ease: 'Sine.easeIn',
-            onComplete: finish,
+            onComplete: onArrive,
           });
         },
       });
+    };
+
+    const runEvent = (): void => {
+      if (event.type === 'COLOR_CHOICE') {
+        // No travel to animate -- the defender never moves (024-rainbow-
+        // color-change, FR-007); the attacker's own travel and disappearance
+        // is a SEPARATE, already-real ANNIHILATION event (push.ts orders it
+        // first). This one just flips the circle already sitting at `at` from
+        // its old color to the chosen one: shrink, swap the fill, grow back
+        // -- a discrete swap rather than a continuous color tween, which
+        // would need to fight Phaser's plain numeric interpolation blending
+        // RGB channels incorrectly for two arbitrary packed hex colors.
+        playRainbowSound();
+        scene.tweens.add({
+          targets: temp,
+          scale: 0,
+          duration: STEP_DURATION_MS / 2,
+          onComplete: () => {
+            temp.fillColor = PIECE_COLOR[event.toColor];
+            scene.tweens.add({ targets: temp, scale: 1, duration: STEP_DURATION_MS / 2, onComplete: finish });
+          },
+        });
+        return;
+      }
+
+      if (event.type === 'ANNIHILATION') {
+        const fade = (): void => {
+          scene.tweens.add({ targets: temp, alpha: 0, scale: 0, duration: STEP_DURATION_MS, onComplete: finish });
+        };
+
+        if (event.from.row === event.at.row && event.from.col === event.at.col) {
+          // No real travel to animate -- `from === at` by design for a piece
+          // swept by a line clear (023-black-piece-line-clear) that never
+          // moved at all. Real bug found live: feeding this to `cellPath`
+          // asked it to step AWAY from `at` and find its way back to it,
+          // which it can only ever do by looping all the way around the
+          // board (`current` never equals `to` until a full lap completes) --
+          // it walked a visible full lap before fading instead of just
+          // fading in place. Fading immediately is also simply the correct
+          // animation for zero real distance, independent of this bug.
+          playImpactSound();
+          fade();
+          return;
+        }
+
+        const jumpMid = orangeJumpMidpoint(event, board.size);
+        if (jumpMid !== null) {
+          // Same jump this piece would have gotten had it settled instead of
+          // annihilating (a same-color collision, or -- 023 Decisión 7 --
+          // negro's own trigger after being pushed into a real defender):
+          // `from`/`at` really are 2 cells apart via orange's own mechanic.
+          playJumpSound();
+          playOrangeJump(event.from, event.at, jumpMid, fade);
+          return;
+        }
+
+        // Real bug found by the user: this used to fade `temp` out right where
+        // it spawned, never visibly travelling to `at` first -- a same-color
+        // collision looked like the piece popped into existence already
+        // annihilating, instead of arriving there like any other impact.
+        playImpactSound();
+        const path = cellPath(event.from, event.at, event.direction, board.size);
+        walkPath(path, event.from, fade);
+        return;
+      }
+
+      const isRedSplit = isRedSplitTrigger(event);
+      const midpoint = orangeJumpMidpoint(event, board.size);
+
+      if (midpoint === null) {
+        if (isRedSplit) playSplitSound();
+        else if (event.hasCollision) playImpactSound();
+
+        const path = cellPath(event.from, event.to, event.direction, board.size);
+        walkPath(path, event.from, finish);
+        return;
+      }
+
+      if (isRedSplit) playSplitSound();
+      else playJumpSound();
+      playOrangeJump(event.from, event.to, midpoint, finish);
     };
 
     if (

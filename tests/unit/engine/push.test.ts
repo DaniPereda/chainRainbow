@@ -536,6 +536,7 @@ describe('a self-collision within the same cascade is now a real collision, not 
       color: 'orange',
       from: { row: 2, col: 2 },
       direction: 'N',
+      pushedByColor: 'brown',
     });
     // The goal is never reached this way anymore -- no orange ever lands on row0.
     expect(outcome.board.cells[0][2]).toBeNull();

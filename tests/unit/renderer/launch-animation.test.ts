@@ -179,6 +179,7 @@ describe('AnnihilationEvent carries from/direction so a same-color collision can
       color: 'green',
       from: { row: 4, col: 2 },
       direction: 'E',
+      pushedByColor: 'brown',
     });
   });
 });
@@ -279,6 +280,28 @@ describe('orangeJumpMidpoint: the orange-jump visual only fires for orange\'s ow
 
     expect(greenEvent).toMatchObject({ piece: { color: 'green' }, pushedByColor: 'orange' });
     expect(orangeJumpMidpoint(greenEvent, 8)).toEqual({ row: 0, col: 2 });
+  });
+
+  it('is ALSO the midpoint for an ANNIHILATION, not just a MOVE_STEP -- real bug reported by the user ("no se ve saltar"): a piece pushed orange\'s own 2-cell distance into a same-color piece genuinely jumped, but AnnihilationEvent never carried pushedByColor at all before this fix', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 4, col: 3 }, color: 'black' },
+        { at: { row: 4, col: 5 }, color: 'black' },
+      ],
+      hand: ['orange'],
+      goal: { at: { row: 0, col: 0 }, color: 'orange' },
+    });
+    const outcome = resolveLaunch(level, { direction: 'E', lane: 4 });
+    const annihilation = outcome.events[1];
+
+    if (annihilation.type !== 'ANNIHILATION') throw new Error('expected an ANNIHILATION event');
+    expect(annihilation).toMatchObject({
+      color: 'black',
+      from: { row: 4, col: 3 },
+      at: { row: 4, col: 5 },
+      pushedByColor: 'orange',
+    });
+    expect(orangeJumpMidpoint(annihilation, 8)).toEqual({ row: 4, col: 4 });
   });
 
   it('is null for a hand-launched piece\'s own entry, even one that happens to be orange -- pushedByColor is only ever set for a piece someone else displaced', () => {
@@ -419,7 +442,7 @@ describe('computeEventParents: finds where trajectories really fork, so they can
     expect(parents).toEqual([null, 0, 0, 0]);
   });
 
-  it('same fix, the other direction: a different color launched into a SETTLED black -- the sweep still waits for the attacker\'s own travel, not just when black itself is launched (024, user\'s own repro: "tanto si la negra se convierte en golpeadora como si no")', () => {
+  it('same fix, one level deeper: negro no longer has any defender-side priority (023 Decisión 7), so a settled negro struck by green is just PUSHED -- its own sweep only fires (and only THEN waits for its own travel) once that push lands it on a real piece', () => {
     const level = createLevel({
       pieces: [
         { at: { row: 0, col: 0 }, color: 'orange' },
@@ -430,14 +453,25 @@ describe('computeEventParents: finds where trajectories really fork, so they can
       hand: ['green'],
       goal: { at: { row: 0, col: 0 }, color: 'green' },
     });
-    // Green enters from the east edge (col 7) and travels all the way to
-    // col 3 before hitting the settled black -- a real, multi-cell travel
-    // the sweep must wait for.
+    // Green enters from the east edge and settles at (0,3), pushing black one
+    // cell west onto the settled red -- black becomes the ATTACKER of that
+    // second impact, and only then sweeps the row (in its own direction, O),
+    // catching green too (it already settled inside that same row). Verified
+    // against the real engine before fixing this as an expectation.
     const outcome = resolveLaunch(level, { direction: 'O', lane: 0 });
 
-    expect(outcome.events).toHaveLength(5);
+    expect(outcome.events).toHaveLength(6);
     const parents = computeEventParents(outcome.events);
-    expect(parents).toEqual([null, 0, 0, 0, 0]);
+    // [0] green's own MOVE_STEP settling at (0,3) -- the only genuine root.
+    // [1] black's own trigger (pushed there by [0], then itself impacting the
+    //     settled red) -- child of [0]: waits for green to actually arrive.
+    // [2..4] orange/brown/red swept by black's own line clear -- children of
+    //     [1]: wait for black's own (short) travel to finish.
+    // [5] green itself, caught in the same row -- shares its own `from` with
+    //     [1] (both originate at (0,3), the cell black got pushed OUT of),
+    //     so it's [1]'s sibling: vanishes at the same instant as black's own
+    //     trigger, not chained after the rest of the sweep.
+    expect(parents).toEqual([null, 0, 1, 1, 1, 0]);
   });
 });
 

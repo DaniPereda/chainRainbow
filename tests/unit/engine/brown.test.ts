@@ -188,6 +188,7 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
       color: 'green',
       from: { row: 6, col: 3 },
       direction: 'S',
+      pushedByColor: 'brown',
     });
     expect(outcome.result).toBe('lost');
   });
@@ -222,6 +223,7 @@ describe('brown: a chain link handed off to brown never loops back onto an earli
       color: 'orange',
       from: { row: 4, col: 3 },
       direction: 'E',
+      pushedByColor: 'brown',
     });
     expect(outcome.result).toBe('lost');
   });

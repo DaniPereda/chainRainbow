@@ -362,3 +362,24 @@ ambos roles. `npm test` en verde (257/257).
 **Nota**: este bug es de negro (023-black-piece-line-clear), no de arcoíris -- documentado aquí
 porque se encontró y arregló en esta misma rama/sesión, en código compartido
 (`computeEventParents`) que arcoíris también usa.
+
+## Decisión 13 (actualiza la Decisión 3 -- corrección de negro reportada por el usuario, ver 023-black-piece-line-clear/research.md Decisión 7): negro ya NO tiene prioridad de defensora frente a arcoíris
+
+**Contexto**: la Decisión 3 (arriba) daba por sentado que negro, como defensora, dominaba SIEMPRE
+sobre cualquier mecánica del atacante (incluida la de arcoíris) -- ese supuesto venía
+directamente de 023's Decisión 3 original. El usuario reportó en vivo que esa premisa era
+incorrecta en general (no solo frente a arcoíris): negro NUNCA debería tener prioridad como
+defensora, solo cuando ELLA MISMA impacta (023, Decisión 7, que revoca su propia Decisión 3).
+
+**Consecuencia para FR-009/Decisión 3 de esta feature**: la mitad "negro-como-defensora gana
+sobre arcoíris" queda anulada -- una arcoíris que golpea a una negra asentada ahora SÍ produce un
+`pendingColorChoice` normal, exactamente como contra cualquier otro color, ya que negro no tiene
+nada especial que ceder o no ceder en ese rol. La otra mitad, "negro-como-ATACANTE gana sobre
+arcoíris", sigue intacta y sin cambios: cuando negro es quien impacta, su limpieza de línea sigue
+disparándose siempre, sea cual sea la defensora (arcoíris incluida) -- ninguna feature nueva
+introduce ninguna excepción a eso.
+
+**Verificado**: `rainbow.test.ts`, test "precedencia frente a negro" actualizado y verificado
+contra el motor real -- el sub-caso "arcoíris lanzada golpea negra asentada" pasó de
+`status:'resolved'` (limpieza de negro) a `status:'pending-color-choice'` (gana arcoíris); el
+sub-caso "negro lanzada golpea arcoíris asentada" no cambió. `npm test` en verde (257/257).
