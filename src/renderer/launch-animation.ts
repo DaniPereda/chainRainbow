@@ -443,7 +443,30 @@ export function playEventLog(
   }
   const roots = events.map((_, i) => i).filter((i) => parents[i] === null);
 
-  function playNode(nodeIndex: number, onNodeDone: () => void): void {
+  // The number of cells a NON-first event's own lead-in glide covers
+  // (`event.visualOrigin.from` -> `eventOrigin(event)`), or 0 if it has none
+  // -- used only to synchronize SIBLING events that share the same origin
+  // cell but travelled different real distances to reach it (025-purple-
+  // attraction-piece: púrpura's two attracted pieces, found at different
+  // distances from the attraction cell, research.md Decisión 2's own
+  // "wait for each other" only applies to the ENGINE's event ordering; without
+  // this, the renderer had no idea two siblings needed to visually arrive
+  // together too, so the closer one just breezed through and kept going
+  // while the farther one was still catching up -- real bug reported by the
+  // user testing púrpura live: "no vi animaciones" (only the correct final
+  // state, never a moment where both pieces visibly meet).
+  function leadInCellCount(nodeIndex: number): number {
+    const event = events[nodeIndex];
+    if (event.type === 'COLOR_CHOICE') return 0;
+    const leadIn = event.visualOrigin;
+    if (!leadIn) return 0;
+    const origin = eventOrigin(event);
+    if (!isOnBoard(origin, board.size)) return 0;
+    if (leadIn.from.row === origin.row && leadIn.from.col === origin.col) return 0;
+    return cellPath(leadIn.from, origin, leadIn.direction, board.size).length;
+  }
+
+  function playNode(nodeIndex: number, waitCells: number, onNodeDone: () => void): void {
     const isFirstEvent = isFirstSegment && nodeIndex === 0;
     const event = events[nodeIndex];
     const piece =
@@ -492,16 +515,25 @@ export function playEventLog(
         return;
       }
       // Every child starts here, at the same instant -- this is the fork
-      // itself (a red split's two branches, in practice the only source of
-      // more than one child). `onNodeDone` fires only once ALL of them (and
-      // whatever they in turn fork into) have finished.
+      // itself (a red split's two branches, or two mutual-collision sides
+      // converging on the same cell, in practice the only sources of more
+      // than one child). `onNodeDone` fires only once ALL of them (and
+      // whatever they in turn fork into) have finished. Siblings can have
+      // travelled different REAL distances to reach this shared origin (a
+      // red split's branches never do -- same fixed 1-cell hop both sides --
+      // but púrpura's two attracted pieces routinely do) -- `waitCells`
+      // pads whichever ones are shorter so all of them visibly arrive at
+      // the shared cell together before any of them proceeds, instead of
+      // the closer one breezing through alone while the others catch up.
+      const leadInLengths = kids.map(leadInCellCount);
+      const maxLeadInCells = Math.max(...leadInLengths);
       let remaining = kids.length;
-      for (const childIndex of kids) {
-        playNode(childIndex, () => {
+      kids.forEach((childIndex, i) => {
+        playNode(childIndex, maxLeadInCells - leadInLengths[i], () => {
           remaining -= 1;
           if (remaining === 0) onNodeDone();
         });
-      }
+      });
     };
 
     // Walks `temp` through `path` one cell at a time, each taking exactly
@@ -692,6 +724,19 @@ export function playEventLog(
       playOrangeJump(event.from, event.to, midpoint, finish);
     };
 
+    // If this sibling's own lead-in is shorter than the longest one among its
+    // group (`waitCells`, computed by the caller), it pauses in place for the
+    // difference before actually running its event -- keeping the SAME
+    // constant per-cell speed throughout (a wait, not a slower glide), and
+    // making all siblings that share this origin visibly arrive together.
+    const proceedAfterLeadIn = (): void => {
+      if (waitCells > 0) {
+        scene.time.delayedCall(waitCells * STEP_DURATION_MS, runEvent);
+      } else {
+        runEvent();
+      }
+    };
+
     if (
       leadIn &&
       isOnBoard(eventOrigin(event), board.size) &&
@@ -706,16 +751,16 @@ export function playEventLog(
       // short one; and a mutual collision's resulting trajectory skipped the
       // whole walk that led to the meeting point, popping in there directly).
       const entryPath = cellPath(leadIn.from, eventOrigin(event), leadIn.direction, board.size);
-      walkPath(entryPath, leadIn.from, runEvent);
+      walkPath(entryPath, leadIn.from, proceedAfterLeadIn);
       return;
     }
 
-    runEvent();
+    proceedAfterLeadIn();
   }
 
   let remainingRoots = roots.length;
   for (const rootIndex of roots) {
-    playNode(rootIndex, () => {
+    playNode(rootIndex, 0, () => {
       remainingRoots -= 1;
       if (remainingRoots === 0) onDone();
     });
