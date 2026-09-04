@@ -3,13 +3,17 @@ import { PROTOTYPE_LEVELS } from '../../levels/prototype-levels.js';
 import { drawBoard, BOARD_PIXELS, CELL_SIZE } from '../board-view.js';
 import { drawHand, PIECE_RADIUS } from '../hand-panel.js';
 import { playEventLog } from '../launch-animation.js';
+import { showColorChoiceDialog } from '../color-choice-dialog.js';
 import { playGoalSound } from '../sound-effects.js';
 import {
-  applySessionLaunch,
+  commitLaunchOutcome,
+  resolveLaunch,
   restartSession,
   selectHandPiece,
   startSession,
+  type Board,
   type Direction,
+  type LaunchOutcome,
   type Level,
   type LevelSession,
 } from '../../engine/index.js';
@@ -218,31 +222,62 @@ export class BoardScene extends Phaser.Scene {
     }
 
     const boardBeforeLaunch = this.session.current.board;
-    const { session: nextSession, outcome } = applySessionLaunch(this.session, { direction, lane });
-    this.session = nextSession;
+    const outcome = resolveLaunch(this.session.current, { direction, lane }, this.session.selectedHandIndex ?? 0);
 
     // 018-piece-movement-animation: se reproduce la traza de eventos antes de
     // mostrar el estado final -- redraw() y la ventana de resultado (Historia 3)
     // se disparan solo cuando la animación completa termina, nunca antes.
     this.animating = true;
+    this.playLaunchSegment(direction, lane, boardBeforeLaunch, outcome, 0, true);
+  }
+
+  /**
+   * Plays one segment of a launch's animation -- `outcome.events.slice(playedCount)`
+   * -- and, once it finishes, either opens the color-choice dialog and recurses
+   * into the NEXT segment (024-rainbow-color-change: `outcome.pendingColorChoice`
+   * means the engine's own chain is still paused, waiting on the player) or
+   * commits the session and finishes the launch exactly as before this feature.
+   * `resolveLaunch`/`commitLaunchOutcome` are used directly instead of
+   * `applySessionLaunch` so this same function can commit whichever outcome
+   * finally turns out to be the real one, whether that's the very first call
+   * (no pause at all, the common case) or after any number of color choices.
+   */
+  private playLaunchSegment(
+    direction: Direction,
+    lane: number,
+    boardBeforeSegment: Board,
+    outcome: LaunchOutcome,
+    playedCount: number,
+    isFirstSegment: boolean,
+  ): void {
     playEventLog(
       this,
       this.boardGraphics,
       this.session.current.goal,
-      boardBeforeLaunch,
+      boardBeforeSegment,
       { direction, lane },
-      outcome.events,
+      outcome.events.slice(playedCount),
       () => {
+        const pending = outcome.pendingColorChoice;
+        if (pending) {
+          showColorChoiceDialog(this, this.boardGraphics, pending.at, pending.options, (color) => {
+            this.playLaunchSegment(direction, lane, outcome.board, pending.resume(color), outcome.events.length, false);
+          });
+          return;
+        }
+
+        this.session = commitLaunchOutcome(this.session, outcome);
         this.animating = false;
         this.redraw();
 
         // FR-007/FR-008/FR-009: solo se muestra una ventana cuando el motor
         // decidió un resultado; 'undetermined' (incluye missclick) no muestra nada.
-        if (nextSession.status === 'won' || nextSession.status === 'lost') {
-          if (nextSession.status === 'won') playGoalSound();
-          this.showResultOverlay(nextSession.status);
+        if (this.session.status === 'won' || this.session.status === 'lost') {
+          if (this.session.status === 'won') playGoalSound();
+          this.showResultOverlay(this.session.status);
         }
       },
+      isFirstSegment,
     );
   }
 

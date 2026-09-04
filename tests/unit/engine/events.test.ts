@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createBoard, setPieceAt } from '../../../src/engine/board.js';
 import { resolveChain, type ImpactHandler, type ImpactSite, type MutualImpactHandler } from '../../../src/engine/events.js';
+import { expectResolved } from './test-helpers.js';
 
 function site(fromCol: number, toCol: number): ImpactSite {
   return {
@@ -17,13 +18,14 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
     const siteA = site(0, 1);
     const siteB = site(5, 6);
     const handleImpact: ImpactHandler = (b, s) => ({
+      status: 'resolved',
       board: b,
       events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, direction: s.direction, hasCollision: false }],
       nextSites: [],
     });
     const handleMutualImpact = vi.fn();
 
-    const result = resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact);
+    const result = expectResolved(resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact));
 
     expect(handleMutualImpact).not.toHaveBeenCalled();
     expect(result.events).toEqual([
@@ -43,7 +45,7 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
       nextSites: [],
     });
 
-    const result = resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact);
+    const result = expectResolved(resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact));
 
     expect(handleImpact).not.toHaveBeenCalled();
     expect(result.events).toEqual([
@@ -70,7 +72,7 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
         nextSites: [],
       }));
 
-    const result = resolveChain(board, [siteA, siteB, siteC], handleImpact, handleMutualImpact);
+    const result = expectResolved(resolveChain(board, [siteA, siteB, siteC], handleImpact, handleMutualImpact));
 
     expect(handleImpact).not.toHaveBeenCalled();
     expect(handleMutualImpact).toHaveBeenCalledTimes(2);
@@ -84,13 +86,14 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
     const board = createBoard();
     const initial = site(0, 1);
     const handleImpact: ImpactHandler = (b, s) => ({
+      status: 'resolved',
       board: b,
       events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, direction: s.direction, hasCollision: false }],
       nextSites: [],
     });
     const handleMutualImpact = vi.fn();
 
-    const result = resolveChain(board, [initial], handleImpact, handleMutualImpact);
+    const result = expectResolved(resolveChain(board, [initial], handleImpact, handleMutualImpact));
 
     expect(handleMutualImpact).not.toHaveBeenCalled();
     expect(result.events).toEqual([
@@ -111,13 +114,14 @@ describe('resolveChain: a shared destination is only a mutual collision when it 
     const siteA = site(0, 4); // both share to = (0, 4), where a real piece sits
     const siteB = site(7, 4);
     const handleImpact: ImpactHandler = (b, s) => ({
+      status: 'resolved',
       board: b,
       events: [{ type: 'MOVE_STEP', piece: s.piece, from: s.from, to: s.to, direction: s.direction, hasCollision: false }],
       nextSites: [],
     });
     const handleMutualImpact = vi.fn();
 
-    const result = resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact);
+    const result = expectResolved(resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact));
 
     expect(handleMutualImpact).not.toHaveBeenCalled();
     // FIFO order: siteA (queued first) resolves before siteB, each via the
@@ -139,7 +143,7 @@ describe('resolveChain: a shared destination is only a mutual collision when it 
       nextSites: [],
     });
 
-    const result = resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact);
+    const result = expectResolved(resolveChain(board, [siteA, siteB], handleImpact, handleMutualImpact));
 
     expect(handleImpact).not.toHaveBeenCalled();
     expect(result.events).toEqual([

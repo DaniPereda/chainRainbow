@@ -3,13 +3,14 @@ import { createBoard, setPieceAt, type Piece } from '../../../src/engine/board.j
 import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
 import { resolveChain, type ImpactSite } from '../../../src/engine/events.js';
 import { applyImpact, applyMutualImpact } from '../../../src/engine/pieces/push.js';
+import { expectResolved } from './test-helpers.js';
 
 describe('applyImpact: the four branches of a single impact (016-immediate-chain-placement)', () => {
   it('empty destination: the striker settles, hasCollision: false, no nextSites', () => {
     const board = createBoard();
     const piece: Piece = { color: 'green', fragility: 'new' };
 
-    const result = applyImpact(board, { piece, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+    const result = expectResolved(applyImpact(board, { piece, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }));
 
     expect(result.board.cells[0][1]).toEqual(piece);
     expect(result.events).toEqual([
@@ -22,7 +23,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     const board = setPieceAt(createBoard(), { row: 0, col: 1 }, { color: 'green', fragility: 'new' });
     const piece: Piece = { color: 'green', fragility: 'cracked' };
 
-    const result = applyImpact(board, { piece, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+    const result = expectResolved(applyImpact(board, { piece, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }));
 
     expect(result.board.cells[0][1]).toBeNull();
     expect(result.events).toEqual([
@@ -35,7 +36,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     const board = setPieceAt(createBoard(), { row: 0, col: 1 }, { color: 'green', fragility: 'new' });
     const striker: Piece = { color: 'orange', fragility: 'new' }; // orange pushes 2 cells
 
-    const result = applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+    const result = expectResolved(applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }));
 
     // The striker already settled -- that decision never depended on whether the
     // defender's own destination turns out to be empty or occupied.
@@ -61,12 +62,12 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
 
     // Letting resolveChain (the same queue resolveLaunch itself drives) finish the
     // job confirms the FULL cascade still ends up exactly where expected.
-    const drained = resolveChain(
+    const drained = expectResolved(resolveChain(
       board,
       [{ piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }],
       applyImpact,
       applyMutualImpact,
-    );
+    ));
     expect(drained.board.cells[0][1]).toEqual(striker);
     expect(drained.board.cells[0][3]).toEqual({ color: 'green', fragility: 'cracked' });
     expect(drained.events).toEqual([
@@ -88,7 +89,7 @@ describe('applyImpact: the four branches of a single impact (016-immediate-chain
     board = setPieceAt(board, { row: 0, col: 3 }, { color: 'brown', fragility: 'new' });
     const striker: Piece = { color: 'orange', fragility: 'new' };
 
-    const result = applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+    const result = expectResolved(applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }));
 
     // Striker settles immediately -- this decision never depended on the defender's
     // own onward fate (research.md, Decisión 3).
@@ -398,7 +399,7 @@ describe('applyImpact: red split interleaves both branches hop by hop (019-synch
     // (4,3) empty -- the O branch's destination, settles directly
 
     const striker: Piece = { color: 'red', fragility: 'new' };
-    const result = applyImpact(board, { piece: striker, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
+    const result = expectResolved(applyImpact(board, { piece: striker, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } }));
 
     // Final board: red settled at the split point; E branch (green, cracked) settled
     // at (4,5) after pushing orange (also cracked) onward to (4,6); O branch (green,
@@ -463,12 +464,12 @@ describe('applyImpact: the struck defender\'s own displacement sees the striker 
     const board = setPieceAt(createBoard(), { row: 0, col: 0 }, { color: 'orange', fragility: 'new' });
     const striker: Piece = { color: 'brown', fragility: 'new' };
 
-    const result = resolveChain(
+    const result = expectResolved(resolveChain(
       board,
       [{ piece: striker, direction: 'E', from: { row: 0, col: 7 }, to: { row: 0, col: 0 } }],
       applyImpact,
       applyMutualImpact,
-    );
+    ));
 
     expect(result.events).toEqual([
       { type: 'MOVE_STEP', piece: striker, from: { row: 0, col: 7 }, to: { row: 0, col: 0 }, direction: 'E', hasCollision: true },
@@ -547,7 +548,7 @@ describe('applyImpact: a brown-driven displacement is a tentative 1-cell step, n
     const board = setPieceAt(createBoard(), { row: 0, col: 1 }, { color: 'green', fragility: 'new' });
     const striker: Piece = { color: 'brown', fragility: 'new' };
 
-    const result = applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+    const result = expectResolved(applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }));
 
     expect(result.nextSites).toEqual([
       {
@@ -565,7 +566,7 @@ describe('applyImpact: a brown-driven displacement is a tentative 1-cell step, n
     const board = setPieceAt(createBoard(), { row: 0, col: 1 }, { color: 'green', fragility: 'new' });
     const striker: Piece = { color: 'orange', fragility: 'new' };
 
-    const result = applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } });
+    const result = expectResolved(applyImpact(board, { piece: striker, direction: 'E', from: { row: 0, col: 0 }, to: { row: 0, col: 1 } }));
 
     expect(result.nextSites).toEqual([
       {
@@ -589,7 +590,7 @@ describe('applyImpact: a brown-driven displacement is a tentative 1-cell step, n
       walking: { edgeCrossings: 0 },
     };
 
-    const result = applyImpact(board, walkingSite);
+    const result = expectResolved(applyImpact(board, walkingSite));
 
     expect(result.events).toEqual([]);
     expect(result.board).toEqual(board); // untouched -- still in flight
@@ -609,7 +610,7 @@ describe('applyImpact: a brown-driven displacement is a tentative 1-cell step, n
       walking: { edgeCrossings: 1 }, // already crossed once
     };
 
-    const result = applyImpact(board, walkingSite);
+    const result = expectResolved(applyImpact(board, walkingSite));
 
     // One more step from (0,7) heading E crosses the edge a SECOND time --
     // capped, so it settles at (0,7) (where it already was), not the new

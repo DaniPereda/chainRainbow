@@ -386,15 +386,17 @@ describe('computeEventParents: finds where trajectories really fork, so they can
     expect(parents).toEqual([null, 0, 0, 2, 2, 2]);
   });
 
-  it('collapses a whole run of unrelated orphans (a line clear\'s many swept cells, 023-black-piece-line-clear) into ONE shared-parent sibling group instead of chaining each one onto the last (real bug found live: four unrelated pieces removed by the same clear animated one after another, each waiting for the previous one, instead of together)', () => {
+  it('collapses a whole run of unrelated orphans (a line clear\'s many swept cells, 023-black-piece-line-clear) into ONE shared-parent sibling group -- children of the trigger\'s own real travel, not a second set of independent roots (real bug found live TWICE: first, four unrelated pieces animated one after another instead of together; then, once that was fixed, the whole sweep started at the very instant the launch began, alongside the triggering piece\'s own still-in-progress travel, clearing the line before the piece that caused it had even arrived)', () => {
     // Negro launched east hits the first piece in its row (green at col 1) and
     // clears the whole row: three swept ANNIHILATIONs (green, orange, brown --
     // none of them share a `from` with each other, since each is `from === at`,
     // its own real position -- no fabricated travel, data-model.md Decisión 1)
-    // plus the triggering black's own ANNIHILATION. Unlike a red split or a
-    // mutual collision, NONE of these four share a `from` with one another, so
-    // the `from`-grouping above can't catch them as siblings on its own -- this
-    // is exactly the case the orphan-run collapsing exists for.
+    // plus the triggering black's own ANNIHILATION (`events[0]`, WITH real
+    // travel from its own entry to the impact cell). Unlike a red split or a
+    // mutual collision, NONE of the three swept cells share a `from` with one
+    // another, so the `from`-grouping above can't catch them as siblings on
+    // its own -- this is exactly the case the orphan-run collapsing exists
+    // for.
     const level = createLevel({
       pieces: [
         { at: { row: 4, col: 1 }, color: 'green' },
@@ -408,11 +410,34 @@ describe('computeEventParents: finds where trajectories really fork, so they can
 
     expect(outcome.events).toHaveLength(4);
     const parents = computeEventParents(outcome.events);
-    // All four are roots -- none of them causally depends on any of the
-    // others finishing first, so `playEventLog` starts them all at the same
-    // instant (its own `roots` loop), matching how the engine actually
-    // resolves a line clear: one atomic sweep, not a sequence.
-    expect(parents).toEqual([null, null, null, null]);
+    // [0] the triggering black's own travel -- the only genuine root, nothing
+    //     precedes the launch's own entry.
+    // [1..3] the three swept cells -- all children of [0], hence siblings of
+    //     EACH OTHER: they only start once black's own travel finishes
+    //     arriving, but then animate simultaneously with one another, not
+    //     serially.
+    expect(parents).toEqual([null, 0, 0, 0]);
+  });
+
+  it('same fix, the other direction: a different color launched into a SETTLED black -- the sweep still waits for the attacker\'s own travel, not just when black itself is launched (024, user\'s own repro: "tanto si la negra se convierte en golpeadora como si no")', () => {
+    const level = createLevel({
+      pieces: [
+        { at: { row: 0, col: 0 }, color: 'orange' },
+        { at: { row: 0, col: 1 }, color: 'brown' },
+        { at: { row: 0, col: 2 }, color: 'red' },
+        { at: { row: 0, col: 3 }, color: 'black' },
+      ],
+      hand: ['green'],
+      goal: { at: { row: 0, col: 0 }, color: 'green' },
+    });
+    // Green enters from the east edge (col 7) and travels all the way to
+    // col 3 before hitting the settled black -- a real, multi-cell travel
+    // the sweep must wait for.
+    const outcome = resolveLaunch(level, { direction: 'O', lane: 0 });
+
+    expect(outcome.events).toHaveLength(5);
+    const parents = computeEventParents(outcome.events);
+    expect(parents).toEqual([null, 0, 0, 0, 0]);
   });
 });
 
