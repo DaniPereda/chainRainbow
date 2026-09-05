@@ -165,12 +165,20 @@ export type ImpactHandler = (board: Board, site: ImpactSite) => ImpactResolution
  * (neither is a real, already-settled board piece) -- 019-synchronous-tick-resolution.
  * Distinct from `ImpactHandler`, which always resolves a single moving piece
  * against whatever (if anything) is already sitting on the real board.
+ *
+ * Returns `ImpactResolution` -- the exact same type `ImpactHandler` returns,
+ * unified deliberately (027-rainbow-attacker-only, research.md Decisión 2): a
+ * mutual collision can now also need to PAUSE for a color choice (a displaced
+ * arcoíris can end up as one of the two in-flight sides), and `pendingFrom`
+ * below is already agnostic about which handler produced a pause -- giving
+ * this its own bespoke "plain object" return type would only have meant
+ * duplicating `pendingFrom`'s resume logic for no real gain.
  */
 export type MutualImpactHandler = (
   board: Board,
   siteA: ImpactSite,
   siteB: ImpactSite,
-) => { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] };
+) => ImpactResolution;
 
 /**
  * The first two queue entries (by index) that share the same `to` AND whose
@@ -296,6 +304,9 @@ function drive(
       queue.splice(indexB, 1);
       queue.splice(indexA, 1);
       const result = handleMutualImpact(currentBoard, siteA, siteB);
+      if (result.status === 'pending-color-choice') {
+        return pendingFrom(events, queue, result, handleImpact, handleMutualImpact);
+      }
       currentBoard = result.board;
       events.push(...result.events);
       queue.push(...result.nextSites);

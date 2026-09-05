@@ -225,33 +225,54 @@ function strikeMutualSide(
   }
 
   if (strikerSite.piece.color === 'black') {
-    // Confirmed unreachable in practice (023-black-piece-line-clear,
-    // research.md Decisión 4): negro never produces a `nextSite` of its own
-    // (its interaction is always terminal, a line clear), so it can never
-    // become one of the two ALREADY-in-flight sides of a mutual collision --
-    // enforced here as an explicit invariant, same pattern as the "broken
-    // defender on a real board" check in `applyImpact` below, rather than
-    // silently widening `PUSH_STRATEGY`'s own type to a color it
-    // deliberately has no entry for.
-    throw new Error('invariant violated: black cannot be one side of a mutual collision');
+    // Negro real can never be one of the two ALREADY-in-flight sides of a
+    // mutual collision -- its own interaction is always terminal (a line
+    // clear, never a `nextSite`), an invariant that remains true and
+    // UNCHANGED. This branch is reached by a completely different route:
+    // `applyChosenColorToRainbow` (027-rainbow-attacker-only, research.md
+    // Decisión 4) synthesizes a `strikerSite` carrying whatever color the
+    // player just chose for the OTHER side of a rainbow-involved mutual
+    // collision -- if that color is black, the effect on arcoíris (the
+    // `hitSite` here) is exactly negro's own line-clear, reusing
+    // `clearLineFrom` (extracted from `applyImpact`'s own black branch). The
+    // cleared line's axis/index follows `strikerSite.direction`, same
+    // convention as the generic push branch below.
+    const triggerEvent: ChainEvent = {
+      type: 'ANNIHILATION',
+      at: hitSite.to,
+      color: hitSite.piece.color,
+      from: hitSite.from,
+      direction: hitSite.direction,
+      pushedByColor: hitSite.pushedByColor,
+      visualOrigin,
+    };
+    const { board: clearedBoard, events } = clearLineFrom(board, hitSite.to, strikerSite.direction, triggerEvent);
+    return { board: clearedBoard, events, nextSite: null };
   }
 
   if (strikerSite.piece.color === 'rainbow') {
-    // Same reasoning as black immediately above (024-rainbow-color-change):
-    // arcoíris's own interaction always returns `nextSites: []` (FR-007), so
-    // it can never become one of the two already-in-flight sides of a mutual
-    // collision either.
+    // Truly unreachable (027-rainbow-attacker-only): never one of the two
+    // ORIGINAL in-flight sides here (that case is intercepted earlier in
+    // `applyMutualImpact`, before either `strikeMutualSide` call below), and
+    // never a color the player can choose in `buildColorChoicePause`'s own
+    // `options` (never includes 'rainbow') when this is reached synthetically
+    // from `applyChosenColorToRainbow`. Kept as an explicit throw purely so
+    // `strikerSite.piece.color` narrows correctly for `PUSH_STRATEGY`'s own
+    // type below, not because this is expected to ever fire.
     throw new Error('invariant violated: rainbow cannot be one side of a mutual collision');
   }
 
   if (strikerSite.piece.color === 'purple') {
-    // Same reasoning as black/rainbow above (025-purple-attraction-piece):
-    // a púrpura-colored `ImpactSite` never exists in `resolveChain`'s queue at
+    // Same reasoning as negro above (025-purple-attraction-piece): a
+    // púrpura-colored `ImpactSite` never exists in `resolveChain`'s queue at
     // all -- its own launch resolves entirely through `scanPurpleSettle`
     // before `resolveChain` starts, and the two sites it seeds carry the
     // ATTRACTED pieces' own colors, never `'purple'` itself (research.md,
     // Decisión 1/2). So it can never become one of the two already-in-flight
-    // sides of a mutual collision either.
+    // sides of a mutual collision either. Unlike negro, no synthetic caller
+    // ever needs púrpura's own mechanic here (it has no effect against a real
+    // defender to begin with, spec.md FR-007 of 025), so this stays a genuine
+    // invariant throw.
     throw new Error('invariant violated: purple cannot be one side of a mutual collision');
   }
   const to = PUSH_STRATEGY[strikerSite.piece.color](board, hit, hitSite.to, strikerSite.direction);
@@ -283,11 +304,7 @@ function strikeMutualSide(
  * writes; the two sides never touch the same cells (that's exactly what makes
  * this a mutual collision rather than one of them meeting a real defender).
  */
-export function applyMutualImpact(
-  board: Board,
-  siteA: ImpactSite,
-  siteB: ImpactSite,
-): { board: Board; events: ChainEvent[]; nextSites: ImpactSite[] } {
+export function applyMutualImpact(board: Board, siteA: ImpactSite, siteB: ImpactSite): ImpactResolution {
   if (siteA.piece.color === siteB.piece.color) {
     // Two genuinely separate trajectories converge and both annihilate --
     // TWO events, one per real side, not one (025-purple-attraction-piece:
@@ -302,8 +319,11 @@ export function applyMutualImpact(
     // definition of a mutual collision) -- the renderer treats them as
     // siblings via the SAME origin-orphan-chaining fallback already used for
     // an unrelated line-clear's swept cells (`computeEventParents`), no
-    // changes needed there.
+    // changes needed there. Two arcoíris colliding fall in here too, exactly
+    // like any other same-color pair (027-rainbow-attacker-only, research.md
+    // Decisión 7) -- no special case needed.
     return {
+      status: 'resolved',
       board,
       events: [
         {
@@ -329,13 +349,104 @@ export function applyMutualImpact(
     };
   }
 
+  if (siteA.piece.color === 'rainbow' || siteB.piece.color === 'rainbow') {
+    // Exactly one side is arcoíris (two-arcoíris already returned above) --
+    // resolved as a two-step sequence that gives the player the advantage,
+    // never the symmetric mutual push both other-colored pairs get below
+    // (027-rainbow-attacker-only, research.md Decisión 3, confirmed
+    // explicitly by the user). Step 1: arcoíris recolors `otherSite`, which
+    // SETTLES right at the shared meeting cell (arcoíris never pushes, same
+    // as everywhere else) -- `otherSite.to === rainbowSite.to` always, that's
+    // the definition of a mutual collision. Step 2 (inside `resume`): the
+    // just-chosen color acts as attacker on arcoíris itself, via
+    // `applyChosenColorToRainbow`.
+    const [rainbowSite, otherSite] = siteA.piece.color === 'rainbow' ? [siteA, siteB] : [siteB, siteA];
+
+    if (otherSite.piece.fragility === 'broken') {
+      // Same rule `strikeMutualSide` already applies to any already-`broken`
+      // hitSite (research.md Decisión 3 of 019): it vanishes instead of
+      // taking another hit, with no event at all -- confirmed for THIS
+      // feature too (spec.md Edge Cases): the non-arcoíris side disappears
+      // without ever receiving arcoíris's effect, and arcoíris itself never
+      // gets a color to act on, so it disappears right along with it --
+      // nothing left for either side to do.
+      return { status: 'resolved', board, events: [], nextSites: [] };
+    }
+
+    const vanishedRainbow: ChainEvent = {
+      type: 'ANNIHILATION',
+      at: rainbowSite.to,
+      color: rainbowSite.piece.color,
+      from: rainbowSite.from,
+      direction: rainbowSite.direction,
+      pushedByColor: rainbowSite.pushedByColor,
+      visualOrigin: rainbowSite.visualOrigin,
+    };
+    const pause = buildColorChoicePause(otherSite.piece, otherSite.to, vanishedRainbow, board);
+    return {
+      ...pause,
+      resume: (color) => {
+        const step1 = pause.resume(color);
+        // `buildColorChoicePause`'s own `resume` never itself returns another
+        // pause (research.md Decisión 3 of 024, unaffected by this feature) --
+        // always 'resolved' here.
+        if (step1.status !== 'resolved') {
+          throw new Error("invariant violated: buildColorChoicePause's own resume paused again");
+        }
+        return applyChosenColorToRainbow(step1.board, rainbowSite, { color, fragility: otherSite.piece.fragility }, step1.events);
+      },
+    };
+  }
+
   const resultA = strikeMutualSide(board, siteA, siteB);
   const resultB = strikeMutualSide(resultA.board, siteB, siteA);
 
   return {
+    status: 'resolved',
     board: resultB.board,
     events: [...resultA.events, ...resultB.events],
     nextSites: [resultA.nextSite, resultB.nextSite].filter((site): site is ImpactSite => site !== null),
+  };
+}
+
+/**
+ * The second step of a rainbow-involved mutual collision (research.md
+ * Decisión 3/4): `chosen` -- the color the player just picked for the OTHER
+ * side, now already settled on `board` -- acts as attacker on `rainbowSite`
+ * with ITS OWN mechanism. Negro gets a dedicated branch (line-clear, reusing
+ * `clearLineFrom`) since `strikeMutualSide` has no other route to it; every
+ * other color reuses `strikeMutualSide` as-is, synthesizing a `strikerSite`
+ * from `rainbowSite` itself carrying the chosen color/fragility -- only
+ * `.piece.color` and `.direction` are ever read from a `strikerSite` there,
+ * so the synthetic `from`/`to` (identical to `rainbowSite`'s own, never
+ * actually reached) are harmless.
+ */
+function applyChosenColorToRainbow(
+  board: Board,
+  rainbowSite: ImpactSite,
+  chosen: Piece,
+  eventsSoFar: ChainEvent[],
+): ImpactResolution {
+  if (chosen.color === 'black') {
+    const triggerEvent: ChainEvent = {
+      type: 'ANNIHILATION',
+      at: rainbowSite.to,
+      color: rainbowSite.piece.color,
+      from: rainbowSite.from,
+      direction: rainbowSite.direction,
+      pushedByColor: rainbowSite.pushedByColor,
+      visualOrigin: rainbowSite.visualOrigin,
+    };
+    const { board: clearedBoard, events } = clearLineFrom(board, rainbowSite.to, rainbowSite.direction, triggerEvent);
+    return { status: 'resolved', board: clearedBoard, events: [...eventsSoFar, ...events], nextSites: [] };
+  }
+  const strikerSite: ImpactSite = { ...rainbowSite, piece: chosen };
+  const result = strikeMutualSide(board, rainbowSite, strikerSite);
+  return {
+    status: 'resolved',
+    board: result.board,
+    events: [...eventsSoFar, ...result.events],
+    nextSites: result.nextSite === null ? [] : [result.nextSite],
   };
 }
 
@@ -392,6 +503,69 @@ export function withEventPrefix(prefix: ChainEvent[], result: ImpactResolution):
     options: result.options,
     resume: (color) => withEventPrefix(prefix, result.resume(color)),
   };
+}
+
+/**
+ * Empties every occupied cell along the line an impact at `at`/`direction`
+ * falls on, reporting `triggerEvent` first and one ANNIHILATION per swept
+ * cell after -- negro's own primitive, extracted (027-rainbow-attacker-only,
+ * research.md Decisión 3) so it can be reused both by `applyImpact`'s own
+ * black-as-attacker branch AND by the new "negro as the chosen color" step of
+ * a rainbow-involved mutual collision (`strikeMutualSide`'s new branch,
+ * below) -- identical behavior, just no longer duplicated. `board` here is
+ * always the board BEFORE this line is cleared -- `clearedCells` only ever
+ * contains cells `clearLine` itself just found occupied there, never `null`,
+ * see the throw below.
+ */
+function clearLineFrom(
+  board: Board,
+  at: Coordinate,
+  direction: Direction,
+  triggerEvent: ChainEvent,
+): { board: Board; events: ChainEvent[] } {
+  const { axis, index } = lineFromImpact(at, direction);
+  const { board: clearedBoard, clearedCells } = clearLine(board, axis, index);
+  const sweepEvents: ChainEvent[] = clearedCells.map((cell) => {
+    const swept = getPieceAt(board, cell);
+    /* c8 ignore next -- clearedCells only ever contains cells clearLine itself just found occupied */
+    if (swept === null) throw new Error('invariant violated: clearedCells cell was not occupied');
+    return { type: 'ANNIHILATION', at: cell, color: swept.color, from: cell, direction };
+  });
+  return { board: clearedBoard, events: [triggerEvent, ...sweepEvents] };
+}
+
+/**
+ * Builds arcoíris's own effect -- a PAUSE asking the player which color
+ * `defender` becomes, `vanishedAttacker` reported immediately (before the
+ * pause opens, same reasoning as the inline version this replaces) and
+ * `defender`'s own fragility carried through untouched (research.md Decisión
+ * 6/11 of 024: a repaint, not a structural hit). Extracted
+ * (027-rainbow-attacker-only, research.md Decisión 3) so the same pause can be
+ * built either from a real, already-settled defender (`applyImpact`'s own
+ * branch below) or from a piece that was only ever in-flight until this exact
+ * instant (`applyMutualImpact`'s new rainbow branch, where `otherSite.piece`
+ * never actually sat on `board` before settling here) -- both cases only ever
+ * need `defender`'s color/fragility and the cell it settles at, never
+ * anything else about how it got there.
+ */
+function buildColorChoicePause(
+  defender: Piece,
+  at: Coordinate,
+  vanishedAttacker: ChainEvent,
+  boardBeforePause: Board,
+): Extract<ImpactResolution, { status: 'pending-color-choice' }> {
+  const options: PieceColor[] = ['green', 'orange', 'brown', 'red', 'black'];
+  const from = defender.color;
+  const boardDuringPause = setPieceAt(boardBeforePause, at, null);
+
+  const resume = (color: PieceColor): ImpactResolution => {
+    const recolored: Piece = { color, fragility: defender.fragility };
+    const boardAfter = setPieceAt(boardDuringPause, at, recolored);
+    const colorChoiceEvent: ChainEvent = { type: 'COLOR_CHOICE', at, fromColor: from, toColor: color };
+    return { status: 'resolved', board: boardAfter, events: [colorChoiceEvent], nextSites: [] };
+  };
+
+  return { status: 'pending-color-choice', board: boardDuringPause, events: [vanishedAttacker], at, options, resume };
 }
 
 /**
@@ -532,9 +706,8 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
     // used to leave `triggerEvent` off-board with no glide protection at
     // all -- a real bug found live (levels/2.json, orange sitting right at
     // the lane's own entry point): its circle spawned and stayed rendered
-    // one cell outside the board.
-    const { axis, index } = lineFromImpact(site.to, site.direction);
-    const { board: clearedBoard, clearedCells } = clearLine(board, axis, index);
+    // one cell outside the board. `clearLineFrom` (extracted,
+    // 027-rainbow-attacker-only) preserves this ordering unchanged.
     const triggerEvent: ChainEvent = {
       type: 'ANNIHILATION',
       at: site.to,
@@ -544,44 +717,37 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
       pushedByColor: site.pushedByColor,
       visualOrigin: site.visualOrigin,
     };
-    const sweepEvents: ChainEvent[] = clearedCells.map((at) => {
-      const swept = getPieceAt(board, at);
-      /* c8 ignore next -- clearedCells only ever contains cells clearLine itself just found occupied */
-      if (swept === null) throw new Error('invariant violated: clearedCells cell was not occupied');
-      return { type: 'ANNIHILATION', at, color: swept.color, from: at, direction: site.direction };
-    });
-    return { status: 'resolved', board: clearedBoard, events: [triggerEvent, ...sweepEvents], nextSites: [] };
+    const { board: clearedBoard, events } = clearLineFrom(board, site.to, site.direction, triggerEvent);
+    return { status: 'resolved', board: clearedBoard, events, nextSites: [] };
   }
 
-  if (defender.color === 'rainbow' || site.piece.color === 'rainbow') {
-    // Arcoíris (either side, FR-002/FR-003 of 024-rainbow-color-change) never
-    // pushes, splits, or clears a line -- its impact changes a color instead,
-    // and needs the PLAYER to pick which one. Checked here, right after
-    // negro's own (now attacker-only, research.md 023 Decisión 7) rule and
-    // before ANY color-specific striker mechanic (including red's split
-    // below) -- research.md (024) Decisión 3: negro-as-ATTACKER still wins
-    // over arcoíris (unchanged -- negro's own line-clear always fires when
-    // negro itself is impacting, whoever/whatever it hits, same as it always
-    // has); arcoíris-as-defender is otherwise reached normally when struck by
-    // any non-black attacker, INCLUDING a settled negro being struck by an
-    // arcoíris attacker (negro no longer has any defender-side priority to
-    // pre-empt it). Arcoíris wins over red (FR-010), the same precedence
-    // pattern negro (023) already established for itself.
+  if (site.piece.color === 'rainbow') {
+    // Arcoíris never pushes, splits, or clears a line -- its impact changes a
+    // color instead, and needs the PLAYER to pick which one. Checked here,
+    // right after negro's own (attacker-only, research.md 023 Decisión 7)
+    // rule and before ANY color-specific striker mechanic (including red's
+    // split below).
+    //
+    // Only the ATTACKER's identity ever triggers this -- a settled arcoíris
+    // being struck (`defender.color === 'rainbow'`) is NO LONGER special
+    // (027-rainbow-attacker-only, research.md Decisión 1): it falls through to
+    // every generic branch below exactly like any other defender, deliberately
+    // reversing FR-010 of 024-rainbow-color-change ("arcoíris asentada gana a
+    // rojo") -- confirmed explicitly by the user ("las defensoras nunca
+    // deberían aplicar efectos sobre las atacantes, al menos no directamente").
+    // Negro-as-attacker still wins over arcoíris-as-defender unchanged (decided
+    // by the branch order above, never by this condition).
     //
     // The DEFENDER -- whichever piece was already resting at `site.to` before
-    // this impact, rainbow or not -- is always the one whose color changes
-    // (research.md Decisión 2, confirmed with the user: matches the original
-    // design doc's own wording, "cambia el color de la ficha impactada"). The
-    // OTHER piece (the attacker, `site.piece`) disappears, consumed by the
-    // effect -- FR-004, same pattern as negro's own disappearing trigger.
-    // Fragility is left untouched -- confirmed with the user (research.md
-    // Decisión 11): a repaint, not a structural hit, unlike every other
-    // color's own impact. The recolored piece keeps whatever fragility the
-    // defender already had (`defender.fragility`, read below, never reset to
-    // 'new' and never advanced) -- only its color changes.
-    const options: PieceColor[] = ['green', 'orange', 'brown', 'red', 'black'];
-    const at = site.to;
-    const from = defender.color;
+    // this impact -- is always the one whose color changes (research.md
+    // Decisión 2 of 024, confirmed with the user: matches the original design
+    // doc's own wording, "cambia el color de la ficha impactada"). The OTHER
+    // piece (the attacker, `site.piece`) disappears, consumed by the effect --
+    // FR-004 of 024, same pattern as negro's own disappearing trigger.
+    // `buildColorChoicePause` (extracted, 027-rainbow-attacker-only) leaves the
+    // defender's own fragility untouched (research.md Decisión 11 of 024): a
+    // repaint, not a structural hit, unlike every other color's own impact.
+    //
     // The attacker's own ANNIHILATION (its real travel to `at`, then vanish)
     // is emitted HERE, as part of the PENDING result -- not deferred into
     // `resume` -- so it plays out BEFORE the color dialog opens, exactly like
@@ -595,31 +761,16 @@ export function applyImpact(board: Board, site: ImpactSite): ImpactResolution {
     // protection for an off-board `from` (same reasoning as negro's own
     // `triggerEvent` reordering, push.ts's earlier fix) -- unaffected by this
     // change, since it's still `events[0]` either way.
-    //
-    // The board carried forward already reflects the attacker's own
-    // disappearance (`at` cleared) -- `resume` only ever adds the recolor on
-    // top of THIS board, never the pre-impact one, so the engine's own state
-    // stays consistent with what the renderer shows during the pause: the
-    // defender's old-colored piece is gone, not sitting there unrecolored.
     const vanishedEvent: ChainEvent = {
       type: 'ANNIHILATION',
-      at,
+      at: site.to,
       color: site.piece.color,
       from: site.from,
       direction: site.direction,
       pushedByColor: site.pushedByColor,
       visualOrigin: site.visualOrigin,
     };
-    const boardDuringPause = setPieceAt(board, at, null);
-
-    const resume = (color: PieceColor): ImpactResolution => {
-      const recolored: Piece = { color, fragility: defender.fragility };
-      const boardAfter = setPieceAt(boardDuringPause, at, recolored);
-      const colorChoiceEvent: ChainEvent = { type: 'COLOR_CHOICE', at, fromColor: from, toColor: color };
-      return { status: 'resolved', board: boardAfter, events: [colorChoiceEvent], nextSites: [] };
-    };
-
-    return { status: 'pending-color-choice', board: boardDuringPause, events: [vanishedEvent], at, options, resume };
+    return buildColorChoicePause(defender, site.to, vanishedEvent, board);
   }
 
   // The defender is about to be displaced by a different-color strike -- that's

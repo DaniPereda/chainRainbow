@@ -128,7 +128,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     expect(result.events).toEqual([
       { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'green', from: { row: 2, col: 3 }, direction: 'E', pushedByColor: undefined, visualOrigin: undefined },
@@ -152,7 +152,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     expect(result.events).toEqual([]);
     expect(result.nextSites).toEqual([
@@ -198,7 +198,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     // A vanishes -- no nextSite for it, regardless of it still "hitting" B.
     // B was still only cracked (not yet broken), so it advances once more and
@@ -230,7 +230,7 @@ describe('applyMutualImpact: two in-flight trajectories colliding with each othe
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     expect(result.nextSites).toEqual([]);
   });
@@ -264,7 +264,7 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     // Red produces NO event here -- like any other struck piece in a mutual
     // collision, it only gets a real MOVE_STEP once its own onward nextSite is
@@ -303,7 +303,7 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     expect(result.board.cells[2][4]).toBeNull();
     expect(result.events).toEqual([
@@ -330,7 +330,7 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     expect(result.board.cells[2][4]).toBeNull();
     expect(result.events).toEqual([]); // orange vanished silently -- never split, never an event
@@ -356,7 +356,7 @@ describe('applyMutualImpact: one side is a real red piece set in motion by an ea
       to: { row: 2, col: 4 },
     };
 
-    const result = applyMutualImpact(board, siteA, siteB);
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
 
     expect(result.events).toEqual([
       { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'red', from: siteA.from, direction: siteA.direction, pushedByColor: undefined, visualOrigin: undefined },
@@ -622,6 +622,108 @@ describe('applyImpact: a brown-driven displacement is a tentative 1-cell step, n
       { type: 'MOVE_STEP', piece: walkingSite.piece, from: { row: 0, col: 5 }, to: { row: 0, col: 7 }, direction: 'E', hasCollision: false, pushedByColor: 'brown' },
     ]);
     expect(result.board.cells[0][7]).toEqual(walkingSite.piece);
+    expect(result.nextSites).toEqual([]);
+  });
+});
+
+describe('applyMutualImpact: exactly one side is arcoíris -- two-step sequence favoring the player (027-rainbow-attacker-only, US3)', () => {
+  it('arcoíris + verde: paso 1 recolorea verde a naranja (asentada, fragilidad intacta); paso 2 naranja empuja a arcoíris (fragilidad avanzada)', () => {
+    const board = createBoard();
+    const rainbowSite: ImpactSite = { piece: { color: 'rainbow', fragility: 'new' }, direction: 'E', from: { row: 2, col: 3 }, to: { row: 2, col: 4 } };
+    const greenSite: ImpactSite = { piece: { color: 'green', fragility: 'new' }, direction: 'N', from: { row: 4, col: 4 }, to: { row: 2, col: 4 } };
+
+    const result = applyMutualImpact(board, rainbowSite, greenSite);
+
+    expect(result.status).toBe('pending-color-choice');
+    if (result.status !== 'pending-color-choice') throw new Error('unreachable');
+    expect(result.at).toEqual({ row: 2, col: 4 });
+    expect(result.options).toEqual(['green', 'orange', 'brown', 'red', 'black']);
+
+    const resolved = expectResolved(result.resume('orange'));
+    // Paso 1: verde se asienta recoloreada a naranja, fragilidad SIN cambios.
+    expect(resolved.board.cells[2][4]).toEqual({ color: 'orange', fragility: 'new' });
+    // Paso 2: naranja (el color elegido) empuja a arcoíris 2 celdas en la
+    // dirección PROPIA de arcoíris (E, no la de la otra ficha) -- fragilidad
+    // de arcoíris YA avanzada (new -> cracked), como cualquier golpe corriente.
+    expect(resolved.nextSites).toEqual([
+      {
+        piece: { color: 'rainbow', fragility: 'cracked' },
+        direction: 'E',
+        from: { row: 2, col: 4 },
+        to: { row: 2, col: 6 },
+        pushedByColor: 'orange',
+        visualOrigin: { from: { row: 2, col: 3 }, direction: 'E' },
+      },
+    ]);
+  });
+
+  it('arcoíris + rojo: el color elegido en el selector (no el color original del otro lado) determina el mecanismo del paso 2 -- aquí, dividir a ARCOÍRIS', () => {
+    const board = createBoard();
+    const rainbowSite: ImpactSite = { piece: { color: 'rainbow', fragility: 'new' }, direction: 'S', from: { row: 1, col: 4 }, to: { row: 4, col: 4 } };
+    const greenSite: ImpactSite = { piece: { color: 'green', fragility: 'new' }, direction: 'E', from: { row: 4, col: 1 }, to: { row: 4, col: 4 } };
+
+    const result = applyMutualImpact(board, rainbowSite, greenSite);
+    if (result.status !== 'pending-color-choice') throw new Error('unreachable');
+
+    const resolved = expectResolved(result.resume('red'));
+    // Paso 1: verde se asienta recoloreada a rojo.
+    expect(resolved.board.cells[4][4]).toEqual({ color: 'red', fragility: 'new' });
+    // Paso 2: el rojo recién elegido divide a ARCOÍRIS (no a la otra ficha) en
+    // dos ramas perpendiculares a la dirección de arcoíris (S -> E/O), ambas
+    // con la fragilidad de arcoíris ya avanzada.
+    expect(resolved.board.cells[4][3]).toEqual({ color: 'rainbow', fragility: 'cracked' }); // rama oeste
+    expect(resolved.board.cells[4][5]).toEqual({ color: 'rainbow', fragility: 'cracked' }); // rama este
+    expect(resolved.nextSites).toEqual([]); // la división resuelve completa dentro de este mismo paso
+  });
+
+  it('arcoíris + cualquier color: el color elegido en el selector es negro -- limpia la línea completa de arcoíris, sin continuación para ningún lado', () => {
+    const board = createBoard();
+    const rainbowSite: ImpactSite = { piece: { color: 'rainbow', fragility: 'new' }, direction: 'S', from: { row: 1, col: 4 }, to: { row: 4, col: 4 } };
+    const greenSite: ImpactSite = { piece: { color: 'green', fragility: 'new' }, direction: 'E', from: { row: 4, col: 1 }, to: { row: 4, col: 4 } };
+
+    const result = applyMutualImpact(board, rainbowSite, greenSite);
+    if (result.status !== 'pending-color-choice') throw new Error('unreachable');
+
+    const resolved = expectResolved(result.resume('black'));
+    // Negro limpia la COLUMNA de arcoíris (dirección S -> columna), incluida
+    // la propia celda de encuentro -- el negro recién elegido no sobrevive a
+    // su propio efecto, igual que un negro real siempre desaparece al disparar.
+    for (let row = 0; row < 8; row++) {
+      expect(resolved.board.cells[row][4]).toBeNull();
+    }
+    expect(resolved.nextSites).toEqual([]);
+    expect(resolved.events.every((event) => event.type === 'ANNIHILATION' || event.type === 'COLOR_CHOICE')).toBe(true);
+  });
+
+  it('si el lado NO-arcoíris ya está \'broken\' antes de la colisión, desaparece sin recibir el efecto de arcoíris -- ni ella ni arcoíris dejan ningún rastro (spec.md Edge Cases)', () => {
+    const board = createBoard();
+    const rainbowSite: ImpactSite = { piece: { color: 'rainbow', fragility: 'new' }, direction: 'E', from: { row: 2, col: 3 }, to: { row: 2, col: 4 } };
+    const brokenSite: ImpactSite = { piece: { color: 'green', fragility: 'broken' }, direction: 'N', from: { row: 4, col: 4 }, to: { row: 2, col: 4 } };
+
+    const result = expectResolved(applyMutualImpact(board, rainbowSite, brokenSite));
+
+    // Mismo criterio que `strikeMutualSide`'s propio chequeo para cualquier
+    // hitSite ya 'broken': desaparece sin ningún evento -- ninguna de las dos
+    // deja rastro, y ninguna continúa (research.md Decisión 3 de 019,
+    // reutilizado aquí sin cambios).
+    expect(result.events).toEqual([]);
+    expect(result.nextSites).toEqual([]);
+    expect(result.board).toEqual(board);
+  });
+});
+
+describe('applyMutualImpact: dos arcoíris en colisión mutua -- aniquilación por mismo color, sin cambios (027-rainbow-attacker-only, US4)', () => {
+  it('dos trayectorias arcoíris producen dos ANNIHILATION, uno por lado, sin ningún selector de color', () => {
+    const board = createBoard();
+    const siteA: ImpactSite = { piece: { color: 'rainbow', fragility: 'new' }, direction: 'E', from: { row: 2, col: 3 }, to: { row: 2, col: 4 } };
+    const siteB: ImpactSite = { piece: { color: 'rainbow', fragility: 'new' }, direction: 'N', from: { row: 4, col: 4 }, to: { row: 2, col: 4 } };
+
+    const result = expectResolved(applyMutualImpact(board, siteA, siteB));
+
+    expect(result.events).toEqual([
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'rainbow', from: { row: 2, col: 3 }, direction: 'E', pushedByColor: undefined, visualOrigin: undefined },
+      { type: 'ANNIHILATION', at: { row: 2, col: 4 }, color: 'rainbow', from: { row: 4, col: 4 }, direction: 'N', pushedByColor: undefined, visualOrigin: undefined },
+    ]);
     expect(result.nextSites).toEqual([]);
   });
 });
