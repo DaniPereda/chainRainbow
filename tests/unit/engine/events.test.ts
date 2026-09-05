@@ -40,6 +40,7 @@ describe('resolveChain: multiple initial sites (019-synchronous-tick-resolution)
     const siteB = site(7, 4); // same `to` as siteA
     const handleImpact: ImpactHandler = vi.fn();
     const handleMutualImpact: MutualImpactHandler = (b, a) => ({
+      status: 'resolved',
       board: b,
       events: [{ type: 'ANNIHILATION', at: a.to, color: 'green', from: a.from, direction: a.direction }],
       nextSites: [],
@@ -138,6 +139,7 @@ describe('resolveChain: a shared destination is only a mutual collision when it 
     const siteB = site(7, 4);
     const handleImpact: ImpactHandler = vi.fn();
     const handleMutualImpact: MutualImpactHandler = (b, a) => ({
+      status: 'resolved',
       board: b,
       events: [{ type: 'ANNIHILATION', at: a.to, color: 'green', from: a.from, direction: a.direction }],
       nextSites: [],

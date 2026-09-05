@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, setPieceAt, type Piece } from '../../../src/engine/board.js';
 import { createLevel, resolveLaunch } from '../../../src/engine/index.js';
-import { applyImpact } from '../../../src/engine/pieces/push.js';
+import { resolveChain } from '../../../src/engine/events.js';
+import { applyImpact, applyMutualImpact } from '../../../src/engine/pieces/push.js';
 import { expectResolved } from './test-helpers.js';
 
 describe('arcoíris (024-rainbow-color-change): lanzada cambia el color de la defensora (US1)', () => {
@@ -122,58 +123,119 @@ describe('arcoíris (024-rainbow-color-change): lanzada cambia el color de la de
     }
   });
 
-  it('precedencia frente a rojo: gana siempre el cambio de color de arcoíris (FR-010, quickstart.md Escenario 5)', () => {
-    // Arcoíris lanzada golpea una roja asentada.
-    const boardA = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'red', fragility: 'new' });
+  it('arcoíris lanzada golpea una roja asentada: gana el cambio de color de arcoíris, sin cambios (arcoíris sigue siendo la ATACANTE)', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'red', fragility: 'new' });
     const rainbow: Piece = { color: 'rainbow', fragility: 'new' };
-    const resultA = applyImpact(boardA, { piece: rainbow, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
-    expect(resultA.status).toBe('pending-color-choice');
-    if (resultA.status !== 'pending-color-choice') throw new Error('unreachable');
-    const resolvedA = expectResolved(resultA.resume('green'));
-    expect(resolvedA.events.some((event) => event.type === 'MOVE_STEP')).toBe(false);
-    expect(resolvedA.board.cells[4][4]).toEqual({ color: 'green', fragility: 'new' });
-
-    // Roja lanzada golpea una arcoíris asentada.
-    const boardB = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
-    const red: Piece = { color: 'red', fragility: 'new' };
-    const resultB = applyImpact(boardB, { piece: red, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
-    expect(resultB.status).toBe('pending-color-choice');
-    if (resultB.status !== 'pending-color-choice') throw new Error('unreachable');
-    const resolvedB = expectResolved(resultB.resume('orange'));
-    expect(resolvedB.events.some((event) => event.type === 'MOVE_STEP')).toBe(false);
-    expect(resolvedB.board.cells[4][4]).toEqual({ color: 'orange', fragility: 'new' });
+    const result = applyImpact(board, { piece: rainbow, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
+    expect(result.status).toBe('pending-color-choice');
+    if (result.status !== 'pending-color-choice') throw new Error('unreachable');
+    const resolved = expectResolved(result.resume('green'));
+    expect(resolved.events.some((event) => event.type === 'MOVE_STEP')).toBe(false);
+    expect(resolved.board.cells[4][4]).toEqual({ color: 'green', fragility: 'new' });
   });
 });
 
-describe('arcoíris (024-rainbow-color-change): asentada en el tablero cambia su propio color al ser golpeada (US2)', () => {
-  it('una arcoíris asentada es la defensora -- pendingColorChoice apunta a su propia casilla, no a la atacante', () => {
+describe('arcoíris (027-rainbow-attacker-only): una arcoíris asentada se comporta como cualquier otra defensora (US1)', () => {
+  it('golpeada por verde: avanza fragilidad y se desplaza 1 celda -- verde (la atacante) se asienta en la celda de impacto', () => {
     const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
     const striker: Piece = { color: 'green', fragility: 'new' };
 
-    const result = applyImpact(board, { piece: striker, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
+    const result = expectResolved(
+      resolveChain(board, [{ piece: striker, direction: 'E', from: { row: 4, col: 3 }, to: { row: 4, col: 4 } }], applyImpact, applyMutualImpact),
+    );
 
-    expect(result.status).toBe('pending-color-choice');
-    if (result.status !== 'pending-color-choice') throw new Error('unreachable');
-    expect(result.at).toEqual({ row: 4, col: 4 });
-    // La atacante (verde) ya viajó y desapareció -- forma parte del resultado
-    // pendiente, no de la resolución final (se anima ANTES del diálogo).
-    expect(result.events.some((event) => event.type === 'ANNIHILATION' && event.color === 'green')).toBe(true);
-    expect(result.board.cells[4][4]).toBeNull();
-
-    const resolved = expectResolved(result.resume('brown'));
-    expect(resolved.board.cells[4][4]).toEqual({ color: 'brown', fragility: 'new' });
-    expect(resolved.events).toEqual([{ type: 'COLOR_CHOICE', at: { row: 4, col: 4 }, fromColor: 'rainbow', toColor: 'brown' }]);
+    expect(result.board.cells[4][4]).toEqual({ color: 'green', fragility: 'new' });
+    expect(result.board.cells[4][5]).toEqual({ color: 'rainbow', fragility: 'cracked' });
+    expect(result.events.every((event) => event.type === 'MOVE_STEP')).toBe(true);
   });
 
-  it('la fragilidad de la arcoíris asentada se conserva tras recolorearse (misma decisión que en US1)', () => {
+  it('golpeada por naranja: avanza fragilidad y se desplaza 2 celdas', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
+    const striker: Piece = { color: 'orange', fragility: 'new' };
+
+    const result = expectResolved(
+      resolveChain(board, [{ piece: striker, direction: 'E', from: { row: 4, col: 3 }, to: { row: 4, col: 4 } }], applyImpact, applyMutualImpact),
+    );
+
+    expect(result.board.cells[4][4]).toEqual({ color: 'orange', fragility: 'new' });
+    expect(result.board.cells[4][6]).toEqual({ color: 'rainbow', fragility: 'cracked' });
+    expect(result.events.every((event) => event.type === 'MOVE_STEP')).toBe(true);
+  });
+
+  it('golpeada por marrón: avanza fragilidad y empieza a caminar celda a celda (021-cellwise-collision-resolution), sin abrir ningún selector', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
+    const striker: Piece = { color: 'brown', fragility: 'new' };
+
+    const result = expectResolved(applyImpact(board, { piece: striker, direction: 'E', from: { row: 4, col: 3 }, to: { row: 4, col: 4 } }));
+
+    expect(result.board.cells[4][4]).toEqual({ color: 'brown', fragility: 'new' });
+    expect(result.nextSites).toEqual([
+      {
+        piece: { color: 'rainbow', fragility: 'cracked' },
+        direction: 'E',
+        from: { row: 4, col: 4 },
+        to: { row: 4, col: 5 },
+        pushedByColor: 'brown',
+        walking: { edgeCrossings: 0 },
+      },
+    ]);
+  });
+
+  it('golpeada por rojo: se divide en dos ramas perpendiculares, ambas todavía \'rainbow\' -- inversión deliberada de FR-010 de 024', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
+    const red: Piece = { color: 'red', fragility: 'new' };
+
+    const result = expectResolved(applyImpact(board, { piece: red, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } }));
+
+    expect(result.board.cells[4][3]).toEqual({ color: 'rainbow', fragility: 'cracked' }); // rama oeste
+    expect(result.board.cells[4][4]).toEqual({ color: 'red', fragility: 'new' }); // la lanzadora se asienta en la propia celda de división
+    expect(result.board.cells[4][5]).toEqual({ color: 'rainbow', fragility: 'cracked' }); // rama este
+    expect(result.events.every((event) => event.type === 'MOVE_STEP')).toBe(true);
+  });
+
+  it('golpeada por negro: sigue eliminando su línea completa, sin cambios (la prioridad de negro nunca dependió de la regla eliminada)', () => {
+    const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
+    const black: Piece = { color: 'black', fragility: 'new' };
+
+    const result = expectResolved(applyImpact(board, { piece: black, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } }));
+
+    expect(result.events.every((event) => event.type === 'ANNIHILATION')).toBe(true);
+    for (let col = 0; col < 8; col++) {
+      expect(result.board.cells[4][col]).toBeNull();
+    }
+  });
+
+  it('desplazada que llega con fragilidad ya \'broken\': desaparece sin llegar a aplicar ningún efecto', () => {
     const board = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'cracked' });
     const striker: Piece = { color: 'green', fragility: 'new' };
 
-    const result = applyImpact(board, { piece: striker, direction: 'S', from: { row: 3, col: 4 }, to: { row: 4, col: 4 } });
+    const result = expectResolved(
+      resolveChain(board, [{ piece: striker, direction: 'E', from: { row: 4, col: 3 }, to: { row: 4, col: 4 } }], applyImpact, applyMutualImpact),
+    );
+
+    expect(result.board.cells[4][4]).toEqual({ color: 'green', fragility: 'new' });
+    expect(result.board.cells[4][5]).toBeNull(); // arcoíris ya 'broken' -- desaparece sin asentarse
+  });
+});
+
+describe('arcoíris (027-rainbow-attacker-only): una arcoíris en vuelo que golpea una defensora real actúa como atacante, igual que siempre (US2)', () => {
+  it('desplazada por verde, golpea inmediatamente después una ficha real: abre el selector señalando a ESA ficha, no a la propia arcoíris', () => {
+    const boardWithRainbow = setPieceAt(createBoard(), { row: 4, col: 4 }, { color: 'rainbow', fragility: 'new' });
+    const board = setPieceAt(boardWithRainbow, { row: 4, col: 5 }, { color: 'orange', fragility: 'new' });
+    const striker: Piece = { color: 'green', fragility: 'new' };
+
+    // Un único resolveChain: verde desplaza la arcoíris asentada un paso al
+    // este (US1), y esa misma arcoíris, ya en vuelo, golpea inmediatamente la
+    // naranja real que la esperaba justo ahí.
+    const result = resolveChain(board, [{ piece: striker, direction: 'E', from: { row: 4, col: 3 }, to: { row: 4, col: 4 } }], applyImpact, applyMutualImpact);
+
+    expect(result.status).toBe('pending-color-choice');
     if (result.status !== 'pending-color-choice') throw new Error('unreachable');
+    expect(result.at).toEqual({ row: 4, col: 5 });
 
     const resolved = expectResolved(result.resume('brown'));
-    expect(resolved.board.cells[4][4]).toEqual({ color: 'brown', fragility: 'cracked' });
+    expect(resolved.board.cells[4][4]).toEqual({ color: 'green', fragility: 'new' }); // la atacante original, sin cambios
+    expect(resolved.board.cells[4][5]).toEqual({ color: 'brown', fragility: 'new' }); // naranja recoloreada a marrón
   });
 });
 
